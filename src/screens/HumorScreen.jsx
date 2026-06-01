@@ -16,8 +16,11 @@ import Svg, { Path } from "react-native-svg";
 import { IIcon } from "../components/Icons";
 import { ImpaktLogo } from "../components/ImpaktLogo";
 import { BottomNav } from "../components/BottomNav";
-import { MEMES } from "../data/memes";
-import { FEED_STORIES } from "../data/feed";
+import memesData from "../api/mock/memes.json";
+import storiesData from "../api/mock/stories.json";
+
+const MEMES = memesData.memes;
+const FEED_STORIES = storiesData.stories;
 import { colors, fonts } from "../theme/tokens";
 
 const { height: SCREEN_H } = Dimensions.get("window");
@@ -244,21 +247,12 @@ export function HumorScreen({
     const i = MEMES.findIndex((m) => m.storyId === initialStoryId);
     return i >= 0 ? i : 0;
   });
-  const [currentIdx, setCurrentIdx] = useState(initialIdx);
 
   // Consume the pending story ID immediately after mount
   useEffect(() => {
     if (initialStoryId != null) onInitialStoryConsumed?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const onViewableItemsChanged = useRef(({ viewableItems }) => {
-    if (viewableItems.length > 0 && viewableItems[0].index != null) {
-      setCurrentIdx(viewableItems[0].index);
-    }
-  });
-
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 });
 
   const renderItem = useCallback(
     ({ item, index }) => (
@@ -270,7 +264,7 @@ export function HumorScreen({
         onOpenStory={onOpenStory}
       />
     ),
-    [onOpenStory],
+    [onOpenStory]
   );
 
   return (
@@ -288,10 +282,10 @@ export function HumorScreen({
           index,
         })}
         initialScrollIndex={initialIdx > 0 ? initialIdx : undefined}
-        onViewableItemsChanged={onViewableItemsChanged.current}
-        viewabilityConfig={viewabilityConfig.current}
         decelerationRate="fast"
-        windowSize={3}
+        initialNumToRender={2}
+        maxToRenderPerBatch={2}
+        windowSize={5}
       />
 
       {/* Overlay header — transparent gradient, touch passthrough */}
@@ -305,7 +299,7 @@ export function HumorScreen({
         />
         <View style={[styles.headerRow, { paddingTop: insets.top + 10 }]}>
           <View style={{ width: 34 }} />
-          <ImpaktLogo size={26} dark={false} />
+          <ImpaktLogo size={26} dark={false} dotColor={colors.cream} />
           <View style={{ width: 34 }} />
         </View>
       </View>

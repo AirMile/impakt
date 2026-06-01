@@ -11,7 +11,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MotiView } from "moti";
 
 import { IIcon } from "../components/Icons";
-import { FEED_STORIES } from "../data/feed";
+import storiesData from "../api/mock/stories.json";
+
+const FEED_STORIES = storiesData.stories;
 import { FeedCard } from "./FeedScreen";
 import { colors, fonts } from "../theme/tokens";
 import { slideUpScreen } from "../theme/animations";
@@ -51,7 +53,7 @@ export function SearchScreen({ onClose, onOpenStory }) {
           s.title.toLowerCase().includes(q) ||
           s.sub.toLowerCase().includes(q) ||
           s.cat.toLowerCase().includes(q) ||
-          s.tags.some((t) => t.toLowerCase().includes(q)),
+          s.tags.some((t) => t.toLowerCase().includes(q))
       )
     : [];
 

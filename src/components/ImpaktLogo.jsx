@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text } from "react-native";
 import { colors, fonts } from "../theme/tokens";
 
-export function ImpaktLogo({ size = 28, dark = true }) {
+export function ImpaktLogo({ size = 28, dark = true, dotColor = colors.red }) {
   const fg = dark ? colors.ink : colors.cream;
   const barH = Math.max(4, Math.round(size * 0.18));
   const dotSize = Math.round(size * 0.32);
@@ -30,7 +30,7 @@ export function ImpaktLogo({ size = 28, dark = true }) {
             width: dotSize,
             height: dotSize,
             borderRadius: dotSize / 2,
-            backgroundColor: colors.red,
+            backgroundColor: dotColor,
           }}
         />
         <View

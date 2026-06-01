@@ -17,7 +17,9 @@ import {
 } from "@expo-google-fonts/geist";
 
 import { colors } from "./src/theme/tokens";
-import { FEED_STORIES } from "./src/data/feed";
+import storiesData from "./src/api/mock/stories.json";
+
+const FEED_STORIES = storiesData.stories;
 import { getOnboarded } from "./src/storage/prefs";
 
 import { FeedScreen } from "./src/screens/FeedScreen";
@@ -120,6 +122,9 @@ export default function App() {
             cat={feedCat}
             onCatChange={setFeedCat}
           />
+        )}
+        {phase === "app" && tab === "good" && (
+          <FeedScreen {...commonProps} onOpen={setOpenStory} goodNewsOnly />
         )}
         {phase === "app" && tab === "humor" && (
           <HumorScreen

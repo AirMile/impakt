@@ -19,7 +19,11 @@ import { ReactionRail } from "../components/ReactionRail";
 import { IIcon } from "../components/Icons";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { fadeUp } from "../theme/animations";
-import { FEED_STORIES, CATS } from "../data/feed";
+import storiesData from "../api/mock/stories.json";
+import categoriesData from "../api/mock/categories.json";
+
+const FEED_STORIES = storiesData.stories;
+const CATS = categoriesData.categories;
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 36;
@@ -171,11 +175,13 @@ export function FeedScreen({
   onCatChange,
   embedded = false,
   excludeId,
+  goodNewsOnly = false,
 }) {
   const listRef = useRef(null);
 
-  const storiesBase =
-    cat === "Voor jou"
+  const storiesBase = goodNewsOnly
+    ? FEED_STORIES.filter((s) => s.goodNews === true)
+    : cat === "Voor jou"
       ? FEED_STORIES
       : FEED_STORIES.filter((s) => s.cat === cat);
   const stories = excludeId
@@ -188,9 +194,8 @@ export function FeedScreen({
       listRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
-  const renderHeader = () => (
-    <CatChips active={cat} onChange={handleCatChange} />
-  );
+  const renderHeader = () =>
+    goodNewsOnly ? null : <CatChips active={cat} onChange={handleCatChange} />;
 
   const renderEmpty = () => (
     <View style={styles.empty}>

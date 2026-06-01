@@ -18,7 +18,9 @@ import { IIcon } from "../components/Icons";
 import { FeedScreen } from "./FeedScreen";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { slideUpScreen } from "../theme/animations";
-import { MEMES } from "../data/memes";
+import memesData from "../api/mock/memes.json";
+
+const MEMES = memesData.memes;
 
 export function DetailScreen({
   story,
@@ -47,7 +49,7 @@ export function DetailScreen({
   const totalVotes = story.poll
     ? story.poll.options.reduce(
         (a, o) => a + o.votes + (pollChoice === o.id ? 1 : 0),
-        0,
+        0
       )
     : 0;
 

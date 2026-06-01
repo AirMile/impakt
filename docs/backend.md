@@ -1,0 +1,364 @@
+# Impakt — Backend-specificatie
+
+## Wat is dit?
+
+Impakt is een nieuws-app voor jongeren. De frontend (React Native) draait nu op nep-data uit JSON-bestanden. Jullie bouwen de echte backend die die JSON-bestanden vervangt. Dit document legt uit welke endpoints jullie moeten bouwen, hoe de data eruit moet zien, en wat er als eerste klaar moet zijn.
+
+---
+
+## Endpoints — MVP (eerste sprint)
+
+Dit zijn de endpoints die de app nodig heeft om zonder mock-data te draaien.
+
+---
+
+### Auth
+
+#### `POST /auth/register`
+
+Maak een nieuw account aan.
+
+**Request body:**
+
+```json
+{
+  "name": "Mila",
+  "email": "mila@example.com",
+  "password": "geheim123"
+}
+```
+
+**Response:**
+
+```json
+{
+  "token": "abc123...",
+  "user": { "id": "u1", "name": "Mila", "email": "mila@example.com" }
+}
+```
+
+---
+
+#### `POST /auth/login`
+
+Inloggen met e-mail en wachtwoord.
+
+**Request body:**
+
+```json
+{
+  "email": "mila@example.com",
+  "password": "geheim123"
+}
+```
+
+**Response:** zelfde als `/auth/register`.
+
+---
+
+#### `POST /auth/logout`
+
+Sessie beëindigen. Geen body nodig. Response: `{ "ok": true }`.
+
+---
+
+#### `POST /auth/social/:provider`
+
+Inloggen via Google, Apple of Facebook. `:provider` is `google`, `apple` of `facebook`.
+
+**Request body:**
+
+```json
+{ "token": "token-van-google-sdk" }
+```
+
+**Response:** zelfde als `/auth/register`.
+
+---
+
+### Feed
+
+#### `GET /feed`
+
+Haalt een lijst stories op.
+
+**Query params (alle optioneel):**
+
+| Param      | Waarde                                                       | Betekenis              |
+| ---------- | ------------------------------------------------------------ | ---------------------- |
+| `cat`      | `Klimaat`, `Politiek`, `Sport`, `Tech`, `Wereld`, `Voor jou` | Filter op categorie    |
+| `goodNews` | `true`                                                       | Alleen positief nieuws |
+| `page`     | getal (start bij 1)                                          | Paginering             |
+
+`cat=Voor jou` geeft een persoonlijke selectie op basis van de interesses die de user bij het aanmaken van het account heeft gekozen.
+
+**Response:**
+
+```json
+{
+  "stories": [
+    {
+      "id": 1,
+      "title": "...",
+      "sub": "...",
+      "img": "...",
+      "cat": "Wereld",
+      "tone": "Live",
+      "date": "2026-05-20T06:32:00Z",
+      "views": 34200,
+      "trending": true,
+      "tags": ["Live"],
+      "reactions": { "smile": 18, "meh": 31, "frown": 51 },
+      "my_reaction": null
+    }
+  ],
+  "page": 1,
+  "total": 11
+}
+```
+
+> Tip: voor de lijstweergave hoeft `body`, `poll`, `actions` en `sources` niet mee — die zijn alleen nodig in de detailpagina.
+
+---
+
+#### `GET /stories/:id`
+
+Haalt één volledig artikel op (inclusief body, poll, acties en bronnen).
+
+**Response:** één Story-object zoals hierboven beschreven, met alle velden.
+
+---
+
+#### `GET /stories/top-read`
+
+De meest gelezen stories. Gebruikt op de zoekpagina onder "Meest gelezen".
+
+**Query params:**
+
+- `limit` = getal (standaard 4)
+
+**Response:** zelfde shape als `/feed`, maar gesorteerd op views (hoog naar laag).
+
+---
+
+### Memes
+
+#### `GET /memes`
+
+Haalt de humor-feed op.
+
+**Query params (optioneel):**
+
+- `storyId` = getal — geef de meme voor dit specifieke artikel als eerste terug (de app opent soms de humor-feed op een specifieke meme)
+- `cursor` = string — voor paginering (geef de `nextCursor` uit de vorige response terug)
+
+**Response:**
+
+```json
+{
+  "memes": [
+    {
+      "id": "m1",
+      "storyId": 2,
+      "img": "...",
+      "top": "...",
+      "bot": "...",
+      "likes": 12400,
+      "reactions": { "smile": 72, "meh": 19, "frown": 9 },
+      "my_reaction": null,
+      "my_liked": false
+    }
+  ],
+  "nextCursor": "m5"
+}
+```
+
+---
+
+### Categorieën
+
+#### `GET /categories`
+
+Haalt de lijst van nieuwscategorieën op. Wordt gebruikt voor de filterknoppen in de feed.
+
+**Response:**
+
+```json
+{
+  "categories": ["Voor jou", "Klimaat", "Politiek", "Sport", "Tech", "Wereld"]
+}
+```
+
+---
+
+### Zoeken
+
+#### `GET /search`
+
+Zoekt door alle verhalen op titel, samenvatting, categorie en tags.
+
+**Query params:**
+
+- `q` = zoekterm (verplicht)
+
+**Response:** zelfde shape als `/feed` (zonder paginering nodig voor nu).
+
+---
+
+### Onboarding
+
+#### `GET /onboarding/topics`
+
+Haalt de lijst van keuze-onderwerpen op voor het aanmeldscherm.
+
+**Response:**
+
+```json
+{
+  "topics": [
+    { "id": "politiek", "label": "Politiek" },
+    { "id": "klimaat", "label": "Klimaat" },
+    { "id": "sport", "label": "Sport" },
+    { "id": "innovatie", "label": "Innovatie" },
+    { "id": "economie", "label": "Economie" },
+    { "id": "natuur", "label": "Natuur" },
+    { "id": "kunst", "label": "Kunst" },
+    { "id": "lokaal", "label": "Lokaal" }
+  ]
+}
+```
+
+---
+
+#### `POST /me/onboarding`
+
+Sla de gekozen interesses op na het registreren.
+
+**Request body:**
+
+```json
+{
+  "topics": ["politiek", "klimaat", "sport"]
+}
+```
+
+**Response:** `{ "ok": true }`
+
+---
+
+### Profiel
+
+#### `GET /me`
+
+Haalt de gegevens van de ingelogde gebruiker op.
+
+**Response:** User-object zoals hierboven beschreven.
+
+---
+
+#### `PATCH /me/tags`
+
+Voeg een tag toe of verwijder een tag van het profiel van de gebruiker.
+
+**Request body:**
+
+```json
+{
+  "add": ["Tech"],
+  "remove": ["School"]
+}
+```
+
+**Response:** bijgewerkt User-object.
+
+---
+
+## Endpoints — Later (interactiviteit)
+
+Deze endpoints zijn niet nodig voor de eerste sprint, maar wel voor een volledige app.
+
+---
+
+### Reacties op verhalen
+
+#### `POST /stories/:id/reactions`
+
+Geef een reactie (smile, meh of frown) op een artikel.
+
+**Request body:** `{ "type": "smile" }` — type is `smile`, `meh` of `frown`.
+
+**Response:** bijgewerkt `reactions`-object + `my_reaction`.
+
+---
+
+### Poll stemmen
+
+#### `POST /stories/:id/poll/vote`
+
+Stem op een poll-optie in een artikel. Elke gebruiker mag maar één keer stemmen.
+
+**Request body:** `{ "optionId": "a" }`
+
+**Response:** bijgewerkte poll met nieuwe aantallen en `my_choice`.
+
+---
+
+### Opslaan (bookmarks)
+
+#### `POST /stories/:id/bookmark` / `DELETE /stories/:id/bookmark`
+
+Sla een artikel op of verwijder het uit de opgeslagen lijst.
+
+#### `POST /memes/:id/bookmark` / `DELETE /memes/:id/bookmark`
+
+Zelfde voor memes.
+
+**Response:** `{ "saved": true }` of `{ "saved": false }`.
+
+---
+
+### Meme liken
+
+#### `POST /memes/:id/like` / `DELETE /memes/:id/like`
+
+Like een meme (dubbel-tap in de app) of verwijder de like.
+
+**Response:** `{ "liked": true, "likes": 12401 }`.
+
+---
+
+### Reacties op memes
+
+#### `POST /memes/:id/reactions`
+
+Zelfde als reactions op verhalen.
+
+---
+
+### Kijkteller
+
+#### `POST /stories/:id/view`
+
+De app roept dit aan wanneer iemand een artikel opent. Geen body nodig. Wordt gebruikt om de viewteller bij te houden.
+
+**Response:** `{ "ok": true }`
+
+---
+
+## Authenticatie
+
+Gebruik een `Authorization`-header voor alle beveiligde endpoints:
+
+```
+Authorization: Bearer <token>
+```
+
+De token krijgt de gebruiker terug bij het inloggen of registreren. Welke technologie jullie daarvoor gebruiken (JWT, sessie, etc.) is aan jullie.
+
+Endpoints die geen login vereisen: `/feed`, `/stories/:id`, `/memes`, `/categories`, `/search`, `/onboarding/topics`.
+
+---
+
+## Vragen?
+
+Stuur een berichtje in het team-kanaal of maak een issue aan in de repo.
