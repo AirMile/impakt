@@ -17,9 +17,7 @@ import {
 } from "@expo-google-fonts/geist";
 
 import { colors } from "./src/theme/tokens";
-import storiesData from "./src/api/mock/stories.json";
-
-const FEED_STORIES = storiesData.stories;
+import { STORIES as FEED_STORIES } from "./src/api/mock";
 import { getOnboarded } from "./src/storage/prefs";
 
 import { FeedScreen } from "./src/screens/FeedScreen";

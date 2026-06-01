@@ -7,20 +7,18 @@ import {
   ScrollView,
   StyleSheet,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { MotiView } from "moti";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomNav } from "../components/BottomNav";
+import { HeroOverlay } from "../components/HeroOverlay";
 import { ReactionRail } from "../components/ReactionRail";
 import { ImpaktLogo } from "../components/ImpaktLogo";
 import { IIcon } from "../components/Icons";
 import { FeedScreen } from "./FeedScreen";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { slideUpScreen } from "../theme/animations";
-import memesData from "../api/mock/memes.json";
-
-const MEMES = memesData.memes;
+import { MEMES } from "../api/mock";
 
 export function DetailScreen({
   story,
@@ -132,15 +130,7 @@ export function DetailScreen({
             style={StyleSheet.absoluteFill}
             resizeMode="cover"
           />
-          <LinearGradient
-            colors={[
-              "rgba(15,17,26,0.30)",
-              "transparent",
-              "rgba(15,17,26,0.40)",
-            ]}
-            locations={[0, 0.3, 1]}
-            style={StyleSheet.absoluteFill}
-          />
+          <HeroOverlay variant="hero" />
           <View style={styles.heroRail}>
             <ReactionRail
               reaction={reaction}

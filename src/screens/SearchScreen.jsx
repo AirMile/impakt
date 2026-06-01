@@ -11,9 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MotiView } from "moti";
 
 import { IIcon } from "../components/Icons";
-import storiesData from "../api/mock/stories.json";
-
-const FEED_STORIES = storiesData.stories;
+import { STORIES as FEED_STORIES } from "../api/mock";
 import { FeedCard } from "./FeedScreen";
 import { colors, fonts } from "../theme/tokens";
 import { slideUpScreen } from "../theme/animations";

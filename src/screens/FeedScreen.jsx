@@ -9,21 +9,17 @@ import {
   StyleSheet,
   Dimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { MotiView } from "moti";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppHeader } from "../components/AppHeader";
+import { HeroOverlay } from "../components/HeroOverlay";
 import { BottomNav } from "../components/BottomNav";
 import { ReactionRail } from "../components/ReactionRail";
 import { IIcon } from "../components/Icons";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { fadeUp } from "../theme/animations";
-import storiesData from "../api/mock/stories.json";
-import categoriesData from "../api/mock/categories.json";
-
-const FEED_STORIES = storiesData.stories;
-const CATS = categoriesData.categories;
+import { STORIES as FEED_STORIES, CATEGORIES as CATS } from "../api/mock";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 36;
@@ -79,16 +75,7 @@ export function FeedCard({ story, onOpen, variant = "full", index = 0 }) {
         />
 
         {/* Gradient overlay */}
-        <LinearGradient
-          colors={[
-            "rgba(15,17,26,0.55)",
-            "rgba(15,17,26,0.10)",
-            "rgba(15,17,26,0.05)",
-            "rgba(15,17,26,0.85)",
-          ]}
-          locations={[0, 0.3, 0.55, 1]}
-          style={StyleSheet.absoluteFill}
-        />
+        <HeroOverlay variant="card" />
 
         {/* Title top-left */}
         <View style={styles.titleArea}>

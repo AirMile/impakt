@@ -4,7 +4,7 @@ import { MotiView } from "moti";
 import { IIcon } from "./Icons";
 import { colors, fonts } from "../theme/tokens";
 
-const REACTION_COLORS = {
+export const REACTION_COLORS = {
   smile: "#52BD70",
   meh: "#F0B429",
   frown: colors.red,

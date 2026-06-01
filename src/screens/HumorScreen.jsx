@@ -14,13 +14,11 @@ import { MotiView } from "moti";
 import Svg, { Path } from "react-native-svg";
 
 import { IIcon } from "../components/Icons";
+import { HeroOverlay } from "../components/HeroOverlay";
+import { REACTION_COLORS } from "../components/ReactionRail";
 import { ImpaktLogo } from "../components/ImpaktLogo";
 import { BottomNav } from "../components/BottomNav";
-import memesData from "../api/mock/memes.json";
-import storiesData from "../api/mock/stories.json";
-
-const MEMES = memesData.memes;
-const FEED_STORIES = storiesData.stories;
+import { MEMES, STORIES as FEED_STORIES } from "../api/mock";
 import { colors, fonts } from "../theme/tokens";
 
 const { height: SCREEN_H } = Dimensions.get("window");
@@ -72,11 +70,10 @@ function MemeCard({ meme, idx, total, isFirst, onOpenStory }) {
 
   const linkedStory = FEED_STORIES.find((s) => s.id === meme.storyId);
 
-  const reactionBtns = [
-    { key: "smile", color: "#52BD70" },
-    { key: "meh", color: "#F0B429" },
-    { key: "frown", color: "#E4634D" },
-  ];
+  const reactionBtns = Object.entries(REACTION_COLORS).map(([key, color]) => ({
+    key,
+    color,
+  }));
 
   return (
     <View style={styles.card}>
@@ -88,16 +85,7 @@ function MemeCard({ meme, idx, total, isFirst, onOpenStory }) {
       />
 
       {/* Gradient veil */}
-      <LinearGradient
-        colors={[
-          "rgba(15,17,26,0.55)",
-          "rgba(15,17,26,0.05)",
-          "rgba(15,17,26,0.05)",
-          "rgba(15,17,26,0.92)",
-        ]}
-        locations={[0, 0.26, 0.55, 1]}
-        style={StyleSheet.absoluteFillObject}
-      />
+      <HeroOverlay variant="meme" />
 
       {/* Double-tap target — behind rail and kicker */}
       <Pressable

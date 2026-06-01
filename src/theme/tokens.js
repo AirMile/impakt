@@ -10,10 +10,22 @@ export const colors = {
 };
 
 export const surfaces = {
+  // dividers & borders
   line: "rgba(15,17,26,0.10)",
   lineStrong: "rgba(15,17,26,0.22)",
+  border: "rgba(15,17,26,0.08)",
+  // text
   muted: "rgba(15,17,26,0.55)",
+  textDim: "rgba(15,17,26,0.60)",
+  textFaint: "rgba(15,17,26,0.35)",
+  // backgrounds
   soft: "rgba(15,17,26,0.05)",
+  overlay: "rgba(15,17,26,0.40)",
+  scrim: "rgba(15,17,26,0.65)",
+  // cream alpha's
+  creamSoft: "rgba(239,235,230,0.18)",
+  creamMuted: "rgba(239,235,230,0.35)",
+  creamBright: "rgba(239,235,230,0.96)",
 };
 
 export const fonts = {
