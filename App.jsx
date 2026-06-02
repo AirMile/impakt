@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { View, ActivityIndicator, StyleSheet, Linking } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -17,8 +17,10 @@ import {
 } from "@expo-google-fonts/geist";
 
 import { colors } from "./src/theme/tokens";
-import { STORIES as FEED_STORIES } from "./src/api/mock";
+import { STORIES as FEED_STORIES, MEMES } from "./src/api/mock";
 import { getOnboarded } from "./src/storage/prefs";
+import { parseImpaktUrl } from "./src/lib/parseImpaktUrl";
+import { ToastHost } from "./src/components/Toast";
 
 import { FeedScreen } from "./src/screens/FeedScreen";
 import { DetailScreen } from "./src/screens/DetailScreen";
@@ -66,6 +68,36 @@ export default function App() {
       .finally(() => setAuthLoading(false));
   }, [fontsLoaded]);
 
+  useEffect(() => {
+    if (authLoading || !fontsLoaded) return;
+
+    const handle = (url) => {
+      const parsed = parseImpaktUrl(url);
+      if (!parsed) return;
+      setPhase("app");
+      if (parsed.kind === "story") {
+        const s = FEED_STORIES.find((x) => x.id === Number(parsed.id));
+        if (s) setOpenStory(s);
+      } else if (parsed.kind === "meme") {
+        const meme = MEMES.find((m) => m.id === parsed.id);
+        if (meme) {
+          setOpenStory(null);
+          setTab("humor");
+          setPendingMemeStoryId(meme.storyId);
+        }
+      }
+    };
+
+    Linking.getInitialURL()
+      .then((url) => {
+        if (url) handle(url);
+      })
+      .catch(() => {});
+
+    const sub = Linking.addEventListener("url", ({ url }) => handle(url));
+    return () => sub.remove();
+  }, [fontsLoaded, authLoading]);
+
   if (!fontsLoaded || authLoading) {
     return (
       <View style={styles.loader}>
@@ -88,6 +120,15 @@ export default function App() {
     setOpenStory(null);
     setTab("humor");
     setPendingMemeStoryId(storyId);
+  };
+
+  const openMemeById = (memeId) => {
+    const meme = MEMES.find((m) => m.id === memeId);
+    if (meme) {
+      setOpenStory(null);
+      setTab("humor");
+      setPendingMemeStoryId(meme.storyId);
+    }
   };
 
   const commonProps = {
@@ -170,6 +211,7 @@ export default function App() {
             activeTab={tab}
           />
         )}
+        <ToastHost />
       </View>
     </SafeAreaProvider>
   );

@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IIcon } from "../components/Icons";
 import { AppHeader } from "../components/AppHeader";
 import { colors, fonts } from "../theme/tokens";
+import { addTag as addTagFn, removeTag as removeTagFn } from "../lib/tagCrud";
 import { slideInRight, fadeUp } from "../theme/animations";
 
 // ─── ProfileRow ───────────────────────────────────────────────
@@ -44,13 +45,12 @@ export function ProfileScreen({ user, onClose, onLogout }) {
   const name = user?.name ?? "John news";
 
   const addTag = () => {
-    const t = newTag.trim();
-    if (t && !tags.includes(t)) setTags((ts) => [...ts, t]);
+    setTags((ts) => addTagFn(ts, newTag));
     setNewTag("");
     setAddingTag(false);
   };
 
-  const removeTag = (t) => setTags((ts) => ts.filter((x) => x !== t));
+  const removeTag = (t) => setTags((ts) => removeTagFn(ts, t));
 
   return (
     <MotiView

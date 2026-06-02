@@ -18,6 +18,7 @@ import { Field } from "../../components/Field";
 import { SocialRow } from "../../components/SocialRow";
 import { colors, fonts } from "../../theme/tokens";
 import { fadeUp } from "../../theme/animations";
+import { validateLogin } from "../../lib/auth/validators";
 
 export function LoginScreen({
   onBack,
@@ -35,11 +36,7 @@ export function LoginScreen({
   const pwRef = useRef(null);
 
   const submit = () => {
-    const errs = {};
-    if (!email) errs.email = "Vul je e-mail in";
-    else if (!email.includes("@"))
-      errs.email = "Dit is geen geldig e-mailadres";
-    if (!pw) errs.pw = "Vul je wachtwoord in";
+    const errs = validateLogin({ email, pw });
     setError(errs);
     if (Object.keys(errs).length) return;
     setLoading(true);

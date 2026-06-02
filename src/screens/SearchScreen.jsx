@@ -15,6 +15,8 @@ import { STORIES as FEED_STORIES } from "../api/mock";
 import { FeedCard } from "./FeedScreen";
 import { colors, fonts } from "../theme/tokens";
 import { slideUpScreen } from "../theme/animations";
+import { searchStories } from "../lib/searchStories";
+import { topReadStories } from "../lib/topReadStories";
 
 const POPULAR_TAGS = [
   "Klimaat",
@@ -35,29 +37,14 @@ const THEME_TILES = [
   { label: "Wereld", bg: colors.redDark, fg: colors.cream },
 ];
 
-function parseViews(v) {
-  return parseFloat(v) * 1000;
-}
-
 export function SearchScreen({ onClose, onOpenStory }) {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
 
+  const results = searchStories(query, FEED_STORIES);
   const q = query.trim().toLowerCase();
 
-  const results = q
-    ? FEED_STORIES.filter(
-        (s) =>
-          s.title.toLowerCase().includes(q) ||
-          s.sub.toLowerCase().includes(q) ||
-          s.cat.toLowerCase().includes(q) ||
-          s.tags.some((t) => t.toLowerCase().includes(q))
-      )
-    : [];
-
-  const topRead = [...FEED_STORIES]
-    .sort((a, b) => parseViews(b.views) - parseViews(a.views))
-    .slice(0, 4);
+  const topRead = topReadStories(FEED_STORIES, 4);
 
   return (
     <MotiView

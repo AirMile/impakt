@@ -20,6 +20,8 @@ import { IIcon } from "../components/Icons";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { fadeUp } from "../theme/animations";
 import { STORIES as FEED_STORIES, CATEGORIES as CATS } from "../api/mock";
+import { shareStory } from "../lib/share";
+import { filterStories } from "../lib/filterStories";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 36;
@@ -102,7 +104,7 @@ export function FeedCard({ story, onOpen, variant = "full", index = 0 }) {
             reactions={story.reactions}
             saved={saved}
             onSave={() => setSaved((s) => !s)}
-            onShare={() => {}}
+            onShare={() => shareStory(story)}
             light
           />
         </View>
@@ -166,14 +168,12 @@ export function FeedScreen({
 }) {
   const listRef = useRef(null);
 
-  const storiesBase = goodNewsOnly
-    ? FEED_STORIES.filter((s) => s.goodNews === true)
-    : cat === "Voor jou"
-      ? FEED_STORIES
-      : FEED_STORIES.filter((s) => s.cat === cat);
-  const stories = excludeId
-    ? storiesBase.filter((s) => s.id !== excludeId)
-    : storiesBase;
+  const stories = filterStories({
+    stories: FEED_STORIES,
+    goodNewsOnly,
+    cat,
+    excludeId,
+  });
 
   const handleCatChange = (next) => {
     onCatChange(next);

@@ -345,6 +345,35 @@ De app roept dit aan wanneer iemand een artikel opent. Geen body nodig. Wordt ge
 
 ---
 
+### Delen (share)
+
+De share-knop is nu client-side gebouwd: de app genereert een `impakt://story/<id>` deep-link en opent het native share-sheet. De backend hoeft hier niets voor te doen.
+
+**Status (juni 2026)**: de share-URL gebruikt het custom scheme `impakt://`. Dit werkt alleen voor recipients die de app al hebben en de link handmatig openen — messengers zoals WhatsApp/iMessage maken er geen tappable link van. Universal Links (`https://...` die de app opent én een nette fallback-pagina toont voor mensen zonder app) volgen pas zodra we een echte EAS-build draaien. Dat vereist `.well-known/apple-app-site-association` + `assetlinks.json` op een gehost domein (waarschijnlijk `impakt-beta.vercel.app`), plus `ios.associatedDomains` + `android.intentFilters` in `app.json`. In Expo Go werkt dat niet, dus uitgesteld tot TestFlight/store-prep.
+
+Zodra jullie hier meer mee willen doen zijn er twee opties:
+
+#### `POST /stories/:id/share` _(analytics)_
+
+Registreer een gedeeld artikel voor tellerweergave of analytics. De app roept dit aan na een succesvolle share.
+
+**Request body:** geen (of optioneel `{ "platform": "whatsapp" }`).
+
+**Response:** `{ "ok": true }`
+
+#### `GET /s/:id` _(short-link / OG-preview)_
+
+Een server-side redirect-route die:
+
+1. De juiste `<meta og:title>`, `og:image` en `og:description` server-side rendert op basis van het artikel (zodat WhatsApp / iMessage een mooie preview-card toont).
+2. Redirects naar `impakt://story/<id>` voor gebruikers die de app hebben, of naar een webpagina voor gebruikers zonder de app.
+
+Dit vereist ook wijzigingen in de app-config: `ios.associatedDomains` en `android.intentFilters` in `app.json` voor universal links.
+
+**Prioriteit:** niet nodig voor MVP — alleen relevant als de share-functionaliteit zichtbaar moet zijn voor mensen die de app nog niet hebben.
+
+---
+
 ## Authenticatie
 
 Gebruik een `Authorization`-header voor alle beveiligde endpoints:
