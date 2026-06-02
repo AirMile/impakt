@@ -18,6 +18,8 @@ import { Field } from "../../components/Field";
 import { SocialRow } from "../../components/SocialRow";
 import { colors, fonts } from "../../theme/tokens";
 import { fadeUp } from "../../theme/animations";
+import { validateRegister } from "../../lib/auth/validators";
+import { pwStrength as calcPwStrength } from "../../lib/auth/pwStrength";
 
 export function RegisterScreen({
   onBack,
@@ -38,26 +40,10 @@ export function RegisterScreen({
   const pwRef = useRef(null);
   const pw2Ref = useRef(null);
 
-  const pwStrength = (() => {
-    if (!pw) return 0;
-    let s = 0;
-    if (pw.length >= 6) s++;
-    if (pw.length >= 10) s++;
-    if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++;
-    if (/[0-9!@#$%^&*]/.test(pw)) s++;
-    return s;
-  })();
+  const pwStrength = calcPwStrength(pw);
 
   const submit = () => {
-    const errs = {};
-    if (!name) errs.name = "Hoe mogen we je noemen?";
-    if (!email) errs.email = "Vul je e-mail in";
-    else if (!email.includes("@"))
-      errs.email = "Dit is geen geldig e-mailadres";
-    if (!pw) errs.pw = "Verzin een wachtwoord";
-    else if (pw.length < 6) errs.pw = "Min 6 tekens";
-    if (pw && pw2 !== pw) errs.pw2 = "Komt niet overeen";
-    if (!accept) errs.accept = "Accepteer eerst de voorwaarden";
+    const errs = validateRegister({ name, email, pw, pw2, accept });
     setError(errs);
     if (Object.keys(errs).length) return;
     setLoading(true);

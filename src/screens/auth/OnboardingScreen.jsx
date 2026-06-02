@@ -5,6 +5,7 @@ import { MotiView } from "moti";
 
 import { Btn } from "../../components/Btn";
 import { colors, fonts } from "../../theme/tokens";
+import { toggleInSet } from "../../lib/toggleInSet";
 
 const TOPICS = [
   { id: "politiek", label: "Politiek", x: 14, y: 8, size: "md" },
@@ -27,12 +28,7 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
   const [selected, setSelected] = useState(new Set(initial));
 
   const toggle = (id) => {
-    setSelected((s) => {
-      const next = new Set(s);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setSelected((s) => toggleInSet(s, id));
   };
 
   return (

@@ -31,9 +31,10 @@
     "eslint": "^10.4.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
-    "jest": "^30.4.2",
+    "jest": "^29.7.0",
     "jest-expo": "^56.0.4",
-    "prettier": "^3.8.3"
+    "prettier": "^3.8.3",
+    "react-test-renderer": "^19.1.0"
   },
   "scripts": {
     "start": "expo start",
@@ -46,6 +47,9 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "setupFiles": [
+      "<rootDir>/jest.setup.js"
+    ],
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|moti|@motify/.*)"
     ]

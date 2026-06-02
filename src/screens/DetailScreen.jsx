@@ -19,6 +19,10 @@ import { FeedScreen } from "./FeedScreen";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { slideUpScreen } from "../theme/animations";
 import { MEMES } from "../api/mock";
+import { shareStory } from "../lib/share";
+import { sumVotes, votePct } from "../lib/pollPct";
+import { isInFeed } from "../lib/isInFeed";
+import { getRelatedMemes } from "../lib/getRelatedMemes";
 
 export function DetailScreen({
   story,
@@ -41,20 +45,17 @@ export function DetailScreen({
   const [inFeed, setInFeed] = useState(false);
   const feedYRef = useRef(Infinity);
 
-  const relatedMemes = MEMES.filter((m) => m.storyId === story.id);
+  const relatedMemes = getRelatedMemes(MEMES, story.id);
   const firstMeme = relatedMemes[0];
 
-  const totalVotes = story.poll
-    ? story.poll.options.reduce(
-        (a, o) => a + o.votes + (pollChoice === o.id ? 1 : 0),
-        0
-      )
-    : 0;
+  const totalVotes = story.poll ? sumVotes(story.poll.options, pollChoice) : 0;
 
   const onScroll = (e) => {
     const scrollY = e.nativeEvent.contentOffset.y;
     const viewH = e.nativeEvent.layoutMeasurement.height;
-    setInFeed(scrollY + viewH * 0.85 >= feedYRef.current);
+    setInFeed(
+      isInFeed({ scrollY, viewportH: viewH, sectionY: feedYRef.current })
+    );
   };
 
   const onFeedSectionLayout = (e) => {
@@ -83,6 +84,7 @@ export function DetailScreen({
           <Pressable
             style={[styles.headerIconBtn, styles.headerCircleBtn]}
             accessibilityLabel="Delen"
+            onPress={() => shareStory(story)}
           >
             <IIcon
               name="share"
@@ -182,9 +184,7 @@ export function DetailScreen({
               <View style={styles.pollOptions}>
                 {story.poll.options.map((opt) => {
                   const v = opt.votes + (pollChoice === opt.id ? 1 : 0);
-                  const pct = totalVotes
-                    ? Math.round((v / totalVotes) * 100)
-                    : 0;
+                  const pct = votePct(v, totalVotes);
                   const isMine = pollChoice === opt.id;
                   const showResults = pollChoice !== null;
                   return (

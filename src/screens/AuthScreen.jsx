@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 
 import { setOnboarded, setPreferences } from "../storage/prefs";
+import { resolveUser } from "../lib/auth/resolveUser";
 import { WelcomeScreen } from "./auth/WelcomeScreen";
 import { LoginScreen } from "./auth/LoginScreen";
 import { RegisterScreen } from "./auth/RegisterScreen";
@@ -70,18 +71,12 @@ export function AuthScreen({ initialView = "welcome", onComplete }) {
     );
   }
 
-  const resolveUser = () => {
-    if (pendingUser?.email)
-      return { name: pendingUser.name, email: pendingUser.email };
-    if (socialMeta?.social)
-      return { name: "Gast", guest: true, social: socialMeta.social };
-    return { name: "Gast", guest: true };
-  };
-
   return (
     <OnboardingScreen
       onBack={() => setView(prevView)}
-      onConfirm={(topics) => goToApp(resolveUser(), topics)}
+      onConfirm={(topics) =>
+        goToApp(resolveUser(pendingUser, socialMeta), topics)
+      }
       initial={[]}
     />
   );

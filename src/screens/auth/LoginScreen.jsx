@@ -18,6 +18,7 @@ import { Field } from "../../components/Field";
 import { SocialRow } from "../../components/SocialRow";
 import { colors, fonts } from "../../theme/tokens";
 import { fadeUp } from "../../theme/animations";
+import { validateLogin } from "../../lib/auth/validators";
 
 export function LoginScreen({
   onBack,
@@ -34,56 +35,44 @@ export function LoginScreen({
   const [loading, setLoading] = useState(false);
   const pwRef = useRef(null);
 
- const submit = async () => {
-   const errs = {};
+  const submit = async () => {
+    const errs = validateLogin({ email, pw });
+    setError(errs);
+    if (Object.keys(errs).length) return;
 
-   if (!email) errs.email = "Vul je e-mail in";
-   else if (!email.includes("@")) {
-     errs.email = "Dit is geen geldig e-mailadres";
-   }
+    setLoading(true);
 
-   if (!pw) errs.pw = "Vul je wachtwoord in";
+    try {
+      const response = await fetch("http://145.24.237.97/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          password: pw,
+        }),
+      });
 
-   setError(errs);
-   if (Object.keys(errs).length) return;
+      const data = await response.json();
 
-   setLoading(true);
+      if (!response.ok) {
+        setError({
+          general: data.message || "Inloggen mislukt. Controleer je gegevens.",
+        });
+        return;
+      }
 
-   try {
-     const response = await fetch("http://145.24.237.97/api/login", {
-       method: "POST",
-       headers: {
-         "Content-Type": "application/json",
-         Accept: "application/json",
-       },
-       body: JSON.stringify({
-         email: email,
-         password: pw,
-       }),
-     });
-
-     const data = await response.json();
-
-     if (!response.ok) {
-       setError({
-         general: data.message || "Inloggen mislukt. Controleer je gegevens.",
-       });
-       return;
-     }
-
-     console.log("Login success:", data);
-
-     onSuccess(data);
-   } catch (err) {
-     console.log("Login error:", err);
-
-     setError({
-       general: "Kan geen verbinding maken met de server.",
-     });
-   } finally {
-     setLoading(false);
-   }
- };
+      onSuccess(data);
+    } catch (err) {
+      setError({
+        general: "Kan geen verbinding maken met de server.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView

@@ -20,6 +20,8 @@ import { ImpaktLogo } from "../components/ImpaktLogo";
 import { BottomNav } from "../components/BottomNav";
 import { MEMES, STORIES as FEED_STORIES } from "../api/mock";
 import { colors, fonts } from "../theme/tokens";
+import { shareMeme } from "../lib/share";
+import { createDoubleTapDetector } from "../lib/createDoubleTapDetector";
 
 const { height: SCREEN_H } = Dimensions.get("window");
 
@@ -56,16 +58,14 @@ function MemeCard({ meme, idx, total, isFirst, onOpenStory }) {
   const [saved, setSaved] = useState(false);
   const [reaction, setReaction] = useState(null);
   const [tapHeart, setTapHeart] = useState(false);
-  const lastTap = useRef(0);
+  const detectDoubleTap = useRef(createDoubleTapDetector(280));
 
   const handlePress = useCallback(() => {
-    const now = Date.now();
-    if (now - lastTap.current < 280) {
+    if (detectDoubleTap.current(Date.now())) {
       if (!liked) setLiked(true);
       setTapHeart(true);
       setTimeout(() => setTapHeart(false), 700);
     }
-    lastTap.current = now;
   }, [liked]);
 
   const linkedStory = FEED_STORIES.find((s) => s.id === meme.storyId);
@@ -135,7 +135,11 @@ function MemeCard({ meme, idx, total, isFirst, onOpenStory }) {
           color={colors.blue}
           onPress={() => setSaved((s) => !s)}
         />
-        <RailButton icon="share" count={meme.shares} onPress={() => {}} />
+        <RailButton
+          icon="share"
+          count={meme.shares}
+          onPress={() => shareMeme(meme)}
+        />
       </View>
 
       {/* Story kicker */}
