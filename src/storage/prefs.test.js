@@ -1,0 +1,69 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  getOnboarded,
+  setOnboarded,
+  getPreferences,
+  setPreferences,
+  getBookmarks,
+  setBookmarks,
+} from "./prefs";
+
+beforeEach(async () => {
+  await AsyncStorage.clear();
+});
+
+describe("onboarded", () => {
+  test("retourneert false als niet gezet", async () => {
+    expect(await getOnboarded()).toBe(false);
+  });
+
+  test("round-trip: true", async () => {
+    await setOnboarded(true);
+    expect(await getOnboarded()).toBe(true);
+  });
+
+  test("round-trip: false", async () => {
+    await setOnboarded(true);
+    await setOnboarded(false);
+    expect(await getOnboarded()).toBe(false);
+  });
+
+  test("retourneert boolean (niet string)", async () => {
+    await setOnboarded(true);
+    expect(typeof (await getOnboarded())).toBe("boolean");
+  });
+});
+
+describe("preferences", () => {
+  test("retourneert lege array als niet gezet", async () => {
+    expect(await getPreferences()).toEqual([]);
+  });
+
+  test("round-trip", async () => {
+    await setPreferences(["Klimaat", "Tech"]);
+    expect(await getPreferences()).toEqual(["Klimaat", "Tech"]);
+  });
+
+  test("overschrijft bestaande waarde", async () => {
+    await setPreferences(["Sport"]);
+    await setPreferences(["Klimaat", "Tech"]);
+    expect(await getPreferences()).toEqual(["Klimaat", "Tech"]);
+  });
+});
+
+describe("bookmarks", () => {
+  test("retourneert lege array als niet gezet", async () => {
+    expect(await getBookmarks()).toEqual([]);
+  });
+
+  test("round-trip", async () => {
+    await setBookmarks([1, 2, 3]);
+    expect(await getBookmarks()).toEqual([1, 2, 3]);
+  });
+
+  test("overschrijft bestaande waarde", async () => {
+    await setBookmarks([1]);
+    await setBookmarks([4, 5]);
+    expect(await getBookmarks()).toEqual([4, 5]);
+  });
+});
