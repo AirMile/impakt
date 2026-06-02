@@ -34,20 +34,56 @@ export function LoginScreen({
   const [loading, setLoading] = useState(false);
   const pwRef = useRef(null);
 
-  const submit = () => {
-    const errs = {};
-    if (!email) errs.email = "Vul je e-mail in";
-    else if (!email.includes("@"))
-      errs.email = "Dit is geen geldig e-mailadres";
-    if (!pw) errs.pw = "Vul je wachtwoord in";
-    setError(errs);
-    if (Object.keys(errs).length) return;
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      onSuccess();
-    }, 700);
-  };
+ const submit = async () => {
+   const errs = {};
+
+   if (!email) errs.email = "Vul je e-mail in";
+   else if (!email.includes("@")) {
+     errs.email = "Dit is geen geldig e-mailadres";
+   }
+
+   if (!pw) errs.pw = "Vul je wachtwoord in";
+
+   setError(errs);
+   if (Object.keys(errs).length) return;
+
+   setLoading(true);
+
+   try {
+     const response = await fetch("http://145.24.237.97/api/login", {
+       method: "POST",
+       headers: {
+         "Content-Type": "application/json",
+         Accept: "application/json",
+       },
+       body: JSON.stringify({
+         email: email,
+         password: pw,
+       }),
+     });
+
+     const data = await response.json();
+
+     if (!response.ok) {
+       setError({
+         general: data.message || "Inloggen mislukt. Controleer je gegevens.",
+       });
+       return;
+     }
+
+     console.log("Login success:", data);
+
+     onSuccess(data);
+   } catch (err) {
+     console.log("Login error:", err);
+
+     setError({
+       general: "Kan geen verbinding maken met de server.",
+     });
+   } finally {
+     setLoading(false);
+   }
+ };
 
   return (
     <KeyboardAvoidingView
@@ -115,6 +151,10 @@ export function LoginScreen({
               <Text style={styles.forgotLabel}>Wachtwoord vergeten?</Text>
             </Pressable>
           </View>
+
+          {error.general ? (
+            <Text style={styles.errorText}>{error.general}</Text>
+          ) : null}
 
           <Btn
             variant="blue"
@@ -212,5 +252,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "rgba(15,17,26,0.55)",
     paddingVertical: 6,
+  },
+  errorText: {
+    color: "red",
+    fontSize: 14,
+    marginBottom: 12,
+    textAlign: "center",
   },
 });
