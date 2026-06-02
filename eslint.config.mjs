@@ -28,11 +28,29 @@ export default [
         clearInterval: "readonly",
         fetch: "readonly",
         Promise: "readonly",
+        navigator: "readonly",
+        URL: "readonly",
       },
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
       "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+    },
+  },
+  {
+    files: ["**/*.test.{js,jsx}", "**/__tests__/**/*.{js,jsx}"],
+    languageOptions: {
+      globals: {
+        jest: "readonly",
+        describe: "readonly",
+        it: "readonly",
+        test: "readonly",
+        expect: "readonly",
+        beforeEach: "readonly",
+        afterEach: "readonly",
+        beforeAll: "readonly",
+        afterAll: "readonly",
+      },
     },
   },
   {
