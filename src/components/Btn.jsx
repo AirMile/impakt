@@ -10,6 +10,7 @@ export const BTN_PALETTE = {
   outline: { bg: "transparent", fg: colors.ink, border: colors.ink },
   ghost: { bg: "transparent", fg: colors.ink, border: "transparent" },
   cream: { bg: colors.cream, fg: colors.ink, border: colors.ink },
+  impaktRed: {bg: "#E4634D", fg: "#FFFFFF", border: "#E4634D",}
 };
 
 export function Btn({
