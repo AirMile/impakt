@@ -181,7 +181,7 @@ export function ProfileScreen({ user, onClose, onLogout }) {
 const styles = StyleSheet.create({
   screen: {
     backgroundColor: colors.cream,
-    zIndex: 60,
+    zIndex: 90,
   },
   body: {
     paddingHorizontal: 22,

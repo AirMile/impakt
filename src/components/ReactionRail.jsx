@@ -9,6 +9,8 @@ export const REACTION_COLORS = {
   meh: "#F0B429",
   frown: colors.red,
 };
+
+const REACTION_EMOJI = { smile: "😊", meh: "😐", frown: "☹️" };
 const REACTION_KEYS = ["smile", "meh", "frown"];
 
 export function ReactionRail({
@@ -72,13 +74,17 @@ export function ReactionRail({
                 },
               ]}
             >
-              <IIcon
-                name={it.icon}
-                size={18}
-                color={isActive ? activeColor : stroke}
-                strokeWidth={1.8}
-                fill={it.key === "save" && saved ? colors.blue : "none"}
-              />
+              {it.isReaction ? (
+                <Text style={styles.emoji}>{REACTION_EMOJI[it.key]}</Text>
+              ) : (
+                <IIcon
+                  name={it.icon}
+                  size={18}
+                  color={isActive ? activeColor : stroke}
+                  strokeWidth={1.8}
+                  fill={it.key === "save" && saved ? colors.blue : "none"}
+                />
+              )}
             </Pressable>
             {showPct && reactions && (
               <View style={styles.pctWrapper}>
@@ -107,6 +113,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "transparent",
+  },
+  emoji: {
+    fontSize: 18,
   },
   pctWrapper: {
     marginTop: 6,

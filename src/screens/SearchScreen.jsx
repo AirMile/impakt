@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Keyboard,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MotiView } from "moti";
@@ -45,6 +46,11 @@ export function SearchScreen({ onClose, onOpenStory }) {
   const q = query.trim().toLowerCase();
 
   const topRead = topReadStories(FEED_STORIES, 4);
+
+  const openStory = (s) => {
+    Keyboard.dismiss();
+    onOpenStory(s);
+  };
 
   return (
     <MotiView
@@ -107,7 +113,10 @@ export function SearchScreen({ onClose, onOpenStory }) {
                 {POPULAR_TAGS.map((tag) => (
                   <Pressable
                     key={tag}
-                    onPress={() => setQuery(tag)}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setQuery(tag);
+                    }}
                     style={styles.popularTag}
                   >
                     <Text style={styles.popularTagLabel}>{tag}</Text>
@@ -127,7 +136,10 @@ export function SearchScreen({ onClose, onOpenStory }) {
                   return (
                     <Pressable
                       key={tile.label}
-                      onPress={() => setQuery(tile.label)}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setQuery(tile.label);
+                      }}
                       style={[
                         styles.themeTile,
                         { backgroundColor: tile.bg },
@@ -152,7 +164,7 @@ export function SearchScreen({ onClose, onOpenStory }) {
                 <FeedCard
                   key={s.id}
                   story={s}
-                  onOpen={onOpenStory}
+                  onOpen={openStory}
                   variant="compact"
                 />
               ))}
@@ -175,7 +187,7 @@ export function SearchScreen({ onClose, onOpenStory }) {
                 <FeedCard
                   key={s.id}
                   story={s}
-                  onOpen={onOpenStory}
+                  onOpen={openStory}
                   variant="full"
                 />
               ))
@@ -190,7 +202,7 @@ export function SearchScreen({ onClose, onOpenStory }) {
 const styles = StyleSheet.create({
   screen: {
     backgroundColor: colors.cream,
-    zIndex: 60,
+    zIndex: 90,
   },
   header: {
     flexDirection: "row",
