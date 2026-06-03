@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, Text, StyleSheet } from "react-native";
 import { IIcon } from "./Icons";
 import { colors, fonts } from "../theme/tokens";
+import { pressFx, tapHaptic } from "../lib/pressFeedback";
 
 export const BTN_PALETTE = {
   dark: { bg: colors.ink, fg: colors.cream, border: colors.ink },
@@ -10,7 +11,7 @@ export const BTN_PALETTE = {
   outline: { bg: "transparent", fg: colors.ink, border: colors.ink },
   ghost: { bg: "transparent", fg: colors.ink, border: "transparent" },
   cream: { bg: colors.cream, fg: colors.ink, border: colors.ink },
-  impaktRed: {bg: "#E4634D", fg: "#FFFFFF", border: "#E4634D",}
+  impaktRed: { bg: "#E4634D", fg: "#FFFFFF", border: "#E4634D" },
 };
 
 export function Btn({
@@ -28,8 +29,11 @@ export function Btn({
   return (
     <Pressable
       onPress={onPress}
+      onPressIn={tapHaptic}
       disabled={disabled}
-      style={[
+      unstable_pressDelay={0}
+      android_ripple={{ color: "rgba(15,17,26,0.12)", borderless: false }}
+      style={({ pressed }) => [
         styles.btn,
         {
           backgroundColor: p.bg,
@@ -40,6 +44,7 @@ export function Btn({
           alignSelf: fullWidth ? "stretch" : "flex-start",
           opacity: disabled ? 0.55 : 1,
         },
+        !disabled && pressFx()({ pressed }),
       ]}
     >
       {icon != null && (

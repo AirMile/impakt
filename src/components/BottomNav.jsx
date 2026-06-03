@@ -4,6 +4,7 @@ import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IIcon } from "./Icons";
 import { colors, fonts } from "../theme/tokens";
+import { pressFx, selectHaptic } from "../lib/pressFeedback";
 
 const TABS = [
   { id: "feed", icon: "home", label: "Feed" },
@@ -32,9 +33,19 @@ export function BottomNav({ active, onChange, onSearch, theme = "light" }) {
             return (
               <Pressable
                 key={t.id}
+                onPressIn={selectHaptic}
                 onPress={() => onChange(t.id)}
                 accessibilityLabel={t.label}
-                style={[styles.tab, on && styles.tabActive]}
+                unstable_pressDelay={0}
+                android_ripple={{
+                  color: "rgba(239,235,230,0.18)",
+                  borderless: true,
+                }}
+                style={({ pressed }) => [
+                  styles.tab,
+                  on && styles.tabActive,
+                  pressFx({ scale: 0.94 })({ pressed }),
+                ]}
               >
                 <IIcon
                   name={t.icon}
@@ -53,8 +64,17 @@ export function BottomNav({ active, onChange, onSearch, theme = "light" }) {
           <View style={styles.divider} />
           <Pressable
             onPress={onSearch}
+            onPressIn={selectHaptic}
             accessibilityLabel="Zoeken"
-            style={styles.searchBtn}
+            unstable_pressDelay={0}
+            android_ripple={{
+              color: "rgba(239,235,230,0.18)",
+              borderless: true,
+            }}
+            style={({ pressed }) => [
+              styles.searchBtn,
+              pressFx({ scale: 0.94 })({ pressed }),
+            ]}
           >
             <IIcon name="search" size={20} color={fg} strokeWidth={2} />
           </Pressable>
