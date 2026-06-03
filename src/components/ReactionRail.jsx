@@ -42,23 +42,18 @@ export function ReactionRail({
     <View style={[styles.rail, vertical ? styles.vertical : styles.horizontal]}>
       {items.map((it) => {
         const isReactionKey = REACTION_KEYS.includes(it.key);
-        const collapsed = voted && isReactionKey && it.key !== reaction;
         const isActive = it.key === "save" ? saved : reaction === it.key;
+        const dimmed = voted && isReactionKey && !isActive;
         const activeColor =
           it.key === "save"
             ? colors.blue
             : (REACTION_COLORS[it.key] ?? colors.red);
-        const showPct = voted && reactions && it.key === reaction;
 
         return (
           <MotiView
             key={it.key}
-            animate={{
-              opacity: collapsed ? 0 : 1,
-              scale: collapsed ? 0.4 : 1,
-            }}
+            animate={{ opacity: dimmed ? 0.5 : 1, scale: 1 }}
             transition={{ type: "spring", stiffness: 260, damping: 18 }}
-            style={collapsed ? styles.collapsed : undefined}
           >
             <Pressable
               onPress={() => {
@@ -69,12 +64,19 @@ export function ReactionRail({
               accessibilityLabel={it.label}
               style={[
                 styles.btn,
-                {
-                  borderColor: isActive ? activeColor : stroke,
-                },
+                { borderColor: isActive ? activeColor : stroke },
               ]}
             >
-              {it.isReaction ? (
+              {it.isReaction && voted ? (
+                <Text
+                  style={[
+                    styles.pctInner,
+                    { color: isActive ? activeColor : stroke },
+                  ]}
+                >
+                  {reactions?.[it.key]}%
+                </Text>
+              ) : it.isReaction ? (
                 <Text style={styles.emoji}>{REACTION_EMOJI[it.key]}</Text>
               ) : (
                 <IIcon
@@ -86,13 +88,6 @@ export function ReactionRail({
                 />
               )}
             </Pressable>
-            {showPct && reactions && (
-              <View style={styles.pctWrapper}>
-                <Text style={[styles.pct, { color: activeColor }]}>
-                  {reactions[it.key]}%
-                </Text>
-              </View>
-            )}
           </MotiView>
         );
       })}
@@ -104,7 +99,6 @@ const styles = StyleSheet.create({
   rail: { alignItems: "center", gap: 10 },
   vertical: { flexDirection: "column" },
   horizontal: { flexDirection: "row" },
-  collapsed: { maxHeight: 0, overflow: "hidden", marginBottom: -10 },
   btn: {
     width: 36,
     height: 36,
@@ -117,15 +111,7 @@ const styles = StyleSheet.create({
   emoji: {
     fontSize: 18,
   },
-  pctWrapper: {
-    marginTop: 6,
-    borderRadius: 9999,
-    backgroundColor: "rgba(15,17,26,0.58)",
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    alignSelf: "center",
-  },
-  pct: {
+  pctInner: {
     fontFamily: fonts.display,
     fontWeight: "700",
     fontSize: 13,
