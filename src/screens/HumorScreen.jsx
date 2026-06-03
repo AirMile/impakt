@@ -25,6 +25,8 @@ import { createDoubleTapDetector } from "../lib/createDoubleTapDetector";
 
 const { height: SCREEN_H } = Dimensions.get("window");
 
+const REACTION_EMOJI = { smile: "😊", meh: "😐", frown: "☹️" };
+
 function RailButton({
   icon,
   count,
@@ -40,13 +42,17 @@ function RailButton({
         transition={{ type: "spring", stiffness: 260, damping: 18 }}
         style={styles.railCircle}
       >
-        <IIcon
-          name={icon}
-          size={20}
-          strokeWidth={1.9}
-          fill={active && fill ? (color ?? colors.red) : "none"}
-          color={active ? (color ?? colors.red) : colors.cream}
-        />
+        {REACTION_EMOJI[icon] ? (
+          <Text style={styles.reactionEmoji}>{REACTION_EMOJI[icon]}</Text>
+        ) : (
+          <IIcon
+            name={icon}
+            size={20}
+            strokeWidth={1.9}
+            fill={active && fill ? (color ?? colors.red) : "none"}
+            color={active ? (color ?? colors.red) : colors.cream}
+          />
+        )}
       </MotiView>
       {count != null && <Text style={styles.railCount}>{count}</Text>}
     </Pressable>
@@ -365,6 +371,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(239,235,230,0.18)",
     overflow: "hidden",
+  },
+  reactionEmoji: {
+    fontSize: 20,
   },
   railCount: {
     fontFamily: fonts.display,

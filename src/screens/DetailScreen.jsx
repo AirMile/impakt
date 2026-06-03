@@ -53,8 +53,13 @@ export function DetailScreen({
   const onScroll = (e) => {
     const scrollY = e.nativeEvent.contentOffset.y;
     const viewH = e.nativeEvent.layoutMeasurement.height;
-    setInFeed(
-      isInFeed({ scrollY, viewportH: viewH, sectionY: feedYRef.current })
+    setInFeed((current) =>
+      isInFeed({
+        scrollY,
+        viewportH: viewH,
+        sectionY: feedYRef.current,
+        current,
+      })
     );
   };
 
@@ -351,8 +356,7 @@ export function DetailScreen({
       <MotiView
         animate={{ opacity: inFeed ? 1 : 0 }}
         transition={{ type: "timing", duration: 250 }}
-        pointerEvents={inFeed ? "box-none" : "none"}
-        style={StyleSheet.absoluteFillObject}
+        style={styles.bottomNavOverlay}
       >
         <BottomNav active={activeTab} onChange={onNav} onSearch={onSearch} />
       </MotiView>
@@ -367,6 +371,13 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 80,
     backgroundColor: colors.cream,
+  },
+
+  bottomNavOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 
   // Header

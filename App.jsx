@@ -28,8 +28,10 @@ import { HumorScreen } from "./src/screens/HumorScreen";
 import { AuthScreen } from "./src/screens/AuthScreen";
 import { SearchScreen } from "./src/screens/SearchScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
+import { SandboxReactionsScreen } from "./src/screens/SandboxReactionsScreen";
 
 const DEV_FORCE_AUTH = __DEV__;
+const DEV_SANDBOX = false; // zet op true om variant-review te openen
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -105,6 +107,8 @@ export default function App() {
       </View>
     );
   }
+
+  if (__DEV__ && DEV_SANDBOX) return <SandboxReactionsScreen />;
 
   const navTab = (t) => {
     setOpenStory(null);

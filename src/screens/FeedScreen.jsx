@@ -141,12 +141,6 @@ export function FeedCard({ story, onOpen, variant = "full", index = 0 }) {
             </View>
           </View>
         )}
-
-        {/* Views bottom-right */}
-        <View style={styles.viewsArea}>
-          <IIcon name="eye" size={14} color={colors.cream} strokeWidth={1.7} />
-          <Text style={styles.viewsLabel}>{story.views}</Text>
-        </View>
       </Pressable>
     </MotiView>
   );
@@ -313,7 +307,7 @@ const styles = StyleSheet.create({
   },
   railArea: {
     position: "absolute",
-    bottom: 52,
+    bottom: 14,
     right: 14,
   },
   bottomRow: {
@@ -373,21 +367,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: colors.cream,
   },
-  viewsArea: {
-    position: "absolute",
-    right: 14,
-    bottom: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  viewsLabel: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    fontWeight: "500",
-    color: colors.cream,
-  },
-
   // Empty / footer
   empty: {
     padding: 40,
