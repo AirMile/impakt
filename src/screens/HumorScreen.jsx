@@ -1,4 +1,10 @@
-import React, { useRef, useState, useEffect, useCallback } from "react";
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
@@ -10,22 +16,34 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MotiView } from "moti";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  LinearTransition,
+} from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 
 import { IIcon } from "../components/Icons";
 import { HeroOverlay } from "../components/HeroOverlay";
 import { REACTION_COLORS } from "../components/ReactionRail";
 import { ImpaktLogo } from "../components/ImpaktLogo";
-import { BottomNav } from "../components/BottomNav";
 import { MEMES, STORIES as FEED_STORIES } from "../api/mock";
 import { colors, fonts } from "../theme/tokens";
 import { shareMeme } from "../lib/share";
 import { createDoubleTapDetector } from "../lib/createDoubleTapDetector";
+import { pressFx, tapHaptic } from "../lib/pressFeedback";
 
 const { height: SCREEN_H } = Dimensions.get("window");
 
 const REACTION_EMOJI = { smile: "😊", meh: "😐", frown: "☹️" };
+
+// Stabiele constante buiten render — voorkomt herberekening bij elke render
+const REACTION_BTNS = Object.entries(REACTION_COLORS).map(([key, color]) => ({
+  key,
+  color,
+}));
 
 function RailButton({
   icon,
@@ -35,13 +53,28 @@ function RailButton({
   onPress,
   color,
 }) {
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    scale.value = withSpring(active ? 1.08 : 1, {
+      stiffness: 260,
+      damping: 18,
+    });
+  }, [active, scale]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <Pressable onPress={onPress} style={styles.railBtn} hitSlop={8}>
-      <MotiView
-        animate={{ scale: active ? 1.08 : 1 }}
-        transition={{ type: "spring", stiffness: 260, damping: 18 }}
-        style={styles.railCircle}
-      >
+    <Pressable
+      onPress={onPress}
+      onPressIn={tapHaptic}
+      unstable_pressDelay={0}
+      style={styles.railBtn}
+      hitSlop={8}
+    >
+      <Animated.View style={[styles.railCircle, animStyle]}>
         {REACTION_EMOJI[icon] ? (
           <Text style={styles.reactionEmoji}>{REACTION_EMOJI[icon]}</Text>
         ) : (
@@ -53,13 +86,19 @@ function RailButton({
             color={active ? (color ?? colors.red) : colors.cream}
           />
         )}
-      </MotiView>
+      </Animated.View>
       {count != null && <Text style={styles.railCount}>{count}</Text>}
     </Pressable>
   );
 }
 
-function MemeCard({ meme, idx, total, isFirst, onOpenStory }) {
+const MemeCard = React.memo(function MemeCard({
+  meme,
+  idx,
+  total,
+  isFirst,
+  onOpenStory,
+}) {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [reaction, setReaction] = useState(null);
@@ -74,53 +113,52 @@ function MemeCard({ meme, idx, total, isFirst, onOpenStory }) {
     }
   }, [liked]);
 
-  const linkedStory = FEED_STORIES.find((s) => s.id === meme.storyId);
+  const linkedStory = useMemo(
+    () => FEED_STORIES.find((s) => s.id === meme.storyId),
+    [meme.storyId]
+  );
 
-  const reactionBtns = Object.entries(REACTION_COLORS).map(([key, color]) => ({
-    key,
-    color,
+  const heartOpacity = useSharedValue(0);
+  const heartScale = useSharedValue(0.6);
+  useEffect(() => {
+    heartOpacity.value = withTiming(tapHeart ? 1 : 0, { duration: 500 });
+    heartScale.value = withTiming(tapHeart ? 1.3 : 0.6, { duration: 500 });
+  }, [tapHeart, heartOpacity, heartScale]);
+  const heartStyle = useAnimatedStyle(() => ({
+    opacity: heartOpacity.value,
+    transform: [{ scale: heartScale.value }],
   }));
 
   return (
     <View style={styles.card}>
-      {/* Full-bleed image */}
       <Image
         source={{ uri: meme.img }}
         style={StyleSheet.absoluteFillObject}
         resizeMode="cover"
       />
 
-      {/* Gradient veil */}
       <HeroOverlay variant="meme" />
 
-      {/* Double-tap target — behind rail and kicker */}
       <Pressable
         onPress={handlePress}
         style={StyleSheet.absoluteFillObject}
         accessibilityLabel="Dubbel-tap voor like"
       />
 
-      {/* Top caption */}
       <Text style={[styles.caption, { top: 96 }]}>{meme.top}</Text>
-
-      {/* Bottom caption */}
       <Text style={[styles.caption, { bottom: 310 }]}>{meme.bot}</Text>
 
-      {/* Right rail — box-none so double-tap Pressable still works in blank areas */}
       <View style={styles.rail} pointerEvents="box-none">
-        {reactionBtns.map((r) => {
+        {REACTION_BTNS.map((r) => {
           const collapsed = reaction !== null && reaction !== r.key;
           return (
-            <MotiView
+            <Animated.View
               key={r.key}
-              animate={{
-                opacity: collapsed ? 0 : 1,
-                scale: collapsed ? 0.4 : 1,
-                height: collapsed ? 0 : 64,
-                marginBottom: collapsed ? -14 : 0,
-              }}
-              transition={{ type: "spring", stiffness: 300, damping: 22 }}
-              style={styles.reactionWrap}
+              layout={LinearTransition.springify().stiffness(300).damping(22)}
+              style={[
+                styles.reactionWrap,
+                collapsed && styles.reactionCollapsed,
+              ]}
               pointerEvents={collapsed ? "none" : "auto"}
             >
               <RailButton
@@ -130,7 +168,7 @@ function MemeCard({ meme, idx, total, isFirst, onOpenStory }) {
                 color={r.color}
                 onPress={() => reaction === null && setReaction(r.key)}
               />
-            </MotiView>
+            </Animated.View>
           );
         })}
         <RailButton
@@ -148,10 +186,14 @@ function MemeCard({ meme, idx, total, isFirst, onOpenStory }) {
         />
       </View>
 
-      {/* Story kicker */}
       <Pressable
         onPress={() => onOpenStory(meme.storyId)}
-        style={styles.kicker}
+        onPressIn={tapHaptic}
+        unstable_pressDelay={0}
+        style={({ pressed }) => [
+          styles.kicker,
+          pressFx({ scale: 0.98 })({ pressed }),
+        ]}
       >
         <View style={styles.kickerInner}>
           <View style={styles.kickerThumb}>
@@ -179,7 +221,6 @@ function MemeCard({ meme, idx, total, isFirst, onOpenStory }) {
         </View>
       </Pressable>
 
-      {/* Progress dots — left edge, vertically centered */}
       <View style={styles.dots} pointerEvents="none">
         {Array.from({ length: total }).map((_, i) => (
           <View
@@ -196,7 +237,6 @@ function MemeCard({ meme, idx, total, isFirst, onOpenStory }) {
         ))}
       </View>
 
-      {/* Swipe hint — first card only */}
       {isFirst && (
         <View style={styles.swipeHint} pointerEvents="none">
           <Text style={styles.swipeHintText}>Swipe omhoog</Text>
@@ -209,12 +249,9 @@ function MemeCard({ meme, idx, total, isFirst, onOpenStory }) {
         </View>
       )}
 
-      {/* Double-tap heart pop — rendered last to appear on top */}
-      <MotiView
-        animate={{ opacity: tapHeart ? 1 : 0, scale: tapHeart ? 1.3 : 0.6 }}
-        transition={{ type: "timing", duration: 500 }}
+      <Animated.View
         pointerEvents="none"
-        style={styles.heartOverlay}
+        style={[styles.heartOverlay, heartStyle]}
       >
         <Svg width={130} height={130} viewBox="0 0 24 24">
           <Path
@@ -222,10 +259,10 @@ function MemeCard({ meme, idx, total, isFirst, onOpenStory }) {
             fill={colors.red}
           />
         </Svg>
-      </MotiView>
+      </Animated.View>
     </View>
   );
-}
+});
 
 export function HumorScreen({
   onNav,
@@ -239,14 +276,12 @@ export function HumorScreen({
   const insets = useSafeAreaInsets();
   const listRef = useRef(null);
 
-  // Compute initial scroll index once on mount
   const [initialIdx] = useState(() => {
     if (initialStoryId == null) return 0;
     const i = MEMES.findIndex((m) => m.storyId === initialStoryId);
     return i >= 0 ? i : 0;
   });
 
-  // Consume the pending story ID immediately after mount
   useEffect(() => {
     if (initialStoryId != null) onInitialStoryConsumed?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -286,7 +321,6 @@ export function HumorScreen({
         windowSize={5}
       />
 
-      {/* Overlay header — transparent gradient, touch passthrough */}
       <View
         style={[styles.headerOverlay, { height: insets.top + 80 }]}
         pointerEvents="none"
@@ -301,14 +335,6 @@ export function HumorScreen({
           <View style={{ width: 34 }} />
         </View>
       </View>
-
-      {/* Bottom nav */}
-      <BottomNav
-        active={activeTab}
-        onChange={onNav}
-        onSearch={onSearch}
-        theme="dark"
-      />
     </View>
   );
 }
@@ -319,7 +345,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.ink,
   },
 
-  // Card
   card: {
     height: SCREEN_H,
     width: "100%",
@@ -327,7 +352,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
 
-  // Caption (Bebas Neue, simulated stroke via text shadow)
   caption: {
     position: "absolute",
     left: 18,
@@ -343,7 +367,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 6,
   },
 
-  // Right rail
   rail: {
     position: "absolute",
     right: 12,
@@ -355,6 +378,11 @@ const styles = StyleSheet.create({
   reactionWrap: {
     overflow: "hidden",
     alignItems: "center",
+  },
+  reactionCollapsed: {
+    opacity: 0,
+    transform: [{ scale: 0.4 }],
+    pointerEvents: "none",
   },
   railBtn: {
     flexDirection: "column",
@@ -385,7 +413,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
 
-  // Story kicker
   kicker: {
     position: "absolute",
     left: 14,
@@ -438,7 +465,6 @@ const styles = StyleSheet.create({
     color: "rgba(15,17,26,0.6)",
   },
 
-  // Progress dots
   dots: {
     position: "absolute",
     left: 8,
@@ -453,7 +479,6 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
   },
 
-  // Swipe hint
   swipeHint: {
     position: "absolute",
     left: 0,
@@ -471,7 +496,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
 
-  // Double-tap heart
   heartOverlay: {
     position: "absolute",
     top: "45%",
@@ -480,7 +504,6 @@ const styles = StyleSheet.create({
     marginTop: -65,
   },
 
-  // Header overlay
   headerOverlay: {
     position: "absolute",
     top: 0,
