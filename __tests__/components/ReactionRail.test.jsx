@@ -119,7 +119,7 @@ test("saved=true geeft bewaar-knop een blauwe fill", () => {
   expect(getByLabelText("Bewaren")).toBeTruthy();
 });
 
-test("niet-gekozen reactie-knoppen krijgen dimmed stijl na stemmen", () => {
+test("niet-gekozen reactie-knoppen krijgen dim-opacity 0.5 na stemmen", () => {
   const { getByLabelText } = render(
     <ReactionRail
       {...defaultProps}
@@ -127,11 +127,17 @@ test("niet-gekozen reactie-knoppen krijgen dimmed stijl na stemmen", () => {
       reactions={{ smile: 72, meh: 18, frown: 10 }}
     />
   );
-  // Neutraal en Verdrietig zijn na stemmen nog steeds aanwezig in de DOM
-  expect(getByLabelText("Neutraal")).toBeTruthy();
-  expect(getByLabelText("Verdrietig")).toBeTruthy();
-  // Blij (gekozen) is ook nog zichtbaar
-  expect(getByLabelText("Blij")).toBeTruthy();
+  const opacityOf = (label) => {
+    // getByLabelText → inner Pressable View (l0) → Component (l1) → Pressable (l2) → Animated.View mock (l3)
+    const wrapper = getByLabelText(label).parent.parent.parent;
+    const style = Array.isArray(wrapper.props.style)
+      ? Object.assign({}, ...wrapper.props.style)
+      : wrapper.props.style;
+    return style?.opacity;
+  };
+  expect(opacityOf("Blij")).toBe(1);
+  expect(opacityOf("Neutraal")).toBe(0.5);
+  expect(opacityOf("Verdrietig")).toBe(0.5);
 });
 
 test("bewaar-knop roept onSave elke keer aan bij herhalen druk", () => {
