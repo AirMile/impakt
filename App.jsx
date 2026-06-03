@@ -29,10 +29,11 @@ import { HumorScreen } from "./src/screens/HumorScreen";
 import { AuthScreen } from "./src/screens/AuthScreen";
 import { SearchScreen } from "./src/screens/SearchScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
+import { HappyFeedScreen } from "./src/screens/HappyFeedScreen";
 import { SandboxReactionsScreen } from "./src/screens/SandboxReactionsScreen";
 
 const DEV_FORCE_AUTH = __DEV__;
-const DEV_SANDBOX = false;
+const DEV_SANDBOX = false; // false | "reactions"
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -150,7 +151,7 @@ export default function App() {
     );
   }
 
-  if (__DEV__ && DEV_SANDBOX) return <SandboxReactionsScreen />;
+  if (__DEV__ && DEV_SANDBOX === "reactions") return <SandboxReactionsScreen />;
 
   return (
     <SafeAreaProvider>
@@ -182,7 +183,10 @@ export default function App() {
               />
             </View>
             <View style={[styles.tab, tab !== "good" && styles.hidden]}>
-              <FeedScreen {...commonProps} onOpen={setOpenStory} goodNewsOnly />
+              <HappyFeedScreen
+                onOpen={setOpenStory}
+                onProfile={handleProfile}
+              />
             </View>
             <View style={[styles.tab, tab !== "humor" && styles.hidden]}>
               <HumorScreen
