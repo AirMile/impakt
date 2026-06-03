@@ -1,31 +1,59 @@
-import React, { useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import React, { useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  useWindowDimensions,
+  Image,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MotiView } from "moti";
 
 import { Btn } from "../../components/Btn";
+import { IIcon } from "../../components/Icons";
 import { colors, fonts } from "../../theme/tokens";
 import { toggleInSet } from "../../lib/toggleInSet";
 
 const TOPICS = [
-  { id: "politiek", label: "Politiek", x: 14, y: 8, size: "md" },
-  { id: "economie", label: "Economie", x: 60, y: 6, size: "md" },
-  { id: "natuur", label: "Natuur", x: 36, y: 24, size: "md" },
-  { id: "buitenland", label: "Buitenland", x: 8, y: 38, size: "md" },
-  { id: "sport", label: "Sport", x: 60, y: 40, size: "sm" },
-  { id: "innovatie", label: "Innovatie", x: 32, y: 54, size: "md" },
-  { id: "kunst", label: "Kunst", x: 10, y: 72, size: "sm" },
-  { id: "lokaal", label: "Lokaal", x: 58, y: 72, size: "sm" },
+  { id: "politiek", label: "Politiek", icon: "topicPolitics" },
+  { id: "buitenland", label: "Buitenland", icon: "topicWorld" },
+  { id: "economie", label: "Economie", icon: "topicEconomy" },
+  { id: "sport", label: "Sport", icon: "topicSport" },
+  { id: "natuur", label: "Natuur", icon: "topicNature" },
+  { id: "innovatie", label: "Innovatie", icon: "topicInnovation" },
+  { id: "kunst", label: "Kunst", icon: "topicArt" },
+  { id: "lokaal", label: "Lokaal", icon: "topicLocal" },
 ];
 
-const BUBBLE_SIZES = {
-  sm: { width: 88, height: 38, fontSize: 13 },
-  md: { width: 108, height: 44, fontSize: 14 },
-};
+const TOPIC_ROWS = [
+  ["politiek", "buitenland"],
+  ["economie", "sport"],
+  ["natuur", "innovatie"],
+  ["kunst", "lokaal"],
+];
+
+const impaktLogo = require("../../../assets/impakt-logo.webp");
+
+const SELECTED_BG = "#10141C";
+const UNSELECTED_BG = "#DDF5F8";
+const INK = "#10111A";
 
 export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const [selected, setSelected] = useState(new Set(initial));
+
+  const compact = height < 760;
+  const veryCompact = height < 700;
+
+  const topicsById = useMemo(() => {
+    return TOPICS.reduce((acc, topic) => {
+      acc[topic.id] = topic;
+      return acc;
+    }, {});
+  }, []);
 
   const toggle = (id) => {
     setSelected((s) => toggleInSet(s, id));
@@ -33,72 +61,177 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.cream }]}>
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.topLabel}>Onboarding</Text>
-        <Text style={styles.topCount}>{selected.size} gekozen</Text>
-      </View>
-
-      <View style={styles.questionBanner}>
-        <Text
-          style={styles.questionText}
-        >{`Welke news thema's\nspreken jou het\nmeest aan?`}</Text>
-      </View>
-
-      <View style={styles.bubbleField}>
-        {TOPICS.map((t, i) => {
-          const on = selected.has(t.id);
-          const s = BUBBLE_SIZES[t.size];
-          return (
-            <MotiView
-              key={t.id}
-              from={{ scale: 0.4, opacity: 0 }}
-              animate={{ scale: on ? 1.08 : 1, opacity: 1 }}
-              transition={{
-                type: "spring",
-                stiffness: 220,
-                damping: 14,
-                delay: i * 50,
-              }}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            minHeight: height - 92 - insets.bottom,
+            paddingTop: insets.top + (veryCompact ? 8 : compact ? 10 : 12),
+            paddingBottom: veryCompact ? 8 : 10,
+          },
+        ]}
+      >
+        <View style={styles.mainContent}>
+          <View
+            style={[
+              styles.logoWrap,
+              compact && styles.logoWrapCompact,
+              veryCompact && styles.logoWrapVeryCompact,
+            ]}
+          >
+            <Image
+              source={impaktLogo}
               style={[
-                styles.bubble,
-                {
-                  left: `${t.x}%`,
-                  top: `${t.y}%`,
-                  width: s.width,
-                  height: s.height,
-                  backgroundColor: on ? colors.blue : "#FFFFFF",
-                  shadowColor: on ? colors.blue : colors.ink,
-                  shadowOpacity: on ? 0.5 : 0,
-                  shadowRadius: on ? 10 : 0,
-                  elevation: on ? 4 : 0,
-                },
+                styles.logoImage,
+                compact && styles.logoImageCompact,
+                veryCompact && styles.logoImageVeryCompact,
+              ]}
+              resizeMode="contain"
+            />
+          </View>
+
+          <View style={styles.introBlock}>
+            <Text
+              style={[
+                styles.subtitle,
+                compact && styles.subtitleCompact,
+                veryCompact && styles.subtitleVeryCompact,
               ]}
             >
-              <Pressable
-                onPress={() => toggle(t.id)}
-                style={styles.bubblePress}
-              >
-                <Text style={[styles.bubbleLabel, { fontSize: s.fontSize }]}>
-                  {t.label}
-                </Text>
-              </Pressable>
-            </MotiView>
-          );
-        })}
-        <Text style={styles.bubbleHint}>
-          Tik om te kiezen · je kunt dit later aanpassen
-        </Text>
-      </View>
+              Welke thema's spreken{"\n"}jou het meest aan?
+            </Text>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
-        <View style={{ flex: 1 }}>
-          <Btn variant="outline" onPress={onBack}>
+            <View
+              style={[
+                styles.divider,
+                compact && styles.dividerCompact,
+                veryCompact && styles.dividerVeryCompact,
+              ]}
+            />
+          </View>
+
+          <View
+            style={[
+              styles.topicGrid,
+              compact && styles.topicGridCompact,
+              veryCompact && styles.topicGridVeryCompact,
+            ]}
+          >
+            {TOPIC_ROWS.map((row, rowIndex) => (
+              <View key={row.join("-")} style={styles.topicRow}>
+                {row.map((id, topicIndex) => {
+                  const topic = topicsById[id];
+                  const isSelected = selected.has(topic.id);
+                  const index = rowIndex * 2 + topicIndex;
+
+                  return (
+                    <MotiView
+                      key={topic.id}
+                      from={{ opacity: 0, scale: 0.96, translateY: 10 }}
+                      animate={{
+                        opacity: 1,
+                        scale: isSelected ? 1.015 : 1,
+                        translateY: 0,
+                      }}
+                      transition={{
+                        type: "timing",
+                        duration: 260,
+                        delay: index * 35,
+                      }}
+                      style={styles.topicSlot}
+                    >
+                      <Pressable
+                        onPress={() => toggle(topic.id)}
+                        style={({ pressed }) => [
+                          styles.topicButton,
+                          compact && styles.topicButtonCompact,
+                          veryCompact && styles.topicButtonVeryCompact,
+                          isSelected
+                            ? styles.topicButtonSelected
+                            : styles.topicButtonIdle,
+                          {
+                            opacity: pressed ? 0.78 : 1,
+                          },
+                        ]}
+                      >
+                        <IIcon
+                          name={topic.icon}
+                          size={veryCompact ? 19 : compact ? 20 : 22}
+                          color={isSelected ? "#FFFFFF" : INK}
+                          strokeWidth={2.45}
+                        />
+
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.topicLabel,
+                            compact && styles.topicLabelCompact,
+                            {
+                              color: isSelected ? "#FFFFFF" : INK,
+                            },
+                          ]}
+                        >
+                          {topic.label}
+                        </Text>
+
+                        {isSelected && (
+                          <IIcon
+                            name="check"
+                            size={veryCompact ? 20 : 22}
+                            color="#FFFFFF"
+                            strokeWidth={3}
+                          />
+                        )}
+                      </Pressable>
+                    </MotiView>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.helperBlock}>
+            <Text
+              style={[
+                styles.helperText,
+                compact && styles.helperTextCompact,
+                veryCompact && styles.helperTextVeryCompact,
+              ]}
+            >
+              Tik om te kiezen · je kunt dit later aanpassen
+            </Text>
+
+            <View
+              style={[
+                styles.divider,
+                styles.helperDivider,
+                compact && styles.helperDividerCompact,
+                veryCompact && styles.helperDividerVeryCompact,
+              ]}
+            />
+          </View>
+        </View>
+      </ScrollView>
+
+      <View
+        style={[
+          styles.footer,
+          {
+            paddingBottom: insets.bottom + (veryCompact ? 8 : 10),
+          },
+        ]}
+      >
+        <View style={styles.footerButtonSlot}>
+          <Btn variant="cream" onPress={onBack}>
             Terug
           </Btn>
         </View>
-        <View style={{ flex: 1 }}>
+
+        <View style={styles.footerButtonSlot}>
           <Btn
-            variant="blue"
+            variant="impaktRed"
             onPress={() => onConfirm([...selected])}
             disabled={selected.size === 0}
             iconRight="arrow"
@@ -112,89 +245,210 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  topBar: {
+  screen: {
+    flex: 1,
+  },
+
+  scrollContent: {
+    flexGrow: 1,
+    alignItems: "center",
+    paddingHorizontal: 22,
+  },
+
+  mainContent: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 390,
+    alignItems: "center",
+    justifyContent: "space-evenly",
+  },
+
+  logoWrap: {
+    alignItems: "center",
+  },
+
+  logoWrapCompact: {},
+
+  logoWrapVeryCompact: {},
+
+  logoImage: {
+    width: 210,
+    height: 67,
+  },
+
+  logoImageCompact: {
+    width: 185,
+    height: 59,
+  },
+
+  logoImageVeryCompact: {
+    width: 165,
+    height: 53,
+  },
+
+  introBlock: {
+    width: "100%",
+    alignItems: "center",
+  },
+
+  subtitle: {
+    width: "100%",
+    fontFamily: fonts.body,
+    fontSize: 18,
+    lineHeight: 25,
+    fontWeight: "500",
+    color: "rgba(16, 17, 26, 0.58)",
+    textAlign: "center",
+    maxWidth: 310,
+  },
+
+  subtitleCompact: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
+
+  subtitleVeryCompact: {
+    fontSize: 15,
+    lineHeight: 20,
+  },
+
+  divider: {
+    width: "82%",
+    maxWidth: 294,
+    height: 1,
+    backgroundColor: "rgba(15,17,26,0.16)",
+    marginTop: 16,
+  },
+
+  dividerCompact: {
+    marginTop: 13,
+  },
+
+  dividerVeryCompact: {
+    marginTop: 10,
+  },
+
+  topicGrid: {
+    width: "100%",
+    gap: 16,
+  },
+
+  topicGridCompact: {
+    gap: 12,
+  },
+
+  topicGridVeryCompact: {
+    gap: 10,
+  },
+
+  topicRow: {
+    width: "100%",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 22,
-    paddingBottom: 6,
+    gap: 12,
   },
-  topLabel: {
-    fontFamily: fonts.display,
-    fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: 3,
-    textTransform: "uppercase",
-    color: "rgba(15,17,26,0.6)",
-  },
-  topCount: {
-    fontFamily: fonts.body,
-    fontSize: 12,
-    color: "rgba(15,17,26,0.6)",
-  },
-  questionBanner: {
-    marginHorizontal: 18,
-    marginBottom: 18,
-    backgroundColor: colors.blue,
-    borderRadius: 12,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: "rgba(15,17,26,0.08)",
-  },
-  questionText: {
-    fontFamily: fonts.header,
-    fontSize: 24,
-    lineHeight: 25,
-    letterSpacing: 0.5,
-    color: colors.ink,
-  },
-  bubbleField: {
+
+  topicSlot: {
     flex: 1,
-    marginHorizontal: 18,
-    marginBottom: 12,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(15,17,26,0.08)",
-    overflow: "hidden",
+    minWidth: 0,
   },
-  bubble: {
-    position: "absolute",
-    borderRadius: 9999,
-    borderWidth: 1,
-    borderColor: "rgba(15,17,26,0.08)",
-    shadowOffset: { width: 2, height: 2 },
-    zIndex: 1,
-  },
-  bubblePress: {
-    flex: 1,
+
+  topicButton: {
+    height: 58,
+    borderRadius: 999,
+    paddingHorizontal: 17,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 9999,
+    gap: 11,
+
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 7 },
+    shadowRadius: 13,
+    shadowOpacity: 0.13,
+    elevation: 5,
   },
-  bubbleLabel: {
-    fontFamily: fonts.display,
-    fontWeight: "600",
-    color: colors.ink,
+
+  topicButtonCompact: {
+    height: 54,
+    paddingHorizontal: 15,
+    gap: 10,
   },
-  bubbleHint: {
-    position: "absolute",
-    bottom: 14,
-    left: 14,
-    right: 14,
+
+  topicButtonVeryCompact: {
+    height: 49,
+    paddingHorizontal: 13,
+    gap: 8,
+  },
+
+  topicButtonSelected: {
+    backgroundColor: SELECTED_BG,
+    shadowOpacity: 0.22,
+    elevation: 7,
+  },
+
+  topicButtonIdle: {
+    backgroundColor: UNSELECTED_BG,
+  },
+
+  topicLabel: {
+    flex: 1,
+    minWidth: 0,
     fontFamily: fonts.body,
-    fontSize: 11.5,
-    color: "rgba(15,17,26,0.5)",
+    fontSize: 18,
+    fontWeight: "900",
+  },
+
+  topicLabelCompact: {
+    fontSize: 16,
+  },
+
+  helperBlock: {
+    width: "100%",
+    alignItems: "center",
+  },
+
+  helperText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "700",
+    color: "rgba(16, 17, 26, 0.64)",
     textAlign: "center",
   },
+
+  helperTextCompact: {
+    fontSize: 13,
+  },
+
+  helperTextVeryCompact: {
+    fontSize: 12,
+  },
+
+  helperDivider: {
+    marginTop: 12,
+  },
+
+  helperDividerCompact: {
+    marginTop: 10,
+  },
+
+  helperDividerVeryCompact: {
+    marginTop: 8,
+  },
+
   footer: {
     flexDirection: "row",
-    gap: 10,
-    paddingHorizontal: 18,
-    paddingTop: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+    paddingHorizontal: 22,
+    paddingTop: 8,
     backgroundColor: colors.cream,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(15,17,26,0.1)",
+  },
+
+  footerButtonSlot: {
+    flex: 1,
+    maxWidth: 178,
   },
 });
