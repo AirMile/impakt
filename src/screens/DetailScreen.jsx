@@ -105,11 +105,7 @@ export function DetailScreen({
           animate={{ opacity: inFeed ? 1 : 0 }}
           transition={{ type: "timing", duration: 250 }}
           pointerEvents={inFeed ? "auto" : "none"}
-          style={[
-            StyleSheet.absoluteFillObject,
-            styles.headerRow,
-            { top: insets.top + 10 },
-          ]}
+          style={[StyleSheet.absoluteFillObject, styles.headerRow]}
         >
           <View style={styles.headerIconBtn} />
           <ImpaktLogo size={26} dark />
