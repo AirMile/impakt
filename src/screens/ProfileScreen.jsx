@@ -12,25 +12,35 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { IIcon } from "../components/Icons";
 import { AppHeader } from "../components/AppHeader";
-import { colors, fonts } from "../theme/tokens";
+import { colors, fonts, surfaces } from "../theme/tokens";
 import { addTag as addTagFn, removeTag as removeTagFn } from "../lib/tagCrud";
 import { slideInRight, fadeUp } from "../theme/animations";
 
 // ─── ProfileRow ───────────────────────────────────────────────
 
-function ProfileRow({ label, onPress }) {
+function ProfileRow({ icon, label, count, onPress }) {
   return (
     <Pressable onPress={onPress} style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <IIcon name="chev" size={18} strokeWidth={2} color={colors.ink} />
+      <View style={styles.rowLeft}>
+        <IIcon name={icon} size={18} strokeWidth={1.8} color={colors.ink} />
+        <Text style={styles.rowLabel}>{label}</Text>
+      </View>
+      <View style={styles.rowRight}>
+        {count != null && (
+          <View style={styles.countPill}>
+            <Text style={styles.countLabel}>{count}</Text>
+          </View>
+        )}
+        <IIcon name="chev" size={18} strokeWidth={2} color={surfaces.muted} />
+      </View>
     </Pressable>
   );
 }
 
-// ─── Section heading ──────────────────────────────────────────
+// ─── Section label ────────────────────────────────────────────
 
-function SectionTitle({ children }) {
-  return <Text style={styles.sectionTitle}>{children}</Text>;
+function SectionLabel({ children }) {
+  return <Text style={styles.sectionLabel}>{children}</Text>;
 }
 
 // ─── ProfileScreen ────────────────────────────────────────────
@@ -84,14 +94,24 @@ export function ProfileScreen({ user, onClose, onLogout }) {
             </Pressable>
           </View>
           <Text style={styles.userName}>{name}</Text>
-          <Text style={styles.userMeta}>
-            Lid sinds maart 2026 · 142 artikelen gelezen
-          </Text>
+          <Text style={styles.userMeta}>Lid sinds maart 2026</Text>
         </MotiView>
 
+        {/* Stats strip */}
+        <View style={styles.statsRow}>
+          <View style={styles.statTile}>
+            <Text style={styles.statNumber}>142</Text>
+            <Text style={styles.statLabel}>{"ARTIKELEN\nGELEZEN"}</Text>
+          </View>
+          <View style={styles.statTile}>
+            <Text style={styles.statNumber}>67</Text>
+            <Text style={styles.statLabel}>{"MEMES\nOPGESLAGEN"}</Text>
+          </View>
+        </View>
+
         {/* Tags */}
-        <SectionTitle>Tags</SectionTitle>
-        <View style={styles.tagsBox}>
+        <SectionLabel>Tags</SectionLabel>
+        <View style={styles.tagsRow}>
           {tags.map((t) => (
             <View key={t} style={styles.tagChip}>
               <Text style={styles.tagChipLabel}>{t}</Text>
@@ -104,14 +124,11 @@ export function ProfileScreen({ user, onClose, onLogout }) {
                   name="close"
                   size={12}
                   strokeWidth={2.4}
-                  color="rgba(15,17,26,0.6)"
+                  color="rgba(15,17,26,0.5)"
                 />
               </Pressable>
             </View>
           ))}
-        </View>
-
-        <View style={styles.addTagRow}>
           {addingTag ? (
             <View style={styles.addTagInput}>
               <TextInput
@@ -139,37 +156,44 @@ export function ProfileScreen({ user, onClose, onLogout }) {
           ) : (
             <Pressable
               onPress={() => setAddingTag(true)}
-              style={styles.addTagBtn}
+              style={styles.addTagChip}
             >
               <IIcon
                 name="plus"
-                size={14}
+                size={12}
                 strokeWidth={2.4}
                 color={colors.ink}
               />
-              <Text style={styles.addTagBtnLabel}>Tag toevoegen</Text>
+              <Text style={styles.addTagChipLabel}>Tag toevoegen</Text>
             </Pressable>
           )}
         </View>
 
-        {/* Opgeslagen artikelen */}
-        <SectionTitle>Opgeslagen artikelen</SectionTitle>
-        <ProfileRow label="3 artikelen opgeslagen" />
-
-        {/* Opgeslagen memes */}
-        <SectionTitle>Opgeslagen nieuws memes</SectionTitle>
-        <ProfileRow label="67 memes opgeslagen" />
+        {/* Opgeslagen */}
+        <SectionLabel>Opgeslagen</SectionLabel>
+        <View style={styles.rowGroup}>
+          <ProfileRow icon="bookmark" label="Artikelen" count={3} />
+          <View style={styles.rowDivider} />
+          <ProfileRow icon="image" label="Nieuws memes" count={67} />
+        </View>
 
         {/* Hulp */}
-        <SectionTitle>Hulp</SectionTitle>
-        <ProfileRow label="Info" />
-        <View style={{ height: 10 }} />
-        <ProfileRow label="Contact" />
+        <SectionLabel>Hulp</SectionLabel>
+        <View style={styles.rowGroup}>
+          <ProfileRow icon="info" label="Info" />
+          <View style={styles.rowDivider} />
+          <ProfileRow icon="mail" label="Contact" />
+        </View>
 
         {/* Uitloggen */}
         <View style={styles.logoutRow}>
           <Pressable onPress={onLogout} style={styles.logoutBtn}>
-            <IIcon name="logout" size={18} strokeWidth={2} color={colors.ink} />
+            <IIcon
+              name="logout"
+              size={16}
+              strokeWidth={2}
+              color={surfaces.muted}
+            />
             <Text style={styles.logoutLabel}>Uitloggen</Text>
           </Pressable>
         </View>
@@ -184,14 +208,14 @@ const styles = StyleSheet.create({
     zIndex: 90,
   },
   body: {
-    paddingHorizontal: 22,
+    paddingHorizontal: 18,
     paddingTop: 8,
   },
 
   // Avatar
   avatarSection: {
     alignItems: "center",
-    paddingVertical: 18,
+    paddingVertical: 24,
   },
   avatarWrap: {
     width: 96,
@@ -218,34 +242,60 @@ const styles = StyleSheet.create({
   },
   userName: {
     marginTop: 14,
-    fontFamily: fonts.display,
-    fontSize: 22,
-    fontWeight: "600",
+    fontFamily: fonts.header,
+    fontSize: 34,
+    lineHeight: 32,
+    letterSpacing: 0.5,
     color: colors.ink,
   },
   userMeta: {
     fontFamily: fonts.body,
     fontSize: 12,
-    color: "rgba(15,17,26,0.55)",
-    marginTop: 2,
+    color: surfaces.muted,
+    marginTop: 6,
   },
 
-  // Section title
-  sectionTitle: {
-    fontFamily: fonts.display,
-    fontSize: 20,
-    fontWeight: "600",
+  // Stats strip
+  statsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 4,
+  },
+  statTile: {
+    flex: 1,
+    backgroundColor: colors.creamWarm,
+    borderRadius: 14,
+    padding: 16,
+  },
+  statNumber: {
+    fontFamily: fonts.header,
+    fontSize: 36,
+    lineHeight: 34,
     color: colors.ink,
+  },
+  statLabel: {
+    fontFamily: fonts.display,
+    fontSize: 11,
+    color: surfaces.muted,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    marginTop: 5,
+    lineHeight: 15,
+  },
+
+  // Section label
+  sectionLabel: {
+    fontFamily: fonts.display,
+    fontSize: 12,
+    color: surfaces.muted,
+    textTransform: "uppercase",
+    letterSpacing: 1.4,
     marginTop: 24,
     marginBottom: 10,
-    lineHeight: 24,
   },
 
   // Tags
-  tagsBox: {
-    backgroundColor: "rgba(15,17,26,0.08)",
-    borderRadius: 14,
-    padding: 14,
+  tagsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
@@ -255,37 +305,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 7,
-    paddingHorizontal: 12,
+    backgroundColor: "rgba(122,207,223,0.28)",
+    paddingVertical: 9,
+    paddingHorizontal: 14,
     borderRadius: 9999,
-    borderWidth: 1,
-    borderColor: "rgba(15,17,26,0.08)",
   },
   tagChipLabel: {
     fontFamily: fonts.displayMedium,
-    fontSize: 12.5,
+    fontSize: 13.5,
     color: colors.ink,
   },
-  addTagRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 10,
-  },
-  addTagBtn: {
+  addTagChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 9999,
-    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(15,17,26,0.08)",
+    borderStyle: "dashed",
+    borderColor: surfaces.lineStrong,
   },
-  addTagBtnLabel: {
+  addTagChipLabel: {
     fontFamily: fonts.displayMedium,
-    fontSize: 12.5,
+    fontSize: 13.5,
     color: colors.ink,
   },
   addTagInput: {
@@ -298,7 +341,7 @@ const styles = StyleSheet.create({
     paddingLeft: 14,
     paddingRight: 6,
     borderWidth: 1,
-    borderColor: "rgba(15,17,26,0.08)",
+    borderColor: surfaces.border,
   },
   addTagField: {
     fontFamily: fonts.body,
@@ -313,46 +356,75 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
     backgroundColor: colors.blue,
     borderWidth: 1,
-    borderColor: "rgba(15,17,26,0.08)",
+    borderColor: surfaces.border,
     alignItems: "center",
     justifyContent: "center",
   },
 
   // Rows
+  rowGroup: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: surfaces.border,
+    overflow: "hidden",
+  },
+  rowDivider: {
+    height: 1,
+    backgroundColor: surfaces.border,
+    marginHorizontal: 16,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: "rgba(15,17,26,0.08)",
+  },
+  rowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  rowRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   rowLabel: {
     fontFamily: fonts.displayMedium,
     fontSize: 14,
     color: colors.ink,
   },
+  countPill: {
+    backgroundColor: colors.creamWarm,
+    borderRadius: 9999,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+  },
+  countLabel: {
+    fontFamily: fonts.bodySemiBold,
+    fontSize: 11,
+    color: surfaces.muted,
+  },
 
   // Logout
   logoutRow: {
-    marginTop: 30,
+    marginTop: 40,
     alignItems: "center",
   },
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 28,
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
     borderRadius: 9999,
-    borderWidth: 1,
-    borderColor: "rgba(15,17,26,0.08)",
     backgroundColor: "transparent",
   },
   logoutLabel: {
-    fontFamily: fonts.display,
-    fontSize: 15,
-    color: colors.ink,
+    fontFamily: fonts.displayMedium,
+    fontSize: 13,
+    color: surfaces.muted,
   },
 });
