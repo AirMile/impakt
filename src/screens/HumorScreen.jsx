@@ -37,42 +37,69 @@ const { height: SCREEN_H } = Dimensions.get("window");
 
 const REACTION_EMOJI = { smile: "😊", meh: "😐", frown: "☹️" };
 
-// Stabiele constante buiten render — voorkomt herberekening bij elke render
+// Stabiele constanten buiten render — voorkomt herberekening bij elke render
 const REACTION_BTNS = Object.entries(REACTION_COLORS).map(([key, color]) => ({
   key,
   color,
 }));
+const REACTION_LABELS = { smile: "Blij", meh: "Neutraal", frown: "Verdrietig" };
 
 function RailButton({
   icon,
+  label,
   count,
+  isReaction = false,
+  voted = false,
   active = false,
+  dimmed = false,
   fill = false,
   onPress,
   color,
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      unstable_pressDelay={0}
-      style={styles.railBtn}
-      hitSlop={8}
+    <View
+      testID={`rxn-btn-${icon}`}
+      style={dimmed ? styles.railBtnDimmed : null}
     >
-      <View style={styles.railCircle}>
-        {REACTION_EMOJI[icon] ? (
-          <Text style={styles.reactionEmoji}>{REACTION_EMOJI[icon]}</Text>
-        ) : (
-          <IIcon
-            name={icon}
-            size={20}
-            strokeWidth={1.9}
-            fill={active && fill ? (color ?? colors.red) : "none"}
-            color={active ? (color ?? colors.red) : colors.cream}
-          />
+      <Pressable
+        onPress={onPress}
+        unstable_pressDelay={0}
+        accessibilityLabel={label}
+        style={styles.railBtn}
+        hitSlop={8}
+      >
+        <View
+          style={[
+            styles.railCircle,
+            isReaction && active && { borderColor: color, borderWidth: 1.6 },
+          ]}
+        >
+          {isReaction && voted ? (
+            <Text
+              style={[
+                styles.pctInner,
+                { color: active ? color : colors.cream },
+              ]}
+            >
+              {count}
+            </Text>
+          ) : isReaction ? (
+            <Text style={styles.reactionEmoji}>{REACTION_EMOJI[icon]}</Text>
+          ) : (
+            <IIcon
+              name={icon}
+              size={20}
+              strokeWidth={1.9}
+              fill={active && fill ? (color ?? colors.red) : "none"}
+              color={active ? (color ?? colors.red) : colors.cream}
+            />
+          )}
+        </View>
+        {!isReaction && count != null && (
+          <Text style={styles.railCount}>{count}</Text>
         )}
-      </View>
-      {count != null && <Text style={styles.railCount}>{count}</Text>}
-    </Pressable>
+      </Pressable>
+    </View>
   );
 }
 
@@ -133,29 +160,23 @@ const MemeCard = React.memo(function MemeCard({
       <Text style={[styles.caption, { bottom: 310 }]}>{meme.bot}</Text>
 
       <View style={styles.rail} pointerEvents="box-none">
-        {REACTION_BTNS.map((r) => {
-          const collapsed = reaction !== null && reaction !== r.key;
-          return (
-            <View
-              key={r.key}
-              style={[
-                styles.reactionWrap,
-                collapsed && styles.reactionCollapsed,
-              ]}
-              pointerEvents={collapsed ? "none" : "auto"}
-            >
-              <RailButton
-                icon={r.key}
-                count={reaction === r.key ? `${meme.reactions[r.key]}%` : null}
-                active={reaction === r.key}
-                color={r.color}
-                onPress={() => reaction === null && setReaction(r.key)}
-              />
-            </View>
-          );
-        })}
+        {REACTION_BTNS.map((r) => (
+          <RailButton
+            key={r.key}
+            icon={r.key}
+            label={REACTION_LABELS[r.key]}
+            isReaction
+            voted={reaction !== null}
+            active={reaction === r.key}
+            dimmed={reaction !== null && reaction !== r.key}
+            count={`${meme.reactions[r.key]}%`}
+            color={r.color}
+            onPress={() => reaction === null && setReaction(r.key)}
+          />
+        ))}
         <RailButton
           icon="bookmark"
+          label="Bewaren"
           count={saved ? "Bewaard" : meme.shares}
           active={saved}
           fill
@@ -164,6 +185,7 @@ const MemeCard = React.memo(function MemeCard({
         />
         <RailButton
           icon="share"
+          label="Delen"
           count={meme.shares}
           onPress={() => shareMeme(meme)}
         />
@@ -357,14 +379,8 @@ const styles = StyleSheet.create({
     gap: 14,
     alignItems: "center",
   },
-  reactionWrap: {
-    overflow: "hidden",
-    alignItems: "center",
-  },
-  reactionCollapsed: {
-    opacity: 0,
-    transform: [{ scale: 0.4 }],
-    pointerEvents: "none",
+  railBtnDimmed: {
+    opacity: 0.5,
   },
   railBtn: {
     flexDirection: "column",
@@ -384,6 +400,11 @@ const styles = StyleSheet.create({
   },
   reactionEmoji: {
     fontSize: 20,
+  },
+  pctInner: {
+    fontFamily: fonts.display,
+    fontWeight: "700",
+    fontSize: 15,
   },
   railCount: {
     fontFamily: fonts.display,

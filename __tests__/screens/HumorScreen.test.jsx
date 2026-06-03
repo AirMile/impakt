@@ -1,5 +1,5 @@
 import React from "react";
-import { render, waitFor } from "@testing-library/react-native";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import { HumorScreen } from "../../src/screens/HumorScreen";
 
 // jest.mock wordt gehoist boven variabele-declaraties, dus data moet inline staan
@@ -92,4 +92,38 @@ test("roept onInitialStoryConsumed NIET aan zonder initialStoryId", async () => 
   render(<HumorScreen {...defaultProps} onInitialStoryConsumed={onConsumed} />);
   await waitFor(() => {});
   expect(onConsumed).not.toHaveBeenCalled();
+});
+
+test("toont alle drie reactie-smileys voor het stemmen", () => {
+  const { getAllByLabelText } = render(<HumorScreen {...defaultProps} />);
+  expect(getAllByLabelText("Blij")[0]).toBeTruthy();
+  expect(getAllByLabelText("Neutraal")[0]).toBeTruthy();
+  expect(getAllByLabelText("Verdrietig")[0]).toBeTruthy();
+});
+
+test("toont percentages van alle drie reacties na het stemmen", () => {
+  const { getAllByLabelText, getByText } = render(
+    <HumorScreen {...defaultProps} />
+  );
+  fireEvent.press(getAllByLabelText("Blij")[0]);
+  expect(getByText("5%")).toBeTruthy();
+  expect(getByText("2%")).toBeTruthy();
+  expect(getByText("1%")).toBeTruthy();
+});
+
+test("niet-actieve reactie-knoppen krijgen dim-opacity 0.5 na stemmen", () => {
+  const { getAllByLabelText, getAllByTestId } = render(
+    <HumorScreen {...defaultProps} />
+  );
+  fireEvent.press(getAllByLabelText("Blij")[0]);
+
+  const opacityOf = (testId) => {
+    const wrapper = getAllByTestId(testId)[0];
+    const style = wrapper.props.style;
+    return style?.opacity ?? 1;
+  };
+
+  expect(opacityOf("rxn-btn-smile")).toBe(1);
+  expect(opacityOf("rxn-btn-meh")).toBe(0.5);
+  expect(opacityOf("rxn-btn-frown")).toBe(0.5);
 });
