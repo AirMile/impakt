@@ -38,8 +38,8 @@ test("roept onReact NIET aan wanneer al gestemd (voted=true)", () => {
   expect(onReact).not.toHaveBeenCalled();
 });
 
-test("toont percentage alleen voor de gekozen reactie", () => {
-  const { getByText, queryByText } = render(
+test("toont percentages van alle reacties na het stemmen", () => {
+  const { getByText } = render(
     <ReactionRail
       {...defaultProps}
       reaction="smile"
@@ -47,8 +47,8 @@ test("toont percentage alleen voor de gekozen reactie", () => {
     />
   );
   expect(getByText("72%")).toBeTruthy();
-  expect(queryByText("18%")).toBeNull();
-  expect(queryByText("10%")).toBeNull();
+  expect(getByText("18%")).toBeTruthy();
+  expect(getByText("10%")).toBeTruthy();
 });
 
 test("bewaar-knop rendert alleen als onSave meegegeven", () => {
@@ -117,4 +117,35 @@ test("saved=true geeft bewaar-knop een blauwe fill", () => {
   );
   // De knop is zichtbaar en actief
   expect(getByLabelText("Bewaren")).toBeTruthy();
+});
+
+test("niet-gekozen reactie-knoppen krijgen dim-opacity 0.5 na stemmen", () => {
+  const { getByLabelText } = render(
+    <ReactionRail
+      {...defaultProps}
+      reaction="smile"
+      reactions={{ smile: 72, meh: 18, frown: 10 }}
+    />
+  );
+  const opacityOf = (label) => {
+    // getByLabelText → inner Pressable View (l0) → Component (l1) → Pressable (l2) → Animated.View mock (l3)
+    const wrapper = getByLabelText(label).parent.parent.parent;
+    const style = Array.isArray(wrapper.props.style)
+      ? Object.assign({}, ...wrapper.props.style)
+      : wrapper.props.style;
+    return style?.opacity;
+  };
+  expect(opacityOf("Blij")).toBe(1);
+  expect(opacityOf("Neutraal")).toBe(0.5);
+  expect(opacityOf("Verdrietig")).toBe(0.5);
+});
+
+test("bewaar-knop roept onSave elke keer aan bij herhalen druk", () => {
+  const onSave = jest.fn();
+  const { getByLabelText } = render(
+    <ReactionRail {...defaultProps} onSave={onSave} />
+  );
+  fireEvent.press(getByLabelText("Bewaren"));
+  fireEvent.press(getByLabelText("Bewaren"));
+  expect(onSave).toHaveBeenCalledTimes(2);
 });

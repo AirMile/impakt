@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { View, ActivityIndicator, StyleSheet, Linking } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
@@ -21,6 +21,7 @@ import { STORIES as FEED_STORIES, MEMES } from "./src/api/mock";
 import { getOnboarded } from "./src/storage/prefs";
 import { parseImpaktUrl } from "./src/lib/parseImpaktUrl";
 import { ToastHost } from "./src/components/Toast";
+import { BottomNav } from "./src/components/BottomNav";
 
 import { FeedScreen } from "./src/screens/FeedScreen";
 import { DetailScreen } from "./src/screens/DetailScreen";
@@ -31,7 +32,7 @@ import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { SandboxReactionsScreen } from "./src/screens/SandboxReactionsScreen";
 
 const DEV_FORCE_AUTH = __DEV__;
-const DEV_SANDBOX = false; // zet op true om variant-review te openen
+const DEV_SANDBOX = false;
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -100,6 +101,47 @@ export default function App() {
     return () => sub.remove();
   }, [fontsLoaded, authLoading]);
 
+  // Callbacks voor navigatie — vóór early returns zodat hooks altijd worden aangeroepen
+  const navTab = useCallback((t) => {
+    setOpenStory(null);
+    setTab(t);
+  }, []);
+
+  const openStoryById = useCallback((id) => {
+    const s = FEED_STORIES.find((x) => x.id === id);
+    if (s) setOpenStory(s);
+  }, []);
+
+  const openMemeForStory = useCallback((storyId) => {
+    setOpenStory(null);
+    setTab("humor");
+    setPendingMemeStoryId(storyId);
+  }, []);
+
+  const openMemeById = useCallback((memeId) => {
+    const meme = MEMES.find((m) => m.id === memeId);
+    if (meme) {
+      setOpenStory(null);
+      setTab("humor");
+      setPendingMemeStoryId(meme.storyId);
+    }
+  }, []);
+
+  const handleSearch = useCallback(() => setShowSearch(true), []);
+  const handleProfile = useCallback(() => setShowProfile(true), []);
+
+  const commonProps = useMemo(
+    () => ({
+      onNav: navTab,
+      onSearch: handleSearch,
+      onProfile: handleProfile,
+      activeTab: tab,
+    }),
+    [navTab, handleSearch, handleProfile, tab]
+  );
+
+  const inApp = phase === "app";
+
   if (!fontsLoaded || authLoading) {
     return (
       <View style={styles.loader}>
@@ -110,45 +152,13 @@ export default function App() {
 
   if (__DEV__ && DEV_SANDBOX) return <SandboxReactionsScreen />;
 
-  const navTab = (t) => {
-    setOpenStory(null);
-    setTab(t);
-  };
-
-  const openStoryById = (id) => {
-    const s = FEED_STORIES.find((x) => x.id === id);
-    if (s) setOpenStory(s);
-  };
-
-  const openMemeForStory = (storyId) => {
-    setOpenStory(null);
-    setTab("humor");
-    setPendingMemeStoryId(storyId);
-  };
-
-  const openMemeById = (memeId) => {
-    const meme = MEMES.find((m) => m.id === memeId);
-    if (meme) {
-      setOpenStory(null);
-      setTab("humor");
-      setPendingMemeStoryId(meme.storyId);
-    }
-  };
-
-  const commonProps = {
-    onNav: navTab,
-    onSearch: () => setShowSearch(true),
-    onProfile: () => setShowProfile(true),
-    activeTab: tab,
-  };
-
   return (
     <SafeAreaProvider>
       <View style={styles.root}>
-        <StatusBar
-          style={phase === "app" && tab === "humor" ? "light" : "dark"}
-        />
-        {phase !== "app" && (
+        <StatusBar style={inApp && tab === "humor" ? "light" : "dark"} />
+
+        {/* Auth — alleen zichtbaar vóór onboarding */}
+        {!inApp && (
           <AuthScreen
             initialView="welcome"
             onComplete={(u, selectedTopics) => {
@@ -158,29 +168,38 @@ export default function App() {
             }}
           />
         )}
-        {phase === "app" && tab === "feed" && (
-          <FeedScreen
-            {...commonProps}
-            onOpen={setOpenStory}
-            cat={feedCat}
-            onCatChange={setFeedCat}
-          />
+
+        {/* Tab-host: altijd gemount, inactieve tabs verborgen via display:none.
+            Scroll-positie, FlatList-state en per-card reaction-state blijven bewaard. */}
+        {inApp && (
+          <>
+            <View style={[styles.tab, tab !== "feed" && styles.hidden]}>
+              <FeedScreen
+                {...commonProps}
+                onOpen={setOpenStory}
+                cat={feedCat}
+                onCatChange={setFeedCat}
+              />
+            </View>
+            <View style={[styles.tab, tab !== "good" && styles.hidden]}>
+              <FeedScreen {...commonProps} onOpen={setOpenStory} goodNewsOnly />
+            </View>
+            <View style={[styles.tab, tab !== "humor" && styles.hidden]}>
+              <HumorScreen
+                onNav={navTab}
+                onSearch={handleSearch}
+                onProfile={handleProfile}
+                activeTab={tab}
+                initialStoryId={pendingMemeStoryId}
+                onInitialStoryConsumed={() => setPendingMemeStoryId(null)}
+                onOpenStory={openStoryById}
+              />
+            </View>
+          </>
         )}
-        {phase === "app" && tab === "good" && (
-          <FeedScreen {...commonProps} onOpen={setOpenStory} goodNewsOnly />
-        )}
-        {phase === "app" && tab === "humor" && (
-          <HumorScreen
-            onNav={navTab}
-            onSearch={() => setShowSearch(true)}
-            onProfile={() => setShowProfile(true)}
-            activeTab={tab}
-            initialStoryId={pendingMemeStoryId}
-            onInitialStoryConsumed={() => setPendingMemeStoryId(null)}
-            onOpenStory={openStoryById}
-          />
-        )}
-        {phase === "app" && showProfile && (
+
+        {/* Overlays — conditional (bewuste keuze: eigen data per open) */}
+        {inApp && showProfile && (
           <ProfileScreen
             user={user}
             onClose={() => setShowProfile(false)}
@@ -190,7 +209,7 @@ export default function App() {
             }}
           />
         )}
-        {phase === "app" && showSearch && (
+        {inApp && showSearch && (
           <SearchScreen
             onClose={() => setShowSearch(false)}
             onOpenStory={(s) => {
@@ -199,7 +218,7 @@ export default function App() {
             }}
           />
         )}
-        {phase === "app" && openStory && (
+        {inApp && openStory && (
           <DetailScreen
             key={openStory.id}
             story={openStory}
@@ -210,11 +229,23 @@ export default function App() {
             feedCat={feedCat}
             onCatChange={setFeedCat}
             onNav={navTab}
-            onProfile={() => setShowProfile(true)}
-            onSearch={() => setShowSearch(true)}
+            onProfile={handleProfile}
+            onSearch={handleSearch}
             activeTab={tab}
           />
         )}
+
+        {/* BottomNav — één instantie voor de hele app-levensduur.
+            BlurView wordt niet meer gecreëerd bij elke tabwissel. */}
+        {inApp && (
+          <BottomNav
+            active={tab}
+            onChange={navTab}
+            onSearch={handleSearch}
+            theme={tab === "humor" ? "dark" : "light"}
+          />
+        )}
+
         <ToastHost />
       </View>
     </SafeAreaProvider>
@@ -231,5 +262,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.cream,
+  },
+  tab: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  hidden: {
+    display: "none",
   },
 });
