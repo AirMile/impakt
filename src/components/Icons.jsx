@@ -151,7 +151,7 @@ export function IIcon({
       return (
         <Svg {...p}>
           <Rect x="3" y="4" width="18" height="16" rx="3" />
-          <Path d="m10 9 5 3-5 3z" fill="currentColor" stroke="none" />
+          <Path d="m10 9 5 3-5 3z" fill={color} stroke="none" />
         </Svg>
       );
     case "calendar":
