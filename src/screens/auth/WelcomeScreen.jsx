@@ -126,6 +126,8 @@ export function WelcomeScreen({ onLogin, onRegister, onSkip }) {
           <MotiView {...fadeUp} delay={160}>
             <Text style={styles.tagline}>Het nieuws beter verpakt</Text>
           </MotiView>
+
+          <MotiView {...fadeUp} delay={200} style={styles.heroDivider} />
         </View>
 
         <MotiView {...fadeUp} delay={240} style={styles.phoneWrapper}>
@@ -358,6 +360,13 @@ const styles = StyleSheet.create({
 
   slideLayer: {
     ...StyleSheet.absoluteFillObject,
+  },
+  heroDivider: {
+    width: "82%",
+    maxWidth: 294,
+    height: 1,
+    backgroundColor: "rgba(15,17,26,0.18)",
+    marginTop: 18,
   },
 });
 
