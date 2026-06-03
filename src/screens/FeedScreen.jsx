@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import { fadeUp } from "../theme/animations";
 import { STORIES as FEED_STORIES, CATEGORIES as CATS } from "../api/mock";
 import { shareStory } from "../lib/share";
 import { filterStories } from "../lib/filterStories";
+import { pressFx, tapHaptic } from "../lib/pressFeedback";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 36;
@@ -42,7 +43,12 @@ function CatChips({ active, onChange }) {
           <Pressable
             key={c}
             onPress={() => onChange(c)}
-            style={[styles.chip, on && styles.chipActive]}
+            unstable_pressDelay={0}
+            style={({ pressed }) => [
+              styles.chip,
+              on && styles.chipActive,
+              pressFx({ scale: 0.95 })({ pressed }),
+            ]}
           >
             <Text style={[styles.chipLabel, on && styles.chipLabelActive]}>
               {c}
@@ -56,30 +62,33 @@ function CatChips({ active, onChange }) {
 
 // ─── Feed card ───────────────────────────────────────────────────────────────
 
-export function FeedCard({ story, onOpen, variant = "full", index = 0 }) {
+export const FeedCard = React.memo(function FeedCard({
+  story,
+  onOpen,
+  variant = "full",
+  index = 0,
+}) {
   const [reaction, setReaction] = useState(null);
   const [saved, setSaved] = useState(false);
   const isCompact = variant === "compact";
   const aspectH = isCompact ? CARD_W * (3.4 / 4) : CARD_W * (4.3 / 4);
 
   return (
-    <MotiView
-      {...fadeUp}
-      transition={{ ...fadeUp.transition, delay: index * 60 }}
-      style={[styles.cardWrapper, { height: aspectH }]}
-    >
-      <Pressable onPress={() => onOpen(story)} style={StyleSheet.absoluteFill}>
-        {/* Background image */}
+    <MotiView {...fadeUp} style={[styles.cardWrapper, { height: aspectH }]}>
+      <Pressable
+        onPress={() => onOpen(story)}
+        onPressIn={tapHaptic}
+        unstable_pressDelay={0}
+        style={StyleSheet.absoluteFill}
+      >
         <Image
           source={{ uri: story.img }}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
 
-        {/* Gradient overlay */}
         <HeroOverlay variant="card" />
 
-        {/* Title top-left */}
         <View style={styles.titleArea}>
           <Text
             style={[styles.cardTitle, isCompact && styles.cardTitleCompact]}
@@ -96,7 +105,6 @@ export function FeedCard({ story, onOpen, variant = "full", index = 0 }) {
           )}
         </View>
 
-        {/* Right action rail */}
         <View style={styles.railArea} pointerEvents="box-none">
           <ReactionRail
             reaction={reaction}
@@ -109,7 +117,6 @@ export function FeedCard({ story, onOpen, variant = "full", index = 0 }) {
           />
         </View>
 
-        {/* Bottom row */}
         {!isCompact && (
           <View style={styles.bottomRow}>
             <Pressable onPress={() => onOpen(story)} style={styles.readMore}>
@@ -144,7 +151,7 @@ export function FeedCard({ story, onOpen, variant = "full", index = 0 }) {
       </Pressable>
     </MotiView>
   );
-}
+});
 
 // ─── Feed screen ─────────────────────────────────────────────────────────────
 
@@ -162,31 +169,48 @@ export function FeedScreen({
 }) {
   const listRef = useRef(null);
 
-  const stories = filterStories({
-    stories: FEED_STORIES,
-    goodNewsOnly,
-    cat,
-    excludeId,
-  });
-
-  const handleCatChange = (next) => {
-    onCatChange(next);
-    if (!embedded)
-      listRef.current?.scrollToOffset({ offset: 0, animated: true });
-  };
-
-  const renderHeader = () =>
-    goodNewsOnly ? null : <CatChips active={cat} onChange={handleCatChange} />;
-
-  const renderEmpty = () => (
-    <View style={styles.empty}>
-      <Text style={styles.emptyLabel}>
-        Nog geen verhalen in deze categorie.
-      </Text>
-    </View>
+  const stories = useMemo(
+    () =>
+      filterStories({ stories: FEED_STORIES, goodNewsOnly, cat, excludeId }),
+    [goodNewsOnly, cat, excludeId]
   );
 
-  const renderFooter = () => <View style={{ height: 120 }} />;
+  const handleCatChange = useCallback(
+    (next) => {
+      onCatChange(next);
+      if (!embedded)
+        listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    },
+    [onCatChange, embedded]
+  );
+
+  const renderHeader = useCallback(
+    () =>
+      goodNewsOnly ? null : (
+        <CatChips active={cat} onChange={handleCatChange} />
+      ),
+    [goodNewsOnly, cat, handleCatChange]
+  );
+
+  const renderEmpty = useCallback(
+    () => (
+      <View style={styles.empty}>
+        <Text style={styles.emptyLabel}>
+          Nog geen verhalen in deze categorie.
+        </Text>
+      </View>
+    ),
+    []
+  );
+
+  const renderFooter = useCallback(() => <View style={{ height: 120 }} />, []);
+
+  const renderItem = useCallback(
+    ({ item, index }) => (
+      <FeedCard story={item} onOpen={onOpen} index={index} />
+    ),
+    [onOpen]
+  );
 
   if (embedded) {
     return (
@@ -208,16 +232,17 @@ export function FeedScreen({
         ref={listRef}
         data={stories}
         keyExtractor={(s) => String(s.id)}
-        renderItem={({ item, index }) => (
-          <FeedCard story={item} onOpen={onOpen} index={index} />
-        )}
+        renderItem={renderItem}
         ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        initialNumToRender={4}
+        maxToRenderPerBatch={4}
+        windowSize={7}
+        removeClippedSubviews
       />
-      <BottomNav active={activeTab} onChange={onNav} onSearch={onSearch} />
     </View>
   );
 }
@@ -233,7 +258,6 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
 
-  // Chips
   chipsScroll: {
     flexGrow: 0,
   },
@@ -263,7 +287,6 @@ const styles = StyleSheet.create({
     color: colors.cream,
   },
 
-  // Card
   cardWrapper: {
     marginHorizontal: 18,
     marginBottom: 18,
@@ -367,7 +390,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: colors.cream,
   },
-  // Empty / footer
   empty: {
     padding: 40,
     alignItems: "center",
