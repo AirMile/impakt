@@ -38,8 +38,8 @@ test("roept onReact NIET aan wanneer al gestemd (voted=true)", () => {
   expect(onReact).not.toHaveBeenCalled();
 });
 
-test("toont percentage alleen voor de gekozen reactie", () => {
-  const { getByText, queryByText } = render(
+test("toont percentages van alle reacties na het stemmen", () => {
+  const { getByText } = render(
     <ReactionRail
       {...defaultProps}
       reaction="smile"
@@ -47,8 +47,8 @@ test("toont percentage alleen voor de gekozen reactie", () => {
     />
   );
   expect(getByText("72%")).toBeTruthy();
-  expect(queryByText("18%")).toBeNull();
-  expect(queryByText("10%")).toBeNull();
+  expect(getByText("18%")).toBeTruthy();
+  expect(getByText("10%")).toBeTruthy();
 });
 
 test("bewaar-knop rendert alleen als onSave meegegeven", () => {
