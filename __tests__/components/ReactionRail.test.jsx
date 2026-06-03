@@ -118,3 +118,28 @@ test("saved=true geeft bewaar-knop een blauwe fill", () => {
   // De knop is zichtbaar en actief
   expect(getByLabelText("Bewaren")).toBeTruthy();
 });
+
+test("niet-gekozen reactie-knoppen krijgen dimmed stijl na stemmen", () => {
+  const { getByLabelText } = render(
+    <ReactionRail
+      {...defaultProps}
+      reaction="smile"
+      reactions={{ smile: 72, meh: 18, frown: 10 }}
+    />
+  );
+  // Neutraal en Verdrietig zijn na stemmen nog steeds aanwezig in de DOM
+  expect(getByLabelText("Neutraal")).toBeTruthy();
+  expect(getByLabelText("Verdrietig")).toBeTruthy();
+  // Blij (gekozen) is ook nog zichtbaar
+  expect(getByLabelText("Blij")).toBeTruthy();
+});
+
+test("bewaar-knop roept onSave elke keer aan bij herhalen druk", () => {
+  const onSave = jest.fn();
+  const { getByLabelText } = render(
+    <ReactionRail {...defaultProps} onSave={onSave} />
+  );
+  fireEvent.press(getByLabelText("Bewaren"));
+  fireEvent.press(getByLabelText("Bewaren"));
+  expect(onSave).toHaveBeenCalledTimes(2);
+});
