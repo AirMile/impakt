@@ -4,7 +4,7 @@ import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IIcon } from "./Icons";
 import { colors, fonts } from "../theme/tokens";
-import { pressFx, selectHaptic } from "../lib/pressFeedback";
+import { pressFx } from "../lib/pressFeedback";
 
 const TABS = [
   { id: "feed", icon: "home", label: "Feed" },
@@ -33,7 +33,6 @@ export function BottomNav({ active, onChange, onSearch, theme = "light" }) {
             return (
               <Pressable
                 key={t.id}
-                onPressIn={selectHaptic}
                 onPress={() => onChange(t.id)}
                 accessibilityLabel={t.label}
                 unstable_pressDelay={0}
@@ -64,7 +63,6 @@ export function BottomNav({ active, onChange, onSearch, theme = "light" }) {
           <View style={styles.divider} />
           <Pressable
             onPress={onSearch}
-            onPressIn={selectHaptic}
             accessibilityLabel="Zoeken"
             unstable_pressDelay={0}
             android_ripple={{

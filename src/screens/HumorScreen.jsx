@@ -19,9 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withTiming,
-  LinearTransition,
 } from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 
@@ -33,7 +31,7 @@ import { MEMES, STORIES as FEED_STORIES } from "../api/mock";
 import { colors, fonts } from "../theme/tokens";
 import { shareMeme } from "../lib/share";
 import { createDoubleTapDetector } from "../lib/createDoubleTapDetector";
-import { pressFx, tapHaptic } from "../lib/pressFeedback";
+import { pressFx } from "../lib/pressFeedback";
 
 const { height: SCREEN_H } = Dimensions.get("window");
 
@@ -53,28 +51,14 @@ function RailButton({
   onPress,
   color,
 }) {
-  const scale = useSharedValue(1);
-
-  useEffect(() => {
-    scale.value = withSpring(active ? 1.08 : 1, {
-      stiffness: 260,
-      damping: 18,
-    });
-  }, [active, scale]);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
   return (
     <Pressable
       onPress={onPress}
-      onPressIn={tapHaptic}
       unstable_pressDelay={0}
       style={styles.railBtn}
       hitSlop={8}
     >
-      <Animated.View style={[styles.railCircle, animStyle]}>
+      <View style={styles.railCircle}>
         {REACTION_EMOJI[icon] ? (
           <Text style={styles.reactionEmoji}>{REACTION_EMOJI[icon]}</Text>
         ) : (
@@ -86,7 +70,7 @@ function RailButton({
             color={active ? (color ?? colors.red) : colors.cream}
           />
         )}
-      </Animated.View>
+      </View>
       {count != null && <Text style={styles.railCount}>{count}</Text>}
     </Pressable>
   );
@@ -152,9 +136,8 @@ const MemeCard = React.memo(function MemeCard({
         {REACTION_BTNS.map((r) => {
           const collapsed = reaction !== null && reaction !== r.key;
           return (
-            <Animated.View
+            <View
               key={r.key}
-              layout={LinearTransition.springify().stiffness(300).damping(22)}
               style={[
                 styles.reactionWrap,
                 collapsed && styles.reactionCollapsed,
@@ -168,7 +151,7 @@ const MemeCard = React.memo(function MemeCard({
                 color={r.color}
                 onPress={() => reaction === null && setReaction(r.key)}
               />
-            </Animated.View>
+            </View>
           );
         })}
         <RailButton
@@ -188,7 +171,6 @@ const MemeCard = React.memo(function MemeCard({
 
       <Pressable
         onPress={() => onOpenStory(meme.storyId)}
-        onPressIn={tapHaptic}
         unstable_pressDelay={0}
         style={({ pressed }) => [
           styles.kicker,

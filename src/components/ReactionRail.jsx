@@ -6,7 +6,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { IIcon } from "./Icons";
 import { colors, fonts } from "../theme/tokens";
-import { pressFx, tapHaptic } from "../lib/pressFeedback";
+import { pressFx } from "../lib/pressFeedback";
 
 export const REACTION_COLORS = {
   smile: "#52BD70",
@@ -34,7 +34,6 @@ function ReactionBtn({
   return (
     <Animated.View style={animStyle}>
       <Pressable
-        onPressIn={tapHaptic}
         onPress={onPress}
         accessibilityLabel={it.label}
         unstable_pressDelay={0}

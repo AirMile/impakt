@@ -2,7 +2,7 @@ import React from "react";
 import { Pressable, Text, StyleSheet } from "react-native";
 import { IIcon } from "./Icons";
 import { colors, fonts } from "../theme/tokens";
-import { pressFx, tapHaptic } from "../lib/pressFeedback";
+import { pressFx } from "../lib/pressFeedback";
 
 export const BTN_PALETTE = {
   dark: { bg: colors.ink, fg: colors.cream, border: colors.ink },
@@ -29,7 +29,6 @@ export function Btn({
   return (
     <Pressable
       onPress={onPress}
-      onPressIn={tapHaptic}
       disabled={disabled}
       unstable_pressDelay={0}
       android_ripple={{ color: "rgba(15,17,26,0.12)", borderless: false }}

@@ -22,7 +22,7 @@ import { fadeUp } from "../theme/animations";
 import { STORIES as FEED_STORIES, CATEGORIES as CATS } from "../api/mock";
 import { shareStory } from "../lib/share";
 import { filterStories } from "../lib/filterStories";
-import { pressFx, tapHaptic } from "../lib/pressFeedback";
+import { pressFx } from "../lib/pressFeedback";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 36;
@@ -77,7 +77,6 @@ export const FeedCard = React.memo(function FeedCard({
     <MotiView {...fadeUp} style={[styles.cardWrapper, { height: aspectH }]}>
       <Pressable
         onPress={() => onOpen(story)}
-        onPressIn={tapHaptic}
         unstable_pressDelay={0}
         style={StyleSheet.absoluteFill}
       >
