@@ -118,7 +118,10 @@ export const FeedCard = React.memo(function FeedCard({
 
         {!isCompact && (
           <View style={styles.bottomRow}>
-            <Pressable onPress={() => onOpen(story)} style={styles.readMore}>
+            <Pressable
+              onPress={() => onOpen(story)}
+              style={({ pressed }) => [styles.readMore, pressFx()({ pressed })]}
+            >
               <Text style={styles.readMoreLabel}>Lees meer</Text>
               <IIcon
                 name="arrow"

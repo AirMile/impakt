@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  BackHandler,
+  InteractionManager,
 } from "react-native";
 import { MotiView } from "moti";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,6 +19,7 @@ import { ImpaktLogo } from "../components/ImpaktLogo";
 import { IIcon } from "../components/Icons";
 import { FeedScreen } from "./FeedScreen";
 import { colors, fonts, surfaces } from "../theme/tokens";
+import { pressFx } from "../lib/pressFeedback";
 import { slideUpScreen } from "../theme/animations";
 import { MEMES } from "../api/mock";
 import { shareStory } from "../lib/share";
@@ -43,7 +46,23 @@ export function DetailScreen({
   const [pollChoice, setPollChoice] = useState(null);
   const [activeAction, setActiveAction] = useState(null);
   const [inFeed, setInFeed] = useState(false);
+  const [showRelated, setShowRelated] = useState(false);
   const feedYRef = useRef(Infinity);
+
+  useEffect(() => {
+    const handle = InteractionManager.runAfterInteractions(() => {
+      setShowRelated(true);
+    });
+    return () => handle.cancel();
+  }, []);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      onClose?.();
+      return true;
+    });
+    return () => sub.remove();
+  }, [onClose]);
 
   const relatedMemes = getRelatedMemes(MEMES, story.id);
   const firstMeme = relatedMemes[0];
@@ -80,16 +99,25 @@ export function DetailScreen({
         >
           <Pressable
             onPress={onClose}
-            style={styles.headerIconBtn}
+            unstable_pressDelay={0}
+            style={({ pressed }) => [
+              styles.headerIconBtn,
+              pressFx({ scale: 0.88, opacity: 0.55 })({ pressed }),
+            ]}
             accessibilityLabel="Terug"
           >
             <IIcon name="arrowL" size={26} color={colors.ink} strokeWidth={2} />
           </Pressable>
           <ImpaktLogo size={26} dark />
           <Pressable
-            style={[styles.headerIconBtn, styles.headerCircleBtn]}
-            accessibilityLabel="Delen"
             onPress={() => shareStory(story)}
+            unstable_pressDelay={0}
+            style={({ pressed }) => [
+              styles.headerIconBtn,
+              styles.headerCircleBtn,
+              pressFx({ scale: 0.88, opacity: 0.55 })({ pressed }),
+            ]}
+            accessibilityLabel="Delen"
           >
             <IIcon
               name="share"
@@ -111,7 +139,12 @@ export function DetailScreen({
           <ImpaktLogo size={26} dark />
           <Pressable
             onPress={onProfile}
-            style={[styles.headerIconBtn, styles.headerCircleBtn]}
+            unstable_pressDelay={0}
+            style={({ pressed }) => [
+              styles.headerIconBtn,
+              styles.headerCircleBtn,
+              pressFx({ scale: 0.88, opacity: 0.55 })({ pressed }),
+            ]}
             accessibilityLabel="Profiel"
           >
             <IIcon name="user" size={18} color={colors.ink} strokeWidth={1.8} />
@@ -329,20 +362,22 @@ export function DetailScreen({
         </View>
 
         {/* Embedded feed — onLayout geeft Y-positie voor inFeed-detectie */}
-        <View onLayout={onFeedSectionLayout}>
-          <FeedScreen
-            embedded
-            cat={feedCat}
-            onCatChange={onCatChange}
-            excludeId={story.id}
-            onOpen={(s) => {
-              onSwapStory?.(s);
-            }}
-            onNav={onNav}
-            onSearch={onSearch}
-            onProfile={onProfile}
-            activeTab={activeTab}
-          />
+        <View onLayout={onFeedSectionLayout} style={styles.relatedPlaceholder}>
+          {showRelated && (
+            <FeedScreen
+              embedded
+              cat={feedCat}
+              onCatChange={onCatChange}
+              excludeId={story.id}
+              onOpen={(s) => {
+                onSwapStory?.(s);
+              }}
+              onNav={onNav}
+              onSearch={onSearch}
+              onProfile={onProfile}
+              activeTab={activeTab}
+            />
+          )}
         </View>
 
         <View style={{ height: 120 }} />
@@ -374,6 +409,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+  },
+
+  relatedPlaceholder: {
+    minHeight: 600,
   },
 
   // Header

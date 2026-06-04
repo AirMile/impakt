@@ -57,6 +57,7 @@ jest.mock("moti", () => {
     MotiView: View,
     MotiText: Text,
     MotiScrollView: ScrollView,
+    AnimatePresence: ({ children }) => children,
     useAnimationState: jest.fn(() => ({})),
     useDynamicAnimation: jest.fn(() => [{}]),
   };

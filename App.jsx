@@ -16,6 +16,7 @@ import {
   Geist_600SemiBold,
 } from "@expo-google-fonts/geist";
 
+import { AnimatePresence } from "moti";
 import { colors } from "./src/theme/tokens";
 import { STORIES as FEED_STORIES, MEMES } from "./src/api/mock";
 import { getOnboarded } from "./src/storage/prefs";
@@ -222,22 +223,24 @@ export default function App() {
             }}
           />
         )}
-        {inApp && openStory && (
-          <DetailScreen
-            key={openStory.id}
-            story={openStory}
-            onClose={() => setOpenStory(null)}
-            onOpenMeme={openMemeForStory}
-            onSwapStory={setOpenStory}
-            tab={tab}
-            feedCat={feedCat}
-            onCatChange={setFeedCat}
-            onNav={navTab}
-            onProfile={handleProfile}
-            onSearch={handleSearch}
-            activeTab={tab}
-          />
-        )}
+        <AnimatePresence>
+          {inApp && openStory && (
+            <DetailScreen
+              key={openStory.id}
+              story={openStory}
+              onClose={() => setOpenStory(null)}
+              onOpenMeme={openMemeForStory}
+              onSwapStory={setOpenStory}
+              tab={tab}
+              feedCat={feedCat}
+              onCatChange={setFeedCat}
+              onNav={navTab}
+              onProfile={handleProfile}
+              onSearch={handleSearch}
+              activeTab={tab}
+            />
+          )}
+        </AnimatePresence>
 
         {/* BottomNav — één instantie voor de hele app-levensduur.
             BlurView wordt niet meer gecreëerd bij elke tabwissel. */}
