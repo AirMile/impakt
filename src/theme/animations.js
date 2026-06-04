@@ -1,4 +1,4 @@
-import { Easing } from "react-native";
+import { Easing } from "react-native-reanimated";
 
 // Reanimated/Moti presets — ports van CSS @keyframes in index.html
 

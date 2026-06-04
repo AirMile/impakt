@@ -121,7 +121,10 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontFamily: fonts.display,
     fontSize: 13,
+    lineHeight: 20,
     fontWeight: "600",
+    includeFontPadding: false,
+    textAlignVertical: "center",
   },
   divider: {
     width: 1,
