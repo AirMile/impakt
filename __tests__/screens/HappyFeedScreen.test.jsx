@@ -1,11 +1,7 @@
 import React from "react";
-import { StyleSheet } from "react-native";
 import { render, fireEvent } from "@testing-library/react-native";
 import { HappyFeedScreen } from "../../src/screens/HappyFeedScreen";
 
-// jest.mock wordt gehoist — inline data zodat tests deterministisch zijn.
-// 2 happy stories met oude datum (1 Januari 2020) → altijd in 'earlier'-bucket,
-// ongeacht wanneer de test draait. Geen "Wetenschap"-tag → test 5 kan lege filter triggeren.
 jest.mock("../../src/api/mock", () => ({
   STORIES: [
     {
@@ -54,40 +50,42 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test("tap op thema-tegel filtert feed op tag", () => {
+test("tap op thema filtert feed op tag", () => {
   const { getByText, queryByText, getByTestId } = render(
     <HappyFeedScreen {...defaultProps} />
   );
   expect(getByText("Wolf story")).toBeTruthy();
   expect(getByText("Sociaal story")).toBeTruthy();
 
-  fireEvent.press(getByTestId("theme-tile-Natuur"));
+  fireEvent.press(getByTestId("happy-topic-Natuur"));
 
   expect(getByText("Wolf story")).toBeTruthy();
   expect(queryByText("Sociaal story")).toBeNull();
 });
 
-test("tweede tap op zelfde tegel wist filter", () => {
+test("tweede tap op zelfde thema wist filter", () => {
   const { getByText, queryByText, getByTestId } = render(
     <HappyFeedScreen {...defaultProps} />
   );
 
-  fireEvent.press(getByTestId("theme-tile-Natuur"));
+  fireEvent.press(getByTestId("happy-topic-Natuur"));
   expect(queryByText("Sociaal story")).toBeNull();
 
-  fireEvent.press(getByTestId("theme-tile-Natuur"));
+  fireEvent.press(getByTestId("happy-topic-Natuur"));
   expect(getByText("Wolf story")).toBeTruthy();
   expect(getByText("Sociaal story")).toBeTruthy();
 });
 
-test("actieve tegel krijgt cream border", () => {
-  const { getByTestId } = render(<HappyFeedScreen {...defaultProps} />);
+test("meerdere thema's kunnen tegelijk geselecteerd worden", () => {
+  const { getByText, getByTestId } = render(
+    <HappyFeedScreen {...defaultProps} />
+  );
 
-  fireEvent.press(getByTestId("theme-tile-Natuur"));
+  fireEvent.press(getByTestId("happy-topic-Natuur"));
+  fireEvent.press(getByTestId("happy-topic-Buitenland"));
 
-  const tile = getByTestId("theme-tile-Natuur");
-  const flat = StyleSheet.flatten(tile.props.style);
-  expect(flat.borderWidth).toBe(2.5);
+  expect(getByText("Wolf story")).toBeTruthy();
+  expect(getByText("Sociaal story")).toBeTruthy();
 });
 
 test("EERDER-label verborgen als het de enige sectie is", () => {
@@ -95,8 +93,6 @@ test("EERDER-label verborgen als het de enige sectie is", () => {
     <HappyFeedScreen {...defaultProps} />
   );
 
-  // Beide stories hebben datum "1 Januari 2020" → alle happy stories in earlier-bucket.
-  // Met threshold=3 en 2 stories: today(0)→week(0)→earlier(2). Enige sectie is earlier.
   expect(getByText("Wolf story")).toBeTruthy();
   expect(queryByText("EERDER")).toBeNull();
 });
@@ -106,8 +102,7 @@ test("empty-state toont filter-hint bij actief thema zonder matches", () => {
     <HappyFeedScreen {...defaultProps} />
   );
 
-  // "Wetenschap" komt niet voor als tag in de mock → lege filterresultaat.
-  fireEvent.press(getByTestId("theme-tile-Wetenschap"));
+  fireEvent.press(getByTestId("happy-topic-Kunst"));
 
-  expect(getByText(/Geen leuk nieuws over Wetenschap/)).toBeTruthy();
+  expect(getByText(/Geen leuk nieuws over Kunst/)).toBeTruthy();
 });

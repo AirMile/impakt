@@ -1,62 +1,136 @@
 import React, { useMemo, useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  StyleSheet,
-  Dimensions,
-} from "react-native";
+import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 
 import { AppHeader } from "../components/AppHeader";
+import { IIcon } from "../components/Icons";
 import { FeedCard } from "./FeedScreen";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { STORIES as ALL_STORIES } from "../api/mock";
 import { groupHappyStories } from "../lib/storyDate";
 
-const { width: SCREEN_W } = Dimensions.get("window");
-const TILE_W = (SCREEN_W - 36 - 10) / 2;
-
-const THEME_TILES = [
-  { label: "Natuur", tag: "Natuur", bg: colors.blue, fg: colors.ink },
+const HAPPY_TOPICS = [
+  { label: "Politiek", icon: "topicPolitics", filters: ["Politiek"] },
   {
-    label: "Wetenschap",
-    tag: "Wetenschap",
-    bg: colors.blueDark,
-    fg: colors.cream,
+    label: "Buitenland",
+    icon: "topicWorld",
+    filters: ["Buitenland", "Wereld"],
   },
-  { label: "Sociaal", tag: "Sociaal", bg: colors.red, fg: colors.cream },
-  { label: "Atletiek", tag: "Atletiek", bg: colors.ink, fg: colors.cream },
+  { label: "Economie", icon: "topicEconomy", filters: ["Economie"] },
+  { label: "Sport", icon: "topicSport", filters: ["Sport"] },
+  { label: "Natuur", icon: "topicNature", filters: ["Natuur"] },
+  {
+    label: "Innovatie",
+    icon: "topicInnovation",
+    filters: ["Innovatie", "Tech"],
+  },
+  { label: "Kunst", icon: "topicArt", filters: ["Kunst"] },
+  { label: "Lokaal", icon: "topicLocal", filters: ["Lokaal"] },
 ];
 
-export function HappyFeedScreen({ onOpen, onProfile }) {
-  const [activeTheme, setActiveTheme] = useState(null);
+const TOPIC_BG = "#DDF5F8";
+const TOPIC_INK = "#10111A";
+const SELECTED_BG = "#10141C";
 
-  const sections = useMemo(
-    () =>
-      groupHappyStories(
-        ALL_STORIES.filter((s) => s.goodNews),
-        {
-          filterTag: activeTheme,
-          threshold: activeTheme ? 1 : 3,
-        }
-      ),
-    [activeTheme]
-  );
+export function HappyFeedScreen({ onOpen, onProfile }) {
+  const [selectedTopics, setSelectedTopics] = useState(new Set());
+
+  const activeFilters = useMemo(() => {
+    if (selectedTopics.size === 0) return [];
+    return HAPPY_TOPICS.filter((topic) =>
+      selectedTopics.has(topic.label)
+    ).flatMap((topic) => topic.filters);
+  }, [selectedTopics]);
+
+  const sections = useMemo(() => {
+    const happyStories = ALL_STORIES.filter((story) => story.goodNews);
+    const filteredStories =
+      activeFilters.length === 0
+        ? happyStories
+        : happyStories.filter((story) =>
+            [story.cat, ...story.tags].some((tag) =>
+              activeFilters.includes(tag)
+            )
+          );
+
+    return groupHappyStories(filteredStories, {
+      threshold: activeFilters.length > 0 ? 1 : 3,
+    });
+  }, [activeFilters]);
 
   const topSections = sections.filter((sec) => sec.key !== "earlier");
   const earlierSection = sections.find((sec) => sec.key === "earlier");
 
+  const toggleTopic = (label) => {
+    setSelectedTopics((current) => {
+      const next = new Set(current);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
+
+  const activeLabel = [...selectedTopics].join(", ");
+
+  const topicBar = (
+    <View style={styles.topicSection}>
+      <Text style={styles.topicSectionLabel}>Ontdek per thema</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.topicChipsRow}
+        style={styles.topicChipsScroll}
+      >
+        {HAPPY_TOPICS.map((topic) => {
+          const isSelected = selectedTopics.has(topic.label);
+
+          return (
+            <Pressable
+              key={topic.label}
+              testID={`happy-topic-${topic.label}`}
+              onPress={() => toggleTopic(topic.label)}
+              style={({ pressed }) => [
+                styles.topicChip,
+                isSelected ? styles.topicChipSelected : styles.topicChipIdle,
+                { opacity: pressed ? 0.78 : 1 },
+              ]}
+            >
+              <IIcon
+                name={topic.icon}
+                size={16}
+                color={isSelected ? "#FFFFFF" : TOPIC_INK}
+                strokeWidth={2.3}
+              />
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.topicChipLabel,
+                  { color: isSelected ? "#FFFFFF" : TOPIC_INK },
+                ]}
+              >
+                {topic.label}
+              </Text>
+              {isSelected && (
+                <IIcon name="check" size={16} color="#FFFFFF" strokeWidth={3} />
+              )}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      <View style={styles.topicScrollSpacer} />
+    </View>
+  );
+
   return (
-    <View style={s.screen}>
+    <View style={styles.screen}>
       <AppHeader onProfile={onProfile} />
+      {topicBar}
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.scroll}
+        contentContainerStyle={styles.scroll}
       >
         {topSections.map((sec) => (
-          <View key={sec.key} style={s.section}>
-            <Text style={s.sectionLabel}>{sec.label}</Text>
+          <View key={sec.key} style={styles.section}>
+            <Text style={styles.sectionLabel}>{sec.label}</Text>
             {sec.stories.map((story, i) => (
               <FeedCard
                 key={story.id}
@@ -69,43 +143,10 @@ export function HappyFeedScreen({ onOpen, onProfile }) {
           </View>
         ))}
 
-        {/* Ontdek per thema */}
-        <View style={s.section}>
-          <Text style={s.sectionLabel}>ONTDEK PER THEMA</Text>
-          <View style={s.tilesGrid}>
-            {THEME_TILES.map((tile, i) => {
-              const isLastOdd =
-                i === THEME_TILES.length - 1 && THEME_TILES.length % 2 !== 0;
-              const isActive = activeTheme === tile.tag;
-              return (
-                <Pressable
-                  key={tile.label}
-                  testID={`theme-tile-${tile.tag}`}
-                  onPress={() =>
-                    setActiveTheme((prev) =>
-                      prev === tile.tag ? null : tile.tag
-                    )
-                  }
-                  style={[
-                    s.tile,
-                    { backgroundColor: tile.bg },
-                    isLastOdd && s.tileFull,
-                    isActive && s.tileActive,
-                  ]}
-                >
-                  <Text style={[s.tileLabel, { color: tile.fg }]}>
-                    {tile.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
         {earlierSection && (
-          <View style={s.section}>
+          <View style={styles.section}>
             {topSections.length > 0 && (
-              <Text style={s.sectionLabel}>{earlierSection.label}</Text>
+              <Text style={styles.sectionLabel}>{earlierSection.label}</Text>
             )}
             {earlierSection.stories.map((story, i) => (
               <FeedCard
@@ -118,18 +159,18 @@ export function HappyFeedScreen({ onOpen, onProfile }) {
           </View>
         )}
 
-        {sections.length === 0 && activeTheme && (
-          <View style={s.empty}>
-            <Text style={s.emptyLabel}>
-              Geen leuk nieuws over {activeTheme}.{"\n"}Tap nogmaals om het
+        {sections.length === 0 && activeFilters.length > 0 && (
+          <View style={styles.empty}>
+            <Text style={styles.emptyLabel}>
+              Geen leuk nieuws over {activeLabel}.{"\n"}Tik nogmaals om het
               filter te wissen.
             </Text>
           </View>
         )}
 
-        {sections.length === 0 && !activeTheme && (
-          <View style={s.empty}>
-            <Text style={s.emptyLabel}>
+        {sections.length === 0 && activeFilters.length === 0 && (
+          <View style={styles.empty}>
+            <Text style={styles.emptyLabel}>
               Geen goed nieuws op dit moment.{"\n"}Kom later terug.
             </Text>
           </View>
@@ -141,7 +182,7 @@ export function HappyFeedScreen({ onOpen, onProfile }) {
   );
 }
 
-const s = StyleSheet.create({
+const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.cream,
@@ -149,10 +190,9 @@ const s = StyleSheet.create({
   scroll: {
     paddingTop: 4,
   },
-
   section: {
-    marginTop: 28,
-    gap: 12,
+    marginTop: 0,
+    gap: 0,
   },
   sectionLabel: {
     fontFamily: fonts.display,
@@ -161,34 +201,71 @@ const s = StyleSheet.create({
     letterSpacing: 1.2,
     textTransform: "uppercase",
     paddingHorizontal: 18,
+    marginBottom: 12,
   },
-
-  tilesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
+  topicSection: {
     paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 12,
   },
-  tile: {
-    width: TILE_W,
-    height: 72,
-    borderRadius: 14,
-    alignItems: "flex-start",
-    justifyContent: "flex-end",
-    padding: 14,
-  },
-  tileFull: {
-    width: SCREEN_W - 36,
-  },
-  tileActive: {
-    borderWidth: 2.5,
-    borderColor: colors.cream,
-  },
-  tileLabel: {
+  topicSectionLabel: {
     fontFamily: fonts.display,
-    fontSize: 15,
+    fontSize: 12,
+    color: "rgba(15,17,26,0.55)",
+    textTransform: "uppercase",
+    letterSpacing: 1.4,
+    marginBottom: 10,
   },
-
+  topicChipsScroll: {
+    marginHorizontal: -18,
+    flexGrow: 0,
+    overflow: "visible",
+  },
+  topicChipsRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingTop: 4,
+    paddingBottom: 12,
+  },
+  topicChip: {
+    height: 40,
+    minWidth: 104,
+    paddingHorizontal: 14,
+    borderRadius: 9999,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    shadowOpacity: 0.06,
+    elevation: 2,
+  },
+  topicChipSelected: {
+    backgroundColor: SELECTED_BG,
+    shadowOpacity: 0.12,
+    elevation: 3,
+  },
+  topicChipIdle: {
+    backgroundColor: TOPIC_BG,
+  },
+  topicChipLabel: {
+    flexShrink: 1,
+    minWidth: 0,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  topicScrollSpacer: {
+    height: 6,
+    marginTop: -5,
+    marginHorizontal: -18,
+    backgroundColor: colors.cream,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(15,17,26,0.05)",
+  },
   empty: {
     padding: 48,
     alignItems: "center",
