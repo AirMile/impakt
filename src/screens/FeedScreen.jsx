@@ -19,6 +19,7 @@ import { colors, fonts, surfaces } from "../theme/tokens";
 import { fadeUp } from "../theme/animations";
 import { STORIES as FEED_STORIES } from "../api/mock";
 import { shareStory } from "../lib/share";
+import { pressFx } from "../lib/pressFeedback";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 36;
