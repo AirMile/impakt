@@ -74,12 +74,11 @@ test("goodNewsOnly=true toont alleen goodNews stories", () => {
   expect(queryByText("Slecht sportverhaal")).toBeNull();
 });
 
-test("specifieke cat filtert op categorie", () => {
-  const { getByText, queryByText } = render(
-    <FeedScreen {...defaultProps} cat="Klimaat" />
-  );
-  expect(getByText("Goed klimaatverhaal")).toBeTruthy();
-  expect(queryByText("Slecht sportverhaal")).toBeNull();
+test("topicfilter filtert op categorie", () => {
+  const { getByText, queryByText } = render(<FeedScreen {...defaultProps} />);
+  fireEvent.press(getByText("Sport"));
+  expect(getByText("Slecht sportverhaal")).toBeTruthy();
+  expect(queryByText("Goed klimaatverhaal")).toBeNull();
 });
 
 test("excludeId verwijdert story uit lijst", () => {

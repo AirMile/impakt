@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,57 +10,83 @@ import {
   Dimensions,
 } from "react-native";
 import { MotiView } from "moti";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppHeader } from "../components/AppHeader";
 import { HeroOverlay } from "../components/HeroOverlay";
-import { BottomNav } from "../components/BottomNav";
 import { ReactionRail } from "../components/ReactionRail";
 import { IIcon } from "../components/Icons";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { fadeUp } from "../theme/animations";
-import { STORIES as FEED_STORIES, CATEGORIES as CATS } from "../api/mock";
+import { STORIES as FEED_STORIES } from "../api/mock";
 import { shareStory } from "../lib/share";
-import { filterStories } from "../lib/filterStories";
-import { pressFx } from "../lib/pressFeedback";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 36;
 
-// ─── Category chips ──────────────────────────────────────────────────────────
+const FEED_TOPICS = [
+  { label: "Politiek", icon: "topicPolitics", cat: "Politiek" },
+  { label: "Buitenland", icon: "topicWorld", cat: "Wereld" },
+  { label: "Economie", icon: "topicEconomy", cat: "Economie" },
+  { label: "Sport", icon: "topicSport", cat: "Sport" },
+  { label: "Natuur", icon: "topicNature", cat: "Natuur" },
+  { label: "Innovatie", icon: "topicInnovation", cat: "Tech" },
+  { label: "Kunst", icon: "topicArt", cat: "Kunst" },
+  { label: "Lokaal", icon: "topicLocal", cat: "Lokaal" },
+];
 
-function CatChips({ active, onChange }) {
+const TOPIC_BG = "#DDF5F8";
+const TOPIC_INK = "#10111A";
+const SELECTED_BG = "#10141C";
+
+function TopicChips({ selectedTopics, onToggle }) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.chipsRow}
-      style={styles.chipsScroll}
-    >
-      {CATS.map((c) => {
-        const on = c === active;
-        return (
-          <Pressable
-            key={c}
-            onPress={() => onChange(c)}
-            unstable_pressDelay={0}
-            style={({ pressed }) => [
-              styles.chip,
-              on && styles.chipActive,
-              pressFx({ scale: 0.95 })({ pressed }),
-            ]}
-          >
-            <Text style={[styles.chipLabel, on && styles.chipLabelActive]}>
-              {c}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
+    <View style={styles.topicSection}>
+      <Text style={styles.topicSectionLabel}>Ontdek per thema</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.topicChipsRow}
+        style={styles.topicChipsScroll}
+      >
+        {FEED_TOPICS.map((topic) => {
+          const isSelected = selectedTopics.has(topic.label);
+
+          return (
+            <Pressable
+              key={topic.label}
+              onPress={() => onToggle(topic.label)}
+              style={({ pressed }) => [
+                styles.topicChip,
+                isSelected ? styles.topicChipSelected : styles.topicChipIdle,
+                { opacity: pressed ? 0.78 : 1 },
+              ]}
+            >
+              <IIcon
+                name={topic.icon}
+                size={16}
+                color={isSelected ? "#FFFFFF" : TOPIC_INK}
+                strokeWidth={2.3}
+              />
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.topicChipLabel,
+                  { color: isSelected ? "#FFFFFF" : TOPIC_INK },
+                ]}
+              >
+                {topic.label}
+              </Text>
+              {isSelected && (
+                <IIcon name="check" size={16} color="#FFFFFF" strokeWidth={3} />
+              )}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      <View style={styles.topicScrollSpacer} />
+    </View>
   );
 }
-
-// ─── Feed card ───────────────────────────────────────────────────────────────
 
 export const FeedCard = React.memo(function FeedCard({
   story,
@@ -98,7 +124,7 @@ export const FeedCard = React.memo(function FeedCard({
             <View style={styles.dateRow}>
               <IIcon name="calendar" size={12} color={colors.cream} />
               <Text style={styles.dateMeta}>
-                {story.date} · {story.time}
+                {story.date} - {story.time}
               </Text>
             </View>
           )}
@@ -152,44 +178,43 @@ export const FeedCard = React.memo(function FeedCard({
   );
 });
 
-// ─── Feed screen ─────────────────────────────────────────────────────────────
-
 export function FeedScreen({
   onOpen,
-  onNav,
-  onSearch,
   onProfile,
-  activeTab,
-  cat,
-  onCatChange,
   embedded = false,
   excludeId,
   goodNewsOnly = false,
 }) {
-  const listRef = useRef(null);
+  const [selectedTopics, setSelectedTopics] = useState(new Set());
 
-  const stories = useMemo(
-    () =>
-      filterStories({ stories: FEED_STORIES, goodNewsOnly, cat, excludeId }),
-    [goodNewsOnly, cat, excludeId]
-  );
+  const activeCats = useMemo(() => {
+    if (selectedTopics.size === 0) return [];
+    return FEED_TOPICS.filter((topic) => selectedTopics.has(topic.label)).map(
+      (topic) => topic.cat
+    );
+  }, [selectedTopics]);
 
-  const handleCatChange = useCallback(
-    (next) => {
-      onCatChange(next);
-      if (!embedded)
-        listRef.current?.scrollToOffset({ offset: 0, animated: true });
-    },
-    [onCatChange, embedded]
-  );
+  const stories = useMemo(() => {
+    const base = goodNewsOnly
+      ? FEED_STORIES.filter((story) => story.goodNews === true)
+      : FEED_STORIES;
+    const byTopic =
+      activeCats.length === 0
+        ? base
+        : base.filter((story) => activeCats.includes(story.cat));
+    return excludeId
+      ? byTopic.filter((story) => story.id !== excludeId)
+      : byTopic;
+  }, [activeCats, excludeId, goodNewsOnly]);
 
-  const renderHeader = useCallback(
-    () =>
-      goodNewsOnly ? null : (
-        <CatChips active={cat} onChange={handleCatChange} />
-      ),
-    [goodNewsOnly, cat, handleCatChange]
-  );
+  const toggleTopic = useCallback((label) => {
+    setSelectedTopics((current) => {
+      const next = new Set(current);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  }, []);
 
   const renderEmpty = useCallback(
     () => (
@@ -211,10 +236,14 @@ export function FeedScreen({
     [onOpen]
   );
 
+  const topicBar = !goodNewsOnly && (
+    <TopicChips selectedTopics={selectedTopics} onToggle={toggleTopic} />
+  );
+
   if (embedded) {
     return (
       <View>
-        {renderHeader()}
+        {topicBar}
         {stories.map((s, i) => (
           <FeedCard key={s.id} story={s} onOpen={onOpen} index={i} />
         ))}
@@ -227,12 +256,11 @@ export function FeedScreen({
   return (
     <View style={styles.screen}>
       <AppHeader onProfile={onProfile} />
+      {topicBar}
       <FlatList
-        ref={listRef}
         data={stories}
         keyExtractor={(s) => String(s.id)}
         renderItem={renderItem}
-        ListHeaderComponent={renderHeader}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         showsVerticalScrollIndicator={false}
@@ -246,8 +274,6 @@ export function FeedScreen({
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -257,33 +283,76 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
 
-  chipsScroll: {
-    flexGrow: 0,
+  topicSection: {
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 12,
   },
-  chipsRow: {
+  topicSectionLabel: {
+    fontFamily: fonts.display,
+    fontSize: 12,
+    color: "rgba(15,17,26,0.55)",
+    textTransform: "uppercase",
+    letterSpacing: 1.4,
+    marginBottom: 10,
+  },
+  sectionLabel: {
+    fontFamily: fonts.display,
+    fontSize: 12,
+    color: "rgba(15,17,26,0.55)",
+    textTransform: "uppercase",
+    letterSpacing: 1.4,
+    marginBottom: 10,
+  },
+  topicChipsScroll: {
+    marginHorizontal: -18,
+    flexGrow: 0,
+    overflow: "visible",
+  },
+  topicChipsRow: {
     flexDirection: "row",
     gap: 8,
     paddingHorizontal: 18,
-    paddingTop: 10,
-    paddingBottom: 14,
+    paddingTop: 4,
+    paddingBottom: 12,
   },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  topicChip: {
+    height: 40,
+    minWidth: 104,
+    paddingHorizontal: 14,
     borderRadius: 9999,
-    backgroundColor: "rgba(122,207,223,0.28)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    shadowOpacity: 0.06,
+    elevation: 2,
   },
-  chipActive: {
-    backgroundColor: colors.ink,
+  topicChipSelected: {
+    backgroundColor: SELECTED_BG,
+    shadowOpacity: 0.12,
+    elevation: 3,
   },
-  chipLabel: {
-    fontFamily: fonts.displayMedium,
-    fontSize: 13.5,
-    color: colors.ink,
+  topicChipIdle: {
+    backgroundColor: TOPIC_BG,
   },
-  chipLabelActive: {
-    fontFamily: fonts.display,
-    color: colors.cream,
+  topicChipLabel: {
+    flexShrink: 1,
+    minWidth: 0,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  topicScrollSpacer: {
+    height: 6,
+    marginTop: -5,
+    marginHorizontal: -18,
+    backgroundColor: colors.cream,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(15,17,26,0.05)",
   },
 
   cardWrapper: {

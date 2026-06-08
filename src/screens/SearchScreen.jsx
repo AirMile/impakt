@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -19,45 +19,111 @@ import { slideUpScreen } from "../theme/animations";
 import { searchStories } from "../lib/searchStories";
 import { topReadStories } from "../lib/topReadStories";
 
-const POPULAR_TAGS = [
-  "Klimaat",
-  "Live",
-  "Goed nieuws",
-  "AI",
-  "Politiek",
-  "Wonen",
-  "Gaza",
-  "Energie",
+const TOPICS = [
+  { label: "Politiek", icon: "topicPolitics", cat: "Politiek" },
+  { label: "Buitenland", icon: "topicWorld", cat: "Wereld" },
+  { label: "Economie", icon: "topicEconomy", cat: "Economie" },
+  { label: "Sport", icon: "topicSport", cat: "Sport" },
+  { label: "Natuur", icon: "topicNature", cat: "Natuur" },
+  { label: "Innovatie", icon: "topicInnovation", cat: "Tech" },
+  { label: "Kunst", icon: "topicArt", cat: "Kunst" },
+  { label: "Lokaal", icon: "topicLocal", cat: "Lokaal" },
 ];
 
-const THEME_TILES = [
-  { label: "Klimaat", bg: colors.blue, fg: colors.ink },
-  { label: "Politiek", bg: colors.red, fg: colors.cream },
-  { label: "Sport", bg: colors.blueDark, fg: colors.cream },
-  { label: "Tech", bg: colors.ink, fg: colors.cream },
-  { label: "Wereld", bg: colors.redDark, fg: colors.cream },
-];
+const TOPIC_BG = "#DDF5F8";
+const TOPIC_INK = "#10111A";
+const SELECTED_BG = "#10141C";
 
 export function SearchScreen({ onClose, onOpenStory }) {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
+  const [selectedTopics, setSelectedTopics] = useState(new Set());
 
-  const results = searchStories(query, FEED_STORIES);
+  const mostReadStories = useMemo(() => topReadStories(FEED_STORIES, 4), []);
+
+  const activeCats = useMemo(() => {
+    if (selectedTopics.size === 0) return [];
+    return TOPICS.filter((topic) => selectedTopics.has(topic.label)).map(
+      (topic) => topic.cat
+    );
+  }, [selectedTopics]);
+
+  const filteredStories = useMemo(() => {
+    if (activeCats.length === 0) return mostReadStories;
+    return mostReadStories.filter((story) => activeCats.includes(story.cat));
+  }, [activeCats, mostReadStories]);
+
+  const results = searchStories(query, filteredStories);
   const q = query.trim().toLowerCase();
+  const hasTopicFilter = selectedTopics.size > 0;
 
-  const topRead = topReadStories(FEED_STORIES, 4);
-
-  const openStory = (s) => {
+  const openStory = (story) => {
     Keyboard.dismiss();
-    onOpenStory(s);
+    onOpenStory(story);
   };
+
+  const toggleTopic = (label) => {
+    setSelectedTopics((current) => {
+      const next = new Set(current);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
+
+  const topicBar = !q && (
+    <View style={styles.topicSection}>
+      <Text style={styles.topicSectionLabel}>Ontdek per thema</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.topicChipsRow}
+        style={styles.topicChipsScroll}
+      >
+        {TOPICS.map((topic) => {
+          const isSelected = selectedTopics.has(topic.label);
+
+          return (
+            <Pressable
+              key={topic.label}
+              onPress={() => toggleTopic(topic.label)}
+              style={({ pressed }) => [
+                styles.topicChip,
+                isSelected ? styles.topicChipSelected : styles.topicChipIdle,
+                { opacity: pressed ? 0.78 : 1 },
+              ]}
+            >
+              <IIcon
+                name={topic.icon}
+                size={16}
+                color={isSelected ? "#FFFFFF" : TOPIC_INK}
+                strokeWidth={2.3}
+              />
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.topicChipLabel,
+                  { color: isSelected ? "#FFFFFF" : TOPIC_INK },
+                ]}
+              >
+                {topic.label}
+              </Text>
+              {isSelected && (
+                <IIcon name="check" size={16} color="#FFFFFF" strokeWidth={3} />
+              )}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      <View style={styles.topicScrollSpacer} />
+    </View>
+  );
 
   return (
     <MotiView
       {...slideUpScreen}
       style={[StyleSheet.absoluteFillObject, styles.screen]}
     >
-      {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Pressable
           onPress={onClose}
@@ -77,7 +143,7 @@ export function SearchScreen({ onClose, onOpenStory }) {
             style={styles.input}
             value={query}
             onChangeText={setQuery}
-            placeholder="Zoek verhalen, tags, thema's…"
+            placeholder="Zoek verhalen, tags, thema's..."
             placeholderTextColor="rgba(15,17,26,0.4)"
             autoFocus
             returnKeyType="search"
@@ -97,77 +163,38 @@ export function SearchScreen({ onClose, onOpenStory }) {
         </View>
       </View>
 
-      {/* Body */}
+      {topicBar}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 24 },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {!q ? (
           <>
-            {/* Populaire tags */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Populair</Text>
-              <View style={styles.tagsWrap}>
-                {POPULAR_TAGS.map((tag) => (
-                  <Pressable
-                    key={tag}
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      setQuery(tag);
-                    }}
-                    style={styles.popularTag}
-                  >
-                    <Text style={styles.popularTagLabel}>{tag}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-
-            {/* Ontdek per thema */}
-            <View style={[styles.section, { marginTop: 24 }]}>
-              <Text style={styles.sectionLabel}>Ontdek per thema</Text>
-              <View style={styles.tilesGrid}>
-                {THEME_TILES.map((tile, i) => {
-                  const isLastOdd =
-                    i === THEME_TILES.length - 1 &&
-                    THEME_TILES.length % 2 !== 0;
-                  return (
-                    <Pressable
-                      key={tile.label}
-                      onPress={() => {
-                        Keyboard.dismiss();
-                        setQuery(tile.label);
-                      }}
-                      style={[
-                        styles.themeTile,
-                        { backgroundColor: tile.bg },
-                        isLastOdd && styles.themeTileFull,
-                      ]}
-                    >
-                      <Text style={[styles.themeTileLabel, { color: tile.fg }]}>
-                        {tile.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Meest gelezen */}
-            <View style={{ marginTop: 24 }}>
+            <View style={styles.resultsSection}>
               <Text style={[styles.sectionLabel, { paddingHorizontal: 18 }]}>
-                Meest gelezen
+                {hasTopicFilter ? "Gefilterde verhalen" : "Meest gelezen"}
               </Text>
-              {topRead.map((s) => (
-                <FeedCard
-                  key={s.id}
-                  story={s}
-                  onOpen={openStory}
-                  variant="compact"
-                />
-              ))}
+              {filteredStories.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>
+                    Geen meest gelezen verhalen binnen deze thema's.
+                  </Text>
+                </View>
+              ) : (
+                filteredStories.map((story) => (
+                  <FeedCard
+                    key={story.id}
+                    story={story}
+                    onOpen={openStory}
+                    variant="compact"
+                  />
+                ))
+              )}
             </View>
           </>
         ) : (
@@ -183,10 +210,10 @@ export function SearchScreen({ onClose, onOpenStory }) {
                 </Text>
               </View>
             ) : (
-              results.map((s) => (
+              results.map((story) => (
                 <FeedCard
-                  key={s.id}
-                  story={s}
+                  key={story.id}
+                  story={story}
                   onOpen={openStory}
                   variant="full"
                 />
@@ -235,9 +262,25 @@ const styles = StyleSheet.create({
     color: colors.ink,
     padding: 0,
   },
+  scrollContent: {
+    paddingTop: 4,
+  },
   section: {
     paddingHorizontal: 18,
     paddingTop: 16,
+  },
+  topicSection: {
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 12,
+  },
+  topicSectionLabel: {
+    fontFamily: fonts.display,
+    fontSize: 12,
+    color: "rgba(15,17,26,0.55)",
+    textTransform: "uppercase",
+    letterSpacing: 1.4,
+    marginBottom: 10,
   },
   sectionLabel: {
     fontFamily: fonts.display,
@@ -247,43 +290,58 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
     marginBottom: 10,
   },
-  tagsWrap: {
+  topicChipsScroll: {
+    marginHorizontal: -18,
+    flexGrow: 0,
+    overflow: "visible",
+  },
+  topicChipsRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 8,
+    paddingHorizontal: 18,
+    paddingTop: 4,
+    paddingBottom: 12,
   },
-  popularTag: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+  topicChip: {
+    height: 40,
+    minWidth: 104,
+    paddingHorizontal: 14,
     borderRadius: 9999,
-    backgroundColor: "rgba(122,207,223,0.28)",
-  },
-  popularTagLabel: {
-    fontFamily: fonts.displayMedium,
-    fontSize: 13.5,
-    color: colors.ink,
-  },
-  tilesGrid: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    shadowOpacity: 0.06,
+    elevation: 2,
   },
-  themeTile: {
-    flexBasis: "45%",
-    flexGrow: 1,
-    borderRadius: 14,
-    paddingTop: 22,
-    paddingBottom: 18,
-    paddingHorizontal: 16,
+  topicChipSelected: {
+    backgroundColor: SELECTED_BG,
+    shadowOpacity: 0.12,
+    elevation: 3,
   },
-  themeTileFull: {
-    flexBasis: "100%",
+  topicChipIdle: {
+    backgroundColor: TOPIC_BG,
   },
-  themeTileLabel: {
-    fontFamily: fonts.header,
-    fontSize: 28,
-    lineHeight: 27,
-    letterSpacing: 0.5,
+  topicChipLabel: {
+    flexShrink: 1,
+    minWidth: 0,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  topicScrollSpacer: {
+    height: 6,
+    marginTop: -5,
+    marginHorizontal: -18,
+    backgroundColor: colors.cream,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(15,17,26,0.05)",
+  },
+  resultsSection: {
+    marginTop: 0,
   },
   resultsCount: {
     paddingHorizontal: 18,

@@ -52,9 +52,10 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test("rendert 'Populair' sectie zonder zoekquery (geen ReferenceError)", () => {
-  const { getByText } = render(<SearchScreen {...defaultProps} />);
-  expect(getByText("Populair")).toBeTruthy();
+test("rendert topicfilter zonder populaire tags", () => {
+  const { getByText, queryByText } = render(<SearchScreen {...defaultProps} />);
+  expect(getByText("Ontdek per thema")).toBeTruthy();
+  expect(queryByText("Populair")).toBeNull();
 });
 
 test("rendert 'Meest gelezen' sectie zonder zoekquery", () => {
@@ -67,11 +68,11 @@ test("na invoer van query verdwijnt discover-view en verschijnen resultaten", ()
     <SearchScreen {...defaultProps} />
   );
   fireEvent.changeText(
-    getByPlaceholderText("Zoek verhalen, tags, thema's…"),
+    getByPlaceholderText("Zoek verhalen, tags, thema's..."),
     "klimaat"
   );
   expect(getByText("Klimaatverhaal")).toBeTruthy();
-  expect(queryByText("Populair")).toBeNull();
+  expect(queryByText("Ontdek per thema")).toBeNull();
 });
 
 test("lege zoekresultaten toont geen-resultaten tekst", () => {
@@ -79,15 +80,16 @@ test("lege zoekresultaten toont geen-resultaten tekst", () => {
     <SearchScreen {...defaultProps} />
   );
   fireEvent.changeText(
-    getByPlaceholderText("Zoek verhalen, tags, thema's…"),
+    getByPlaceholderText("Zoek verhalen, tags, thema's..."),
     "xyzxyzxyz"
   );
   expect(getByText(/Geen resultaten/)).toBeTruthy();
 });
 
-test("klik op populaire tag vult de zoekbalk en verbergt discover-view", () => {
-  // "Energie" komt alleen voor als populaire tag — geen dubbele match
+test("klik op topic selecteert filter en toont gefilterde verhalen", () => {
   const { getByText, queryByText } = render(<SearchScreen {...defaultProps} />);
-  fireEvent.press(getByText("Energie"));
-  expect(queryByText("Populair")).toBeNull();
+  fireEvent.press(getByText("Sport"));
+  expect(getByText("Gefilterde verhalen")).toBeTruthy();
+  expect(getByText("Sportverhaal")).toBeTruthy();
+  expect(queryByText("Klimaatverhaal")).toBeNull();
 });
