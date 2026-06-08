@@ -10,10 +10,10 @@ import {
   Text,
   Image,
   Pressable,
+  FlatList,
   StyleSheet,
   Dimensions,
 } from "react-native";
-import PagerView from "react-native-pager-view";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
@@ -278,7 +278,7 @@ export function HumorScreen({
   onOpenStory,
 }) {
   const insets = useSafeAreaInsets();
-  const pagerRef = useRef(null);
+  const listRef = useRef(null);
 
   const [initialIdx] = useState(() => {
     if (initialStoryId == null) return 0;
@@ -291,27 +291,39 @@ export function HumorScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const renderItem = useCallback(
+    ({ item, index }) => (
+      <MemeCard
+        meme={item}
+        idx={index}
+        total={MEMES.length}
+        isFirst={index === 0}
+        onOpenStory={onOpenStory}
+      />
+    ),
+    [onOpenStory]
+  );
+
   return (
     <View style={styles.screen}>
-      <PagerView
-        ref={pagerRef}
-        style={styles.screen}
-        orientation="vertical"
-        initialPage={initialIdx}
-        offscreenPageLimit={1}
-      >
-        {MEMES.map((meme, index) => (
-          <View key={meme.id} collapsable={false} style={styles.page}>
-            <MemeCard
-              meme={meme}
-              idx={index}
-              total={MEMES.length}
-              isFirst={index === 0}
-              onOpenStory={onOpenStory}
-            />
-          </View>
-        ))}
-      </PagerView>
+      <FlatList
+        ref={listRef}
+        data={MEMES}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        pagingEnabled
+        showsVerticalScrollIndicator={false}
+        getItemLayout={(_, index) => ({
+          length: SCREEN_H,
+          offset: SCREEN_H * index,
+          index,
+        })}
+        initialScrollIndex={initialIdx > 0 ? initialIdx : undefined}
+        decelerationRate="fast"
+        initialNumToRender={2}
+        maxToRenderPerBatch={2}
+        windowSize={5}
+      />
 
       <View
         style={[styles.headerOverlay, { height: insets.top + 80 }]}
@@ -335,10 +347,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.ink,
-  },
-
-  page: {
-    flex: 1,
   },
 
   card: {
