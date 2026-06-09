@@ -10,43 +10,39 @@ jest.mock("../../src/lib/tags", () => ({
   ]),
 }));
 
-jest.mock("../../src/api/mock", () => ({
-  STORIES: [
+jest.mock("../../src/lib/articles", () => ({
+  fetchArticles: jest.fn().mockResolvedValue([
     {
       id: 1,
-      cat: "Klimaat",
       title: "Klimaatverhaal",
       sub: "...",
       img: "",
-      date: "1 jun",
+      date: "1 juni 2026",
       time: "10:00",
       views: "3k",
-      readers: 300,
+      readers: "3k",
       trending: false,
       goodNews: true,
-      tags: [],
+      tags: [{ id: 6, name: "Natuur", category: "natuur" }],
       body: [],
       reactions: { smile: 10, meh: 5, frown: 2 },
     },
     {
       id: 2,
-      cat: "Sport",
       title: "Sportverhaal",
       sub: "...",
       img: "",
-      date: "1 jun",
+      date: "1 juni 2026",
       time: "11:00",
       views: "1k",
-      readers: 100,
+      readers: "1k",
       trending: false,
       goodNews: false,
-      tags: [],
+      tags: [{ id: 5, name: "Sport", category: "sport" }],
       body: [],
       reactions: { smile: 3, meh: 8, frown: 1 },
     },
-  ],
-  MEMES: [],
-  CATEGORIES: ["Voor jou", "Klimaat", "Sport"],
+  ]),
 }));
 
 jest.mock("../../src/lib/share", () => ({ shareStory: jest.fn() }));
@@ -60,38 +56,42 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test("rendert topicfilter zonder populaire tags", () => {
-  const { getByText, queryByText } = render(<SearchScreen {...defaultProps} />);
-  expect(getByText("Ontdek per thema")).toBeTruthy();
+test("rendert topicfilter zonder populaire tags", async () => {
+  const { findByText, queryByText } = render(
+    <SearchScreen {...defaultProps} />
+  );
+  expect(await findByText("Ontdek per thema")).toBeTruthy();
   expect(queryByText("Populair")).toBeNull();
 });
 
-test("rendert 'Meest gelezen' sectie zonder zoekquery", () => {
-  const { getByText } = render(<SearchScreen {...defaultProps} />);
-  expect(getByText("Meest gelezen")).toBeTruthy();
+test("rendert 'Meest gelezen' sectie zonder zoekquery", async () => {
+  const { findByText } = render(<SearchScreen {...defaultProps} />);
+  expect(await findByText("Meest gelezen")).toBeTruthy();
 });
 
-test("na invoer van query verdwijnt discover-view en verschijnen resultaten", () => {
-  const { getByPlaceholderText, getByText, queryByText } = render(
+test("na invoer van query verdwijnt discover-view en verschijnen resultaten", async () => {
+  const { getByPlaceholderText, findByText, queryByText } = render(
     <SearchScreen {...defaultProps} />
   );
+  await findByText("Meest gelezen");
   fireEvent.changeText(
     getByPlaceholderText("Zoek verhalen, tags, thema's..."),
     "klimaat"
   );
-  expect(getByText("Klimaatverhaal")).toBeTruthy();
+  expect(await findByText("Klimaatverhaal")).toBeTruthy();
   expect(queryByText("Ontdek per thema")).toBeNull();
 });
 
-test("lege zoekresultaten toont geen-resultaten tekst", () => {
-  const { getByPlaceholderText, getByText } = render(
+test("lege zoekresultaten toont geen-resultaten tekst", async () => {
+  const { getByPlaceholderText, findByText } = render(
     <SearchScreen {...defaultProps} />
   );
+  await findByText("Meest gelezen");
   fireEvent.changeText(
     getByPlaceholderText("Zoek verhalen, tags, thema's..."),
     "xyzxyzxyz"
   );
-  expect(getByText(/Geen resultaten/)).toBeTruthy();
+  expect(await findByText(/Geen resultaten/)).toBeTruthy();
 });
 
 test("klik op topic selecteert filter en toont gefilterde verhalen", async () => {

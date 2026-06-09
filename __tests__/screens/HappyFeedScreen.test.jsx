@@ -12,41 +12,39 @@ jest.mock("../../src/lib/tags", () => ({
   ]),
 }));
 
-jest.mock("../../src/api/mock", () => ({
-  STORIES: [
+jest.mock("../../src/lib/articles", () => ({
+  fetchHappyFeed: jest.fn().mockResolvedValue([
     {
       id: 1,
-      cat: "Klimaat",
       goodNews: true,
       title: "Wolf story",
       sub: "...",
       img: "",
-      date: "1 Januari 2020",
+      date: "1 januari 2020",
       time: "10:00",
       views: "1k",
-      readers: 100,
+      readers: "1k",
       trending: false,
-      tags: ["Natuur", "Goed nieuws"],
+      tags: [{ id: 6, name: "Natuur", category: "natuur" }],
       body: [],
       reactions: { smile: 8, meh: 2, frown: 1 },
     },
     {
       id: 2,
-      cat: "Wereld",
       goodNews: true,
       title: "Sociaal story",
       sub: "...",
       img: "",
-      date: "1 Januari 2020",
+      date: "1 januari 2020",
       time: "11:00",
       views: "500",
-      readers: 50,
+      readers: "500",
       trending: false,
-      tags: ["Sociaal", "Goed nieuws"],
+      tags: [{ id: 3, name: "Buitenland", category: "buitenland" }],
       body: [],
       reactions: { smile: 5, meh: 1, frown: 0 },
     },
-  ],
+  ]),
 }));
 
 jest.mock("../../src/lib/share", () => ({ shareStory: jest.fn() }));
@@ -60,11 +58,11 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test("tap op thema filtert feed op tag", async () => {
-  const { getByText, queryByText, findByTestId } = render(
+test("tap op thema filtert feed op tag-category", async () => {
+  const { getByText, queryByText, findByText, findByTestId } = render(
     <HappyFeedScreen {...defaultProps} />
   );
-  expect(getByText("Wolf story")).toBeTruthy();
+  await findByText("Wolf story");
   expect(getByText("Sociaal story")).toBeTruthy();
 
   fireEvent.press(await findByTestId("happy-topic-Natuur"));
@@ -98,12 +96,12 @@ test("meerdere thema's kunnen tegelijk geselecteerd worden", async () => {
   expect(getByText("Sociaal story")).toBeTruthy();
 });
 
-test("EERDER-label verborgen als het de enige sectie is", () => {
-  const { getByText, queryByText } = render(
+test("EERDER-label verborgen als het de enige sectie is", async () => {
+  const { findByText, queryByText } = render(
     <HappyFeedScreen {...defaultProps} />
   );
 
-  expect(getByText("Wolf story")).toBeTruthy();
+  await findByText("Wolf story");
   expect(queryByText("EERDER")).toBeNull();
 });
 
@@ -127,6 +125,5 @@ test("myTags prop rendert eigen interesses bovenaan", async () => {
     />
   );
 
-  // Natuur staat in mine — chip moet bestaan
   expect(await findByTestId("happy-topic-Natuur")).toBeTruthy();
 });

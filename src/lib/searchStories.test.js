@@ -59,3 +59,16 @@ test("whitespace in query wordt getrimd", () => {
 test("meerdere resultaten mogelijk", () => {
   expect(searchStories("nieuws", stories)).toHaveLength(1);
 });
+
+test("matcht ook op tag-objects met name/category", () => {
+  const withObjectTags = [
+    {
+      id: 4,
+      title: "Iets",
+      sub: "anders",
+      tags: [{ id: 5, name: "Sport", category: "sport" }],
+    },
+  ];
+  expect(searchStories("Sport", withObjectTags)).toHaveLength(1);
+  expect(searchStories("sport", withObjectTags)).toHaveLength(1);
+});

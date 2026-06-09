@@ -12,7 +12,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MotiView } from "moti";
 
 import { IIcon } from "../components/Icons";
-import { STORIES as FEED_STORIES } from "../api/mock";
 import { FeedCard } from "./FeedScreen";
 import { colors, fonts } from "../theme/tokens";
 import { slideUpScreen } from "../theme/animations";
@@ -20,6 +19,7 @@ import { searchStories } from "../lib/searchStories";
 import { topReadStories } from "../lib/topReadStories";
 import { fetchTags } from "../lib/tags";
 import { orderUserTags } from "../lib/orderUserTags";
+import { fetchArticles } from "../lib/articles";
 
 const CATEGORY_ICONS = {
   politiek: "topicPolitics",
@@ -32,17 +32,6 @@ const CATEGORY_ICONS = {
   lokaal: "topicLocal",
 };
 
-const MOCK_CAT_BY_CATEGORY = {
-  politiek: "Politiek",
-  buitenland: "Wereld",
-  economie: "Economie",
-  sport: "Sport",
-  natuur: "Natuur",
-  innovatie: "Tech",
-  kunst: "Kunst",
-  lokaal: "Lokaal",
-};
-
 const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
 const SELECTED_BG = "#10141C";
@@ -52,6 +41,7 @@ export function SearchScreen({ onClose, onOpenStory, myTags = [] }) {
   const [query, setQuery] = useState("");
   const [selectedTopics, setSelectedTopics] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
+  const [allArticles, setAllArticles] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,31 +57,56 @@ export function SearchScreen({ onClose, onOpenStory, myTags = [] }) {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchArticles()
+      .then((list) => {
+        if (!cancelled) setAllArticles(list);
+      })
+      .catch(() => {
+        if (!cancelled) setAllArticles([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const TOPICS = useMemo(() => {
-    const usable = allTags.filter((tag) => MOCK_CAT_BY_CATEGORY[tag.category]);
+    const usable = allTags.filter(
+      (tag) => tag.category && tag.category !== "happy"
+    );
     return orderUserTags(usable, myTags).map((tag) => ({
       label: tag.name,
       icon: CATEGORY_ICONS[tag.category] ?? "topicWorld",
-      cat: MOCK_CAT_BY_CATEGORY[tag.category],
+      category: tag.category,
     }));
   }, [allTags, myTags]);
 
-  const mostReadStories = useMemo(() => topReadStories(FEED_STORIES, 4), []);
+  const mostReadStories = useMemo(
+    () => topReadStories(allArticles, 4),
+    [allArticles]
+  );
 
-  const activeCats = useMemo(() => {
-    if (selectedTopics.size === 0) return [];
-    return TOPICS.filter((topic) => selectedTopics.has(topic.label)).map(
-      (topic) => topic.cat
+  const activeCategories = useMemo(() => {
+    if (selectedTopics.size === 0) return null;
+    return new Set(
+      TOPICS.filter((topic) => selectedTopics.has(topic.label)).map(
+        (topic) => topic.category
+      )
     );
   }, [selectedTopics, TOPICS]);
 
   const filteredStories = useMemo(() => {
-    if (activeCats.length === 0) return mostReadStories;
-    return mostReadStories.filter((story) => activeCats.includes(story.cat));
-  }, [activeCats, mostReadStories]);
+    if (activeCategories === null) return mostReadStories;
+    return mostReadStories.filter((story) =>
+      (story.tags ?? []).some((t) => activeCategories.has(t.category))
+    );
+  }, [activeCategories, mostReadStories]);
 
-  const results = searchStories(query, filteredStories);
   const q = query.trim().toLowerCase();
+  // Volledige zoek doorzoekt alle articles (niet alleen top 4 most-read).
+  const searchPool = q ? allArticles : filteredStories;
+  const results = searchStories(query, searchPool);
   const hasTopicFilter = selectedTopics.size > 0;
 
   const openStory = (story) => {

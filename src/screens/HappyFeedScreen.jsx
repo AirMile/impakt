@@ -5,10 +5,10 @@ import { AppHeader } from "../components/AppHeader";
 import { IIcon } from "../components/Icons";
 import { FeedCard } from "./FeedScreen";
 import { colors, fonts, surfaces } from "../theme/tokens";
-import { STORIES as ALL_STORIES } from "../api/mock";
 import { groupHappyStories } from "../lib/storyDate";
 import { fetchTags } from "../lib/tags";
 import { orderUserTags } from "../lib/orderUserTags";
+import { fetchHappyFeed } from "../lib/articles";
 
 const CATEGORY_ICONS = {
   politiek: "topicPolitics",
@@ -21,19 +21,6 @@ const CATEGORY_ICONS = {
   lokaal: "topicLocal",
 };
 
-// Per backend tag-category the legacy mock-cat aliases used in STORIES.
-// Verdwijnt zodra /articles de mock vervangt.
-const MOCK_FILTERS_BY_CATEGORY = {
-  politiek: ["Politiek"],
-  buitenland: ["Buitenland", "Wereld"],
-  economie: ["Economie"],
-  sport: ["Sport"],
-  natuur: ["Natuur"],
-  innovatie: ["Innovatie", "Tech"],
-  kunst: ["Kunst"],
-  lokaal: ["Lokaal"],
-};
-
 const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
 const SELECTED_BG = "#10141C";
@@ -41,6 +28,7 @@ const SELECTED_BG = "#10141C";
 export function HappyFeedScreen({ onOpen, onProfile, myTags = [] }) {
   const [selectedTopics, setSelectedTopics] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
+  const [stories, setStories] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,39 +44,52 @@ export function HappyFeedScreen({ onOpen, onProfile, myTags = [] }) {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchHappyFeed()
+      .then((list) => {
+        if (!cancelled) setStories(list);
+      })
+      .catch(() => {
+        if (!cancelled) setStories([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const happyTopics = useMemo(() => {
     const usable = allTags.filter(
-      (tag) => MOCK_FILTERS_BY_CATEGORY[tag.category]
+      (tag) => tag.category && tag.category !== "happy"
     );
     return orderUserTags(usable, myTags).map((tag) => ({
       label: tag.name,
       icon: CATEGORY_ICONS[tag.category] ?? "topicWorld",
-      filters: MOCK_FILTERS_BY_CATEGORY[tag.category],
+      category: tag.category,
     }));
   }, [allTags, myTags]);
 
-  const activeFilters = useMemo(() => {
-    if (selectedTopics.size === 0) return [];
-    return happyTopics
-      .filter((topic) => selectedTopics.has(topic.label))
-      .flatMap((topic) => topic.filters);
+  const activeCategories = useMemo(() => {
+    if (selectedTopics.size === 0) return null;
+    return new Set(
+      happyTopics
+        .filter((topic) => selectedTopics.has(topic.label))
+        .map((topic) => topic.category)
+    );
   }, [selectedTopics, happyTopics]);
 
   const sections = useMemo(() => {
-    const happyStories = ALL_STORIES.filter((story) => story.goodNews);
     const filteredStories =
-      activeFilters.length === 0
-        ? happyStories
-        : happyStories.filter((story) =>
-            [story.cat, ...story.tags].some((tag) =>
-              activeFilters.includes(tag)
-            )
+      activeCategories === null
+        ? stories
+        : stories.filter((story) =>
+            (story.tags ?? []).some((t) => activeCategories.has(t.category))
           );
 
     return groupHappyStories(filteredStories, {
-      threshold: activeFilters.length > 0 ? 1 : 3,
+      threshold: activeCategories === null ? 3 : 1,
     });
-  }, [activeFilters]);
+  }, [stories, activeCategories]);
 
   const topSections = sections.filter((sec) => sec.key !== "earlier");
   const earlierSection = sections.find((sec) => sec.key === "earlier");
@@ -192,7 +193,7 @@ export function HappyFeedScreen({ onOpen, onProfile, myTags = [] }) {
           </View>
         )}
 
-        {sections.length === 0 && activeFilters.length > 0 && (
+        {sections.length === 0 && activeCategories !== null && (
           <View style={styles.empty}>
             <Text style={styles.emptyLabel}>
               Geen leuk nieuws over {activeLabel}.{"\n"}Tik nogmaals om het
@@ -201,7 +202,7 @@ export function HappyFeedScreen({ onOpen, onProfile, myTags = [] }) {
           </View>
         )}
 
-        {sections.length === 0 && activeFilters.length === 0 && (
+        {sections.length === 0 && activeCategories === null && (
           <View style={styles.empty}>
             <Text style={styles.emptyLabel}>
               Geen goed nieuws op dit moment.{"\n"}Kom later terug.

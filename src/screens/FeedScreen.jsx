@@ -17,11 +17,11 @@ import { ReactionRail } from "../components/ReactionRail";
 import { IIcon } from "../components/Icons";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { fadeUp } from "../theme/animations";
-import { STORIES as FEED_STORIES } from "../api/mock";
 import { shareStory } from "../lib/share";
 import { pressFx } from "../lib/pressFeedback";
 import { fetchTags } from "../lib/tags";
 import { orderUserTags } from "../lib/orderUserTags";
+import { fetchArticles } from "../lib/articles";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 36;
@@ -35,20 +35,6 @@ const CATEGORY_ICONS = {
   innovatie: "topicInnovation",
   kunst: "topicArt",
   lokaal: "topicLocal",
-};
-
-// Bridge between backend tag categories and the mock STORIES `cat` field
-// (mock uses "Wereld"/"Tech", backend uses "buitenland"/"innovatie"). Gets
-// removed once Step 2 replaces FEED_STORIES with /articles output.
-const MOCK_CAT_BY_CATEGORY = {
-  politiek: "Politiek",
-  buitenland: "Wereld",
-  economie: "Economie",
-  sport: "Sport",
-  natuur: "Natuur",
-  innovatie: "Tech",
-  kunst: "Kunst",
-  lokaal: "Lokaal",
 };
 
 const TOPIC_BG = "#DDF5F8";
@@ -185,9 +171,9 @@ export const FeedCard = React.memo(function FeedCard({
                   />
                 </View>
               )}
-              {story.tags.slice(0, 3).map((t, i) => (
-                <View key={i} style={styles.tag}>
-                  <Text style={styles.tagLabel}>{t}</Text>
+              {(story.tags ?? []).slice(0, 3).map((t) => (
+                <View key={t.id ?? t} style={styles.tag}>
+                  <Text style={styles.tagLabel}>{t.name ?? t}</Text>
                 </View>
               ))}
             </View>
@@ -208,6 +194,7 @@ export function FeedScreen({
 }) {
   const [selectedTopics, setSelectedTopics] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
+  const [articles, setArticles] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -223,34 +210,54 @@ export function FeedScreen({
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchArticles()
+      .then((list) => {
+        if (!cancelled) setArticles(list);
+      })
+      .catch(() => {
+        if (!cancelled) setArticles([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const topics = useMemo(() => {
-    const usable = allTags.filter((tag) => MOCK_CAT_BY_CATEGORY[tag.category]);
+    const usable = allTags.filter(
+      (tag) => tag.category && tag.category !== "happy"
+    );
     return orderUserTags(usable, myTags).map((tag) => ({
       label: tag.name,
       icon: CATEGORY_ICONS[tag.category] ?? "topicWorld",
-      cat: MOCK_CAT_BY_CATEGORY[tag.category],
+      category: tag.category,
     }));
   }, [allTags, myTags]);
 
-  const activeCats = useMemo(() => {
-    if (selectedTopics.size === 0) return [];
-    return topics
-      .filter((topic) => selectedTopics.has(topic.label))
-      .map((topic) => topic.cat);
+  const activeCategories = useMemo(() => {
+    if (selectedTopics.size === 0) return null;
+    return new Set(
+      topics
+        .filter((topic) => selectedTopics.has(topic.label))
+        .map((topic) => topic.category)
+    );
   }, [selectedTopics, topics]);
 
   const stories = useMemo(() => {
     const base = goodNewsOnly
-      ? FEED_STORIES.filter((story) => story.goodNews === true)
-      : FEED_STORIES;
+      ? articles.filter((story) => story.goodNews === true)
+      : articles;
     const byTopic =
-      activeCats.length === 0
+      activeCategories === null
         ? base
-        : base.filter((story) => activeCats.includes(story.cat));
+        : base.filter((story) =>
+            (story.tags ?? []).some((t) => activeCategories.has(t.category))
+          );
     return excludeId
       ? byTopic.filter((story) => story.id !== excludeId)
       : byTopic;
-  }, [activeCats, excludeId, goodNewsOnly]);
+  }, [articles, activeCategories, excludeId, goodNewsOnly]);
 
   const toggleTopic = useCallback((label) => {
     setSelectedTopics((current) => {

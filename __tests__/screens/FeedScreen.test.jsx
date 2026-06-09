@@ -1,48 +1,42 @@
 import React from "react";
-import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import { FeedScreen } from "../../src/screens/FeedScreen";
 
-// Controleerbare testdata, zodat we filters precies kunnen verifiëren
-jest.mock("../../src/api/mock", () => ({
-  STORIES: [
+jest.mock("../../src/lib/articles", () => ({
+  fetchArticles: jest.fn().mockResolvedValue([
     {
       id: 1,
-      cat: "Klimaat",
       goodNews: true,
       title: "Goed klimaatverhaal",
       sub: "...",
       img: "",
-      date: "1 jun",
+      date: "1 juni 2026",
       time: "10:00",
       views: "1k",
-      readers: 100,
+      readers: "1k",
       trending: false,
-      tags: [],
+      tags: [{ id: 6, name: "Natuur", category: "natuur" }],
       body: [],
       reactions: { smile: 10, meh: 5, frown: 2 },
     },
     {
       id: 2,
-      cat: "Sport",
       goodNews: false,
       title: "Slecht sportverhaal",
       sub: "...",
       img: "",
-      date: "1 jun",
+      date: "1 juni 2026",
       time: "11:00",
       views: "2k",
-      readers: 200,
+      readers: "2k",
       trending: false,
-      tags: [],
+      tags: [{ id: 5, name: "Sport", category: "sport" }],
       body: [],
       reactions: { smile: 3, meh: 8, frown: 1 },
     },
-  ],
-  MEMES: [],
-  CATEGORIES: ["Voor jou", "Klimaat", "Sport"],
+  ]),
 }));
 
-// Deel van andere modules mocken die FeedScreen nodig heeft
 jest.mock("../../src/lib/share", () => ({ shareStory: jest.fn() }));
 
 jest.mock("../../src/lib/tags", () => ({
@@ -53,8 +47,6 @@ jest.mock("../../src/lib/tags", () => ({
   ]),
   fetchMyTags: jest.fn().mockResolvedValue([]),
 }));
-
-const flushAsync = () => act(() => Promise.resolve());
 
 const defaultProps = {
   onOpen: jest.fn(),
@@ -71,56 +63,63 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test("rendert alle stories bij cat=Voor jou", () => {
-  const { getByText } = render(<FeedScreen {...defaultProps} />);
-  expect(getByText("Goed klimaatverhaal")).toBeTruthy();
+test("rendert alle articles bij geen filter", async () => {
+  const { findByText, getByText } = render(<FeedScreen {...defaultProps} />);
+  await findByText("Goed klimaatverhaal");
   expect(getByText("Slecht sportverhaal")).toBeTruthy();
 });
 
-test("goodNewsOnly=true toont alleen goodNews stories", () => {
-  const { getByText, queryByText } = render(
+test("goodNewsOnly=true toont alleen goodNews stories", async () => {
+  const { findByText, queryByText } = render(
     <FeedScreen {...defaultProps} goodNewsOnly />
   );
-  expect(getByText("Goed klimaatverhaal")).toBeTruthy();
+  await findByText("Goed klimaatverhaal");
   expect(queryByText("Slecht sportverhaal")).toBeNull();
 });
 
-test("topicfilter filtert op categorie", async () => {
-  const { getByText, queryByText, findByText } = render(
+test("topicfilter op category filtert articles", async () => {
+  const { getByText, queryByText, findAllByText } = render(
     <FeedScreen {...defaultProps} />
   );
-  await findByText("Sport");
-  fireEvent.press(getByText("Sport"));
+  const sportNodes = await findAllByText("Sport");
+  // Eerste hit is de chip in de topic-rij (bovenaan in DOM-volgorde)
+  fireEvent.press(sportNodes[0]);
   await waitFor(() => expect(queryByText("Goed klimaatverhaal")).toBeNull());
   expect(getByText("Slecht sportverhaal")).toBeTruthy();
 });
 
-test("excludeId verwijdert story uit lijst", () => {
-  const { queryByText } = render(
+test("excludeId verwijdert article uit lijst", async () => {
+  const { findByText, queryByText } = render(
     <FeedScreen {...defaultProps} excludeId={1} />
   );
+  await findByText("Slecht sportverhaal");
   expect(queryByText("Goed klimaatverhaal")).toBeNull();
 });
 
-test("onOpen wordt aangeroepen bij tap op kaart", () => {
+test("onOpen wordt aangeroepen bij tap op kaart", async () => {
   const onOpen = jest.fn();
-  const { getByText } = render(
+  const { findByText } = render(
     <FeedScreen {...defaultProps} onOpen={onOpen} />
   );
-  fireEvent.press(getByText("Goed klimaatverhaal"));
+  const card = await findByText("Goed klimaatverhaal");
+  fireEvent.press(card);
   expect(onOpen).toHaveBeenCalledTimes(1);
   expect(onOpen.mock.calls[0][0].id).toBe(1);
 });
 
 test("myTags prop rendert chips voor mijn interesses + overige", async () => {
-  const { findByText, getByText } = render(
+  const { findAllByText } = render(
     <FeedScreen
       {...defaultProps}
       myTags={[{ id: 6, name: "Natuur", category: "natuur" }]}
     />
   );
 
-  await findByText("Natuur");
-  expect(getByText("Politiek")).toBeTruthy();
-  expect(getByText("Sport")).toBeTruthy();
+  // Natuur staat zowel als chip als als tag-label van een artikel
+  const natuur = await findAllByText("Natuur");
+  expect(natuur.length).toBeGreaterThanOrEqual(1);
+  const politiek = await findAllByText("Politiek");
+  expect(politiek.length).toBeGreaterThanOrEqual(1);
+  const sport = await findAllByText("Sport");
+  expect(sport.length).toBeGreaterThanOrEqual(1);
 });

@@ -18,7 +18,7 @@ import {
 
 import { AnimatePresence } from "moti";
 import { colors } from "./src/theme/tokens";
-import { STORIES as FEED_STORIES, MEMES } from "./src/api/mock";
+import { MEMES } from "./src/api/mock";
 import { getOnboarded } from "./src/storage/prefs";
 import { parseImpaktUrl } from "./src/lib/parseImpaktUrl";
 import { ToastHost } from "./src/components/Toast";
@@ -33,6 +33,7 @@ import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { HappyFeedScreen } from "./src/screens/HappyFeedScreen";
 import { SandboxReactionsScreen } from "./src/screens/SandboxReactionsScreen";
 import { fetchMyTags } from "./src/lib/tags";
+import { fetchArticle } from "./src/lib/articles";
 
 const DEV_FORCE_AUTH = __DEV__;
 const DEV_SANDBOX = false; // false | "reactions"
@@ -53,7 +54,6 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [tab, setTab] = useState("feed");
   const [user, setUser] = useState(null);
-  const [topics, setTopics] = useState([]);
   const [myTags, setMyTags] = useState([]);
   const [openStory, setOpenStory] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -101,8 +101,11 @@ export default function App() {
       if (!parsed) return;
       setPhase("app");
       if (parsed.kind === "story") {
-        const s = FEED_STORIES.find((x) => x.id === Number(parsed.id));
-        if (s) setOpenStory(s);
+        fetchArticle(Number(parsed.id))
+          .then((s) => {
+            if (s) setOpenStory(s);
+          })
+          .catch(() => {});
       } else if (parsed.kind === "meme") {
         const meme = MEMES.find((m) => m.id === parsed.id);
         if (meme) {
@@ -130,8 +133,11 @@ export default function App() {
   }, []);
 
   const openStoryById = useCallback((id) => {
-    const s = FEED_STORIES.find((x) => x.id === id);
-    if (s) setOpenStory(s);
+    fetchArticle(id)
+      .then((s) => {
+        if (s) setOpenStory(s);
+      })
+      .catch(() => {});
   }, []);
 
   const openMemeForStory = useCallback((storyId) => {
@@ -183,9 +189,8 @@ export default function App() {
         {!inApp && (
           <AuthScreen
             initialView="welcome"
-            onComplete={(u, selectedTopics) => {
+            onComplete={(u) => {
               setUser(u);
-              if (selectedTopics) setTopics(selectedTopics);
               setPhase("app");
             }}
           />
