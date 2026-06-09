@@ -207,6 +207,7 @@ export default function App() {
         {inApp && showProfile && (
           <ProfileScreen
             user={user}
+            onUserUpdate={setUser}
             onClose={() => setShowProfile(false)}
             onLogout={() => {
               setShowProfile(false);

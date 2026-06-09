@@ -22,19 +22,18 @@ describe("validateLogin", () => {
 
 describe("validateRegister", () => {
   const valid = {
-    name: "Alice",
+    username: "alice",
     email: "a@b.nl",
     pw: "Secure1!",
     pw2: "Secure1!",
-    accept: true,
   };
 
   test("alle velden geldig → geen fouten", () => {
     expect(validateRegister(valid)).toEqual({});
   });
 
-  test("naam leeg → fout", () => {
-    expect(validateRegister({ ...valid, name: "" }).name).toBeTruthy();
+  test("gebruikersnaam leeg → fout", () => {
+    expect(validateRegister({ ...valid, username: "" }).username).toBeTruthy();
   });
 
   test("email leeg → fout", () => {
@@ -57,9 +56,5 @@ describe("validateRegister", () => {
 
   test("wachtwoorden komen niet overeen → fout", () => {
     expect(validateRegister({ ...valid, pw2: "anders" }).pw2).toBeTruthy();
-  });
-
-  test("voorwaarden niet geaccepteerd → fout", () => {
-    expect(validateRegister({ ...valid, accept: false }).accept).toBeTruthy();
   });
 });

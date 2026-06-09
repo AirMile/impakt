@@ -14,6 +14,11 @@ import { IIcon } from "../components/Icons";
 import { AppHeader } from "../components/AppHeader";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { addTag as addTagFn, removeTag as removeTagFn } from "../lib/tagCrud";
+import {
+  deleteAccount,
+  logoutAccount,
+  updateAccount,
+} from "../lib/auth/account";
 import { slideInRight, fadeUp } from "../theme/animations";
 
 // ─── ProfileRow ───────────────────────────────────────────────
@@ -45,14 +50,28 @@ function SectionLabel({ children }) {
 
 // ─── ProfileScreen ────────────────────────────────────────────
 
-export function ProfileScreen({ user, onClose, onLogout }) {
+export function ProfileScreen({ user, onClose, onLogout, onUserUpdate }) {
   const insets = useSafeAreaInsets();
   const [tags, setTags] = useState(["Sport", "School", "Politiek"]);
   const [addingTag, setAddingTag] = useState(false);
   const [newTag, setNewTag] = useState("");
+  const [usernameValue, setUsernameValue] = useState(user?.username ?? "");
+  const [nameValue, setNameValue] = useState(user?.name ?? "");
+  const [emailValue, setEmailValue] = useState(user?.email ?? "");
+  const [passwordValue, setPasswordValue] = useState("");
+  const [passwordConfirmValue, setPasswordConfirmValue] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [accountLoading, setAccountLoading] = useState(false);
+  const [accountError, setAccountError] = useState("");
+  const [accountSuccess, setAccountSuccess] = useState("");
+  const [logoutLoading, setLogoutLoading] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const inputRef = useRef(null);
 
-  const name = user?.name ?? "John news";
+  const displayName = nameValue || usernameValue || "Gast";
+  const hasAccountInfo = Boolean(usernameValue || nameValue || emailValue);
 
   const addTag = () => {
     setTags((ts) => addTagFn(ts, newTag));
@@ -61,6 +80,83 @@ export function ProfileScreen({ user, onClose, onLogout }) {
   };
 
   const removeTag = (t) => setTags((ts) => removeTagFn(ts, t));
+
+  const handleSaveAccount = async () => {
+    if (accountLoading) return;
+
+    const nextError = {};
+    if (!usernameValue.trim()) nextError.username = "Vul je gebruikersnaam in";
+    if (!emailValue.trim()) nextError.email = "Vul je e-mail in";
+    else if (!emailValue.includes("@"))
+      nextError.email = "Dit is geen geldig e-mailadres";
+    if (!passwordValue) nextError.password = "Vul je wachtwoord in";
+    else if (passwordValue.length < 6) nextError.password = "Minimaal 6 tekens";
+    if (passwordConfirmValue !== passwordValue)
+      nextError.passwordConfirm = "Komt niet overeen";
+
+    if (Object.keys(nextError).length) {
+      setAccountError(Object.values(nextError)[0]);
+      setAccountSuccess("");
+      return;
+    }
+
+    setAccountLoading(true);
+    setAccountError("");
+    setAccountSuccess("");
+
+    try {
+      const updatedUser = await updateAccount(user?.token, {
+        username: usernameValue.trim(),
+        name: nameValue.trim() || undefined,
+        email: emailValue.trim(),
+        password: passwordValue,
+        password_confirmation: passwordConfirmValue,
+      });
+
+      onUserUpdate?.(updatedUser);
+      setPasswordValue("");
+      setPasswordConfirmValue("");
+      setAccountSuccess("Account bijgewerkt.");
+    } catch (err) {
+      setAccountError(err.message || "Account bijwerken mislukt.");
+    } finally {
+      setAccountLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    if (logoutLoading || deleteLoading) return;
+    setLogoutLoading(true);
+    setLogoutError("");
+    setDeleteError("");
+
+    try {
+      await logoutAccount(user?.token);
+      onLogout();
+    } catch (err) {
+      setLogoutError(err.message || "Uitloggen mislukt. Probeer het opnieuw.");
+    } finally {
+      setLogoutLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (logoutLoading || deleteLoading) return;
+    setDeleteLoading(true);
+    setDeleteError("");
+    setLogoutError("");
+
+    try {
+      await deleteAccount(user?.token);
+      onLogout();
+    } catch (err) {
+      setDeleteError(
+        err.message || "Account verwijderen mislukt. Probeer het opnieuw."
+      );
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   return (
     <MotiView
@@ -93,8 +189,125 @@ export function ProfileScreen({ user, onClose, onLogout }) {
               />
             </Pressable>
           </View>
-          <Text style={styles.userName}>{name}</Text>
-          <Text style={styles.userMeta}>Lid sinds maart 2026</Text>
+          <Text style={styles.userName}>{displayName}</Text>
+          {hasAccountInfo ? (
+            <View style={styles.accountCard}>
+              <View style={styles.accountHeader}>
+                <Text style={styles.accountHeaderLabel}>Accountgegevens</Text>
+                <IIcon
+                  name="edit"
+                  size={15}
+                  strokeWidth={1.9}
+                  color={surfaces.muted}
+                  accessibilityLabel="Bewerkbaar"
+                />
+              </View>
+              <View style={styles.accountLine}>
+                <Text style={styles.accountLabel}>Gebruikersnaam</Text>
+                <TextInput
+                  style={styles.accountInput}
+                  value={usernameValue}
+                  onChangeText={setUsernameValue}
+                  placeholder="Gebruikersnaam"
+                  placeholderTextColor="rgba(15,17,26,0.35)"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!accountLoading}
+                />
+              </View>
+              <View style={styles.accountLine}>
+                <Text style={styles.accountLabel}>Naam</Text>
+                <TextInput
+                  style={styles.accountInput}
+                  value={nameValue}
+                  onChangeText={setNameValue}
+                  placeholder="Naam"
+                  placeholderTextColor="rgba(15,17,26,0.35)"
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  editable={!accountLoading}
+                />
+              </View>
+              <View style={styles.accountLine}>
+                <Text style={styles.accountLabel}>E-mail</Text>
+                <TextInput
+                  style={styles.accountInput}
+                  value={emailValue}
+                  onChangeText={setEmailValue}
+                  placeholder="E-mail"
+                  placeholderTextColor="rgba(15,17,26,0.35)"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!accountLoading}
+                />
+              </View>
+              <View style={styles.accountLine}>
+                <Text style={styles.accountLabel}>Wachtwoord</Text>
+                <View style={styles.passwordRow}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={passwordValue}
+                    onChangeText={setPasswordValue}
+                    placeholder="Nieuw wachtwoord"
+                    placeholderTextColor="rgba(15,17,26,0.35)"
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!accountLoading}
+                  />
+                  <Pressable
+                    onPress={() => setShowPassword((v) => !v)}
+                    hitSlop={8}
+                    accessibilityLabel={
+                      showPassword ? "Verberg wachtwoord" : "Toon wachtwoord"
+                    }
+                  >
+                    <IIcon
+                      name={showPassword ? "eyeOff" : "eye"}
+                      size={18}
+                      strokeWidth={1.8}
+                      color="rgba(15,17,26,0.6)"
+                    />
+                  </Pressable>
+                </View>
+              </View>
+              <View style={styles.accountLine}>
+                <Text style={styles.accountLabel}>Bevestig wachtwoord</Text>
+                <View style={styles.passwordRow}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={passwordConfirmValue}
+                    onChangeText={setPasswordConfirmValue}
+                    placeholder="Nog een keer"
+                    placeholderTextColor="rgba(15,17,26,0.35)"
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!accountLoading}
+                  />
+                </View>
+              </View>
+              {accountError ? (
+                <Text style={styles.accountError}>{accountError}</Text>
+              ) : null}
+              {accountSuccess ? (
+                <Text style={styles.accountSuccess}>{accountSuccess}</Text>
+              ) : null}
+              <Pressable
+                onPress={handleSaveAccount}
+                disabled={accountLoading}
+                style={[
+                  styles.saveAccountBtn,
+                  accountLoading && styles.saveAccountDisabled,
+                ]}
+              >
+                <Text style={styles.saveAccountLabel}>
+                  {accountLoading ? "Opslaan..." : "Gegevens opslaan"}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
         </MotiView>
 
         {/* Stats strip */}
@@ -187,15 +400,51 @@ export function ProfileScreen({ user, onClose, onLogout }) {
 
         {/* Uitloggen */}
         <View style={styles.logoutRow}>
-          <Pressable onPress={onLogout} style={styles.logoutBtn}>
-            <IIcon
-              name="logout"
-              size={16}
-              strokeWidth={2}
-              color={surfaces.muted}
-            />
-            <Text style={styles.logoutLabel}>Uitloggen</Text>
-          </Pressable>
+          {logoutError ? (
+            <Text style={styles.logoutError}>{logoutError}</Text>
+          ) : null}
+          {deleteError ? (
+            <Text style={styles.logoutError}>{deleteError}</Text>
+          ) : null}
+          <View style={styles.accountActionsRow}>
+            <Pressable
+              onPress={handleLogout}
+              disabled={logoutLoading || deleteLoading}
+              style={[
+                styles.accountActionBtn,
+                (logoutLoading || deleteLoading) && styles.logoutDisabled,
+              ]}
+            >
+              <IIcon
+                name="logout"
+                size={16}
+                strokeWidth={2}
+                color={surfaces.muted}
+              />
+              <Text style={styles.logoutLabel}>
+                {logoutLoading ? "Uitloggen..." : "Uitloggen"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={handleDeleteAccount}
+              disabled={logoutLoading || deleteLoading}
+              style={[
+                styles.accountActionBtn,
+                styles.deleteAccountBtn,
+                (logoutLoading || deleteLoading) && styles.logoutDisabled,
+              ]}
+            >
+              <IIcon
+                name="trash"
+                size={16}
+                strokeWidth={2}
+                color={colors.red}
+              />
+              <Text style={styles.deleteAccountLabel}>
+                {deleteLoading ? "Verwijderen..." : "Verwijder account"}
+              </Text>
+            </Pressable>
+          </View>
         </View>
       </ScrollView>
     </MotiView>
@@ -248,11 +497,88 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     color: colors.ink,
   },
-  userMeta: {
-    fontFamily: fonts.body,
-    fontSize: 12,
+  accountCard: {
+    alignSelf: "stretch",
+    marginTop: 16,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: surfaces.border,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+  },
+  accountHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  accountHeaderLabel: {
+    fontFamily: fonts.display,
+    fontSize: 11,
     color: surfaces.muted,
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+  },
+  accountLine: {
+    paddingVertical: 9,
+    gap: 2,
+  },
+  accountLabel: {
+    fontFamily: fonts.display,
+    fontSize: 10.5,
+    color: surfaces.muted,
+    textTransform: "uppercase",
+    letterSpacing: 1.1,
+  },
+  accountInput: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: colors.ink,
+    paddingVertical: 2,
+    paddingHorizontal: 0,
+  },
+  passwordRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  passwordInput: {
+    flex: 1,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 14,
+    color: colors.ink,
+    paddingVertical: 2,
+    paddingHorizontal: 0,
+  },
+  accountError: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.red,
     marginTop: 6,
+  },
+  accountSuccess: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.blueDark,
+    marginTop: 6,
+  },
+  saveAccountBtn: {
+    marginTop: 12,
+    backgroundColor: colors.red,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+  },
+  saveAccountDisabled: {
+    opacity: 0.55,
+  },
+  saveAccountLabel: {
+    fontFamily: fonts.display,
+    fontSize: 13,
+    color: colors.cream,
   },
 
   // Stats strip
@@ -411,20 +737,45 @@ const styles = StyleSheet.create({
   // Logout
   logoutRow: {
     marginTop: 40,
-    alignItems: "center",
+    alignItems: "stretch",
   },
-  logoutBtn: {
+  accountActionsRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  accountActionBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     paddingVertical: 10,
-    paddingHorizontal: 18,
     borderRadius: 9999,
     backgroundColor: "transparent",
+    borderWidth: 1,
+    borderColor: surfaces.line,
+  },
+  deleteAccountBtn: {
+    borderColor: "rgba(228,99,77,0.32)",
+  },
+  logoutDisabled: {
+    opacity: 0.55,
   },
   logoutLabel: {
     fontFamily: fonts.displayMedium,
     fontSize: 13,
     color: surfaces.muted,
+  },
+  deleteAccountLabel: {
+    fontFamily: fonts.displayMedium,
+    fontSize: 13,
+    color: colors.red,
+  },
+  logoutError: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.red,
+    marginBottom: 8,
+    textAlign: "center",
   },
 });

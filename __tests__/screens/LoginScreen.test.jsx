@@ -6,7 +6,6 @@ const defaultProps = {
   onBack: jest.fn(),
   onSuccess: jest.fn(),
   onSwitchToRegister: jest.fn(),
-  onSocial: jest.fn(),
   onSkip: jest.fn(),
 };
 

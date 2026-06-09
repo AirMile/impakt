@@ -68,6 +68,13 @@ export function IIcon({
           <Path d="M4 12l5 5L20 6" />
         </Svg>
       );
+    case "edit":
+      return (
+        <Svg {...p}>
+          <Path d="M14 4l6 6-9 9H5v-6l9-9z" />
+          <Path d="M13 5l6 6" />
+        </Svg>
+      );
     case "plus":
       return (
         <Svg {...p}>
@@ -174,6 +181,15 @@ export function IIcon({
         <Svg {...p}>
           <Path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" />
           <Path d="M16 17l5-5-5-5M21 12H9" />
+        </Svg>
+      );
+    case "trash":
+      return (
+        <Svg {...p}>
+          <Path d="M3 6h18" />
+          <Path d="M8 6V4h8v2" />
+          <Path d="M6 6l1 15h10l1-15" />
+          <Path d="M10 11v6M14 11v6" />
         </Svg>
       );
     case "info":

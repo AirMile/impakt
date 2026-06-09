@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -15,45 +15,68 @@ import { IIcon } from "../../components/Icons";
 import { ImpaktLogo } from "../../components/ImpaktLogo";
 import { Btn } from "../../components/Btn";
 import { Field } from "../../components/Field";
-import { SocialRow } from "../../components/SocialRow";
 import { colors, fonts } from "../../theme/tokens";
 import { fadeUp } from "../../theme/animations";
+import { API_BASE_URL, normalizeAuthPayload } from "../../lib/auth/account";
 import { validateRegister } from "../../lib/auth/validators";
-import { pwStrength as calcPwStrength } from "../../lib/auth/pwStrength";
 
-export function RegisterScreen({
-  onBack,
-  onSuccess,
-  onSwitchToLogin,
-  onSocial,
-}) {
+export function RegisterScreen({ onBack, onSuccess, onSwitchToLogin }) {
   const insets = useSafeAreaInsets();
+  const [username, setUsername] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [accept, setAccept] = useState(false);
   const [error, setError] = useState({});
   const [loading, setLoading] = useState(false);
+  const nameRef = useRef(null);
   const emailRef = useRef(null);
   const pwRef = useRef(null);
   const pw2Ref = useRef(null);
 
-  const pwStrength = calcPwStrength(pw);
-
-  const submit = () => {
-    const errs = validateRegister({ name, email, pw, pw2, accept });
+  const submit = async () => {
+    const errs = validateRegister({ username, email, pw, pw2 });
     setError(errs);
     if (Object.keys(errs).length) return;
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      onSuccess({ name, email });
-    }, 700);
-  };
 
-  const strengthLabels = ["zwak", "oké", "goed", "sterk", "perfect"];
+    setLoading(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          username,
+          name: name.trim() || undefined,
+          email,
+          password: pw,
+          password_confirmation: pw2,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError({
+          general:
+            data.message || "Account aanmaken mislukt. Controleer je gegevens.",
+        });
+        return;
+      }
+
+      onSuccess(normalizeAuthPayload(data));
+    } catch (err) {
+      setError({
+        general: "Kan geen verbinding maken met de server.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -61,8 +84,8 @@ export function RegisterScreen({
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
-        style={{ flex: 1, backgroundColor: colors.cream }}
-        contentContainerStyle={{ flexGrow: 1 }}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -75,155 +98,105 @@ export function RegisterScreen({
             <IIcon name="arrowL" size={20} strokeWidth={2} color={colors.ink} />
           </Pressable>
           <ImpaktLogo size={20} dark />
-          <View style={{ width: 38 }} />
+          <View style={styles.topSpacer} />
         </View>
 
-        <MotiView {...fadeUp} style={[styles.formBody, { paddingTop: 14 }]}>
-          <Text style={styles.eyebrow}>Stap 1 van 2</Text>
-          <Text style={styles.title}>{`Welkom bij\nImpakt.`}</Text>
+        <MotiView {...fadeUp} style={styles.formBody}>
+          <View style={styles.headingBlock}>
+            <Text style={styles.eyebrow}>Stap 1 van 2</Text>
+            <Text style={styles.title}>{`Welkom bij\nImpakt.`}</Text>
+          </View>
 
-          <Field
-            label="Gebruikersnaam"
-            icon="user"
-            placeholder="John news"
-            value={name}
-            onChange={setName}
-            error={error.name}
-            returnKeyType="next"
-            onSubmitEditing={() => emailRef.current?.focus()}
-          />
-          <Field
-            label="E-mailadres"
-            type="email"
-            icon="mail"
-            placeholder="jij@email.nl"
-            value={email}
-            onChange={setEmail}
-            error={error.email}
-            inputRef={emailRef}
-            returnKeyType="next"
-            onSubmitEditing={() => pwRef.current?.focus()}
-          />
-          <Field
-            label="Wachtwoord"
-            type={showPw ? "text" : "password"}
-            icon="lock"
-            placeholder="Min. 6 tekens"
-            value={pw}
-            onChange={setPw}
-            error={error.pw}
-            hint={
-              !error.pw && pw
-                ? `Sterkte: ${strengthLabels[pwStrength]}`
-                : undefined
-            }
-            inputRef={pwRef}
-            returnKeyType="next"
-            onSubmitEditing={() => pw2Ref.current?.focus()}
-            rightSlot={
-              <Pressable onPress={() => setShowPw((s) => !s)} hitSlop={8}>
-                <IIcon
-                  name={showPw ? "eyeOff" : "eye"}
-                  size={18}
-                  strokeWidth={1.8}
-                  color="rgba(15,17,26,0.6)"
-                />
-              </Pressable>
-            }
-          />
+          <View style={styles.fieldsBlock}>
+            <Field
+              label="Gebruikersnaam"
+              icon="user"
+              placeholder="julia_vermeer"
+              value={username}
+              onChange={setUsername}
+              error={error.username}
+              returnKeyType="next"
+              onSubmitEditing={() => nameRef.current?.focus()}
+            />
+            <Field
+              label="Naam"
+              icon="user"
+              placeholder="Julia Vermeer"
+              value={name}
+              onChange={setName}
+              error={error.name}
+              inputRef={nameRef}
+              returnKeyType="next"
+              onSubmitEditing={() => emailRef.current?.focus()}
+            />
+            <Field
+              label="E-mailadres"
+              type="email"
+              icon="mail"
+              placeholder="jij@email.nl"
+              value={email}
+              onChange={setEmail}
+              error={error.email}
+              inputRef={emailRef}
+              returnKeyType="next"
+              onSubmitEditing={() => pwRef.current?.focus()}
+            />
+            <Field
+              label="Wachtwoord"
+              type={showPw ? "text" : "password"}
+              icon="lock"
+              placeholder="Wachtwoord"
+              value={pw}
+              onChange={setPw}
+              error={error.pw}
+              inputRef={pwRef}
+              returnKeyType="next"
+              onSubmitEditing={() => pw2Ref.current?.focus()}
+              rightSlot={
+                <Pressable onPress={() => setShowPw((s) => !s)} hitSlop={8}>
+                  <IIcon
+                    name={showPw ? "eyeOff" : "eye"}
+                    size={18}
+                    strokeWidth={1.8}
+                    color="rgba(15,17,26,0.6)"
+                  />
+                </Pressable>
+              }
+            />
+            <Field
+              label="Bevestig wachtwoord"
+              type={showPw ? "text" : "password"}
+              icon="lock"
+              placeholder="Nog een keer"
+              value={pw2}
+              onChange={setPw2}
+              error={error.pw2}
+              inputRef={pw2Ref}
+              returnKeyType="done"
+              onSubmitEditing={submit}
+            />
+          </View>
 
-          {pw.length > 0 && (
-            <View style={styles.strengthRow}>
-              {[1, 2, 3, 4].map((i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.strengthBar,
-                    {
-                      backgroundColor:
-                        i <= pwStrength
-                          ? pwStrength >= 3
-                            ? colors.blue
-                            : colors.red
-                          : "rgba(15,17,26,0.12)",
-                    },
-                  ]}
-                />
-              ))}
-            </View>
-          )}
+          <View style={styles.actionsBlock}>
+            {error.general ? (
+              <Text style={styles.errorText}>{error.general}</Text>
+            ) : null}
 
-          <Field
-            label="Bevestig wachtwoord"
-            type={showPw ? "text" : "password"}
-            icon="lock"
-            placeholder="Nog een keer"
-            value={pw2}
-            onChange={setPw2}
-            error={error.pw2}
-            inputRef={pw2Ref}
-            returnKeyType="done"
-            onSubmitEditing={submit}
-          />
-
-          <Pressable
-            onPress={() => setAccept((a) => !a)}
-            style={styles.termsRow}
-          >
-            <View
-              style={[
-                styles.checkbox,
-                {
-                  backgroundColor: accept ? colors.blue : "transparent",
-                  borderColor: error.accept != null ? colors.red : colors.ink,
-                },
-              ]}
-            >
-              {accept && (
-                <IIcon
-                  name="check"
-                  size={14}
-                  strokeWidth={3}
-                  color={colors.ink}
-                />
-              )}
-            </View>
-            <Text
-              style={[
-                styles.termsText,
-                { color: error.accept != null ? colors.red : colors.ink },
-              ]}
-            >
-              {"Ik ga akkoord met de "}
-              <Text style={{ textDecorationLine: "underline" }}>
-                voorwaarden
-              </Text>
-              {" en het "}
-              <Text style={{ textDecorationLine: "underline" }}>
-                privacybeleid
-              </Text>
-              {" van Impakt."}
-            </Text>
-          </Pressable>
-
-          <View style={{ marginTop: 18 }}>
             <Btn
-              variant="blue"
+              variant="impaktRed"
               onPress={submit}
               disabled={loading}
               iconRight={loading ? undefined : "arrow"}
             >
-              {loading ? "Aanmaken…" : "Account aanmaken"}
+              {loading ? "Aanmaken..." : "Account aanmaken"}
             </Btn>
-          </View>
 
-          <SocialRow onSocial={onSocial} label="Of registreer met" />
-
-          <View style={[styles.switchRow, { marginBottom: 8 }]}>
-            <Text style={styles.switchText}>Al een account? </Text>
-            <Pressable onPress={onSwitchToLogin}>
-              <Text style={styles.switchLink}>Inloggen</Text>
-            </Pressable>
+            <View style={styles.switchRow}>
+              <Text style={styles.switchText}>Al een account? </Text>
+              <Pressable onPress={onSwitchToLogin}>
+                <Text style={styles.switchLink}>Inloggen</Text>
+              </Pressable>
+            </View>
           </View>
         </MotiView>
       </ScrollView>
@@ -233,12 +206,22 @@ export function RegisterScreen({
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  scroll: {
+    flex: 1,
+    backgroundColor: colors.cream,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
   topBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 22,
     paddingBottom: 12,
+  },
+  topSpacer: {
+    width: 38,
   },
   backBtn: {
     width: 38,
@@ -249,10 +232,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   formBody: {
+    flex: 1,
+    justifyContent: "space-between",
     paddingHorizontal: 24,
     paddingTop: 18,
     paddingBottom: 28,
-    flex: 1,
+    gap: 28,
+  },
+  headingBlock: {
+    flexShrink: 0,
   },
   eyebrow: {
     fontFamily: fonts.display,
@@ -267,47 +255,36 @@ const styles = StyleSheet.create({
     fontFamily: fonts.header,
     fontSize: 52,
     lineHeight: 50,
-    marginBottom: 22,
+    marginBottom: 4,
     letterSpacing: 0.5,
     color: colors.ink,
   },
-  strengthRow: {
-    flexDirection: "row",
-    gap: 4,
-    marginTop: -8,
-    marginBottom: 14,
-  },
-  strengthBar: { flex: 1, height: 3, borderRadius: 2 },
-  termsRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    paddingVertical: 10,
-    paddingBottom: 4,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
+  fieldsBlock: {
     flexShrink: 0,
-    marginTop: 1,
   },
-  termsText: {
+  actionsBlock: {
+    flexShrink: 0,
+    paddingTop: 4,
+  },
+  errorText: {
+    color: colors.red,
     fontFamily: fonts.body,
-    fontSize: 12.5,
-    lineHeight: 18,
-    flex: 1,
+    fontSize: 14,
+    marginBottom: 12,
+    textAlign: "center",
   },
   switchRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     marginTop: 28,
+    marginBottom: 8,
   },
-  switchText: { fontFamily: fonts.body, fontSize: 14, color: colors.ink },
+  switchText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.ink,
+  },
   switchLink: {
     fontFamily: fonts.display,
     fontSize: 14,

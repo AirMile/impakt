@@ -47,6 +47,8 @@ npm run android    # Android emulator (vereist Android Studio)
 npm run web        # web-versie in de browser
 ```
 
+De web-versie draait op `http://localhost:3000`, omdat de backend-CORS deze origin toestaat.
+
 ---
 
 ## Scripts

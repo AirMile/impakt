@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 
 import { setOnboarded, setPreferences } from "../storage/prefs";
+import { fetchAccount, normalizeAuthPayload } from "../lib/auth/account";
 import { resolveUser } from "../lib/auth/resolveUser";
 import { WelcomeScreen } from "./auth/WelcomeScreen";
 import { LoginScreen } from "./auth/LoginScreen";
@@ -14,9 +15,10 @@ export function AuthScreen({ initialView = "welcome", onComplete }) {
   const [socialMeta, setSocialMeta] = useState(null);
 
   const goToApp = async (user, topics) => {
+    const accountUser = await fetchAccount(user?.token).catch(() => null);
     await setOnboarded(true);
     if (topics) await setPreferences(topics);
-    onComplete(user, topics);
+    onComplete(accountUser ?? user, topics);
   };
 
   const goToOnboarding = (from, user, meta) => {
@@ -52,7 +54,7 @@ export function AuthScreen({ initialView = "welcome", onComplete }) {
     return (
       <LoginScreen
         onBack={() => setView("welcome")}
-        onSuccess={() => goToApp({ name: "Gebruiker" })}
+        onSuccess={(data) => goToApp(normalizeAuthPayload(data))}
         onSwitchToRegister={() => setView("register")}
         onSocial={handleSocial}
         onSkip={handleSkip}

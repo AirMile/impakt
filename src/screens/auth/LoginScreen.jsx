@@ -15,18 +15,11 @@ import { IIcon } from "../../components/Icons";
 import { ImpaktLogo } from "../../components/ImpaktLogo";
 import { Btn } from "../../components/Btn";
 import { Field } from "../../components/Field";
-import { SocialRow } from "../../components/SocialRow";
 import { colors, fonts } from "../../theme/tokens";
 import { fadeUp } from "../../theme/animations";
 import { validateLogin } from "../../lib/auth/validators";
 
-export function LoginScreen({
-  onBack,
-  onSuccess,
-  onSwitchToRegister,
-  onSocial,
-  onSkip,
-}) {
+export function LoginScreen({ onBack, onSuccess, onSwitchToRegister, onSkip }) {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -146,7 +139,7 @@ export function LoginScreen({
           ) : null}
 
           <Btn
-            variant="blue"
+            variant="impaktRed"
             onPress={submit}
             disabled={loading}
             iconRight={loading ? undefined : "arrow"}
@@ -154,7 +147,7 @@ export function LoginScreen({
             {loading ? "Even checken…" : "Inloggen"}
           </Btn>
 
-          <SocialRow onSocial={onSocial} />
+          <View style={styles.dividerLine} />
 
           <View style={styles.switchRow}>
             <Text style={styles.switchText}>Nog geen account? </Text>
@@ -247,5 +240,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 12,
     textAlign: "center",
+  },
+  dividerLine: {
+    height: 1,
+    backgroundColor: "rgba(15,17,26,0.18)",
+    marginTop: 8,
+    marginBottom: 12,
   },
 });
