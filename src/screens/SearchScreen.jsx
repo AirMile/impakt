@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -18,26 +18,63 @@ import { colors, fonts } from "../theme/tokens";
 import { slideUpScreen } from "../theme/animations";
 import { searchStories } from "../lib/searchStories";
 import { topReadStories } from "../lib/topReadStories";
+import { fetchTags } from "../lib/tags";
+import { orderUserTags } from "../lib/orderUserTags";
 
-const TOPICS = [
-  { label: "Politiek", icon: "topicPolitics", cat: "Politiek" },
-  { label: "Buitenland", icon: "topicWorld", cat: "Wereld" },
-  { label: "Economie", icon: "topicEconomy", cat: "Economie" },
-  { label: "Sport", icon: "topicSport", cat: "Sport" },
-  { label: "Natuur", icon: "topicNature", cat: "Natuur" },
-  { label: "Innovatie", icon: "topicInnovation", cat: "Tech" },
-  { label: "Kunst", icon: "topicArt", cat: "Kunst" },
-  { label: "Lokaal", icon: "topicLocal", cat: "Lokaal" },
-];
+const CATEGORY_ICONS = {
+  politiek: "topicPolitics",
+  buitenland: "topicWorld",
+  economie: "topicEconomy",
+  sport: "topicSport",
+  natuur: "topicNature",
+  innovatie: "topicInnovation",
+  kunst: "topicArt",
+  lokaal: "topicLocal",
+};
+
+const MOCK_CAT_BY_CATEGORY = {
+  politiek: "Politiek",
+  buitenland: "Wereld",
+  economie: "Economie",
+  sport: "Sport",
+  natuur: "Natuur",
+  innovatie: "Tech",
+  kunst: "Kunst",
+  lokaal: "Lokaal",
+};
 
 const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
 const SELECTED_BG = "#10141C";
 
-export function SearchScreen({ onClose, onOpenStory }) {
+export function SearchScreen({ onClose, onOpenStory, myTags = [] }) {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
   const [selectedTopics, setSelectedTopics] = useState(new Set());
+  const [allTags, setAllTags] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTags()
+      .then((tags) => {
+        if (!cancelled) setAllTags(tags);
+      })
+      .catch(() => {
+        if (!cancelled) setAllTags([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const TOPICS = useMemo(() => {
+    const usable = allTags.filter((tag) => MOCK_CAT_BY_CATEGORY[tag.category]);
+    return orderUserTags(usable, myTags).map((tag) => ({
+      label: tag.name,
+      icon: CATEGORY_ICONS[tag.category] ?? "topicWorld",
+      cat: MOCK_CAT_BY_CATEGORY[tag.category],
+    }));
+  }, [allTags, myTags]);
 
   const mostReadStories = useMemo(() => topReadStories(FEED_STORIES, 4), []);
 
@@ -46,7 +83,7 @@ export function SearchScreen({ onClose, onOpenStory }) {
     return TOPICS.filter((topic) => selectedTopics.has(topic.label)).map(
       (topic) => topic.cat
     );
-  }, [selectedTopics]);
+  }, [selectedTopics, TOPICS]);
 
   const filteredStories = useMemo(() => {
     if (activeCats.length === 0) return mostReadStories;

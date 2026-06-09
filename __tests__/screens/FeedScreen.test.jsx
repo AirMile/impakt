@@ -1,5 +1,5 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 import { FeedScreen } from "../../src/screens/FeedScreen";
 
 // Controleerbare testdata, zodat we filters precies kunnen verifiëren
@@ -45,6 +45,17 @@ jest.mock("../../src/api/mock", () => ({
 // Deel van andere modules mocken die FeedScreen nodig heeft
 jest.mock("../../src/lib/share", () => ({ shareStory: jest.fn() }));
 
+jest.mock("../../src/lib/tags", () => ({
+  fetchTags: jest.fn().mockResolvedValue([
+    { id: 2, name: "Politiek", category: "politiek" },
+    { id: 5, name: "Sport", category: "sport" },
+    { id: 6, name: "Natuur", category: "natuur" },
+  ]),
+  fetchMyTags: jest.fn().mockResolvedValue([]),
+}));
+
+const flushAsync = () => act(() => Promise.resolve());
+
 const defaultProps = {
   onOpen: jest.fn(),
   onNav: jest.fn(),
@@ -74,11 +85,14 @@ test("goodNewsOnly=true toont alleen goodNews stories", () => {
   expect(queryByText("Slecht sportverhaal")).toBeNull();
 });
 
-test("topicfilter filtert op categorie", () => {
-  const { getByText, queryByText } = render(<FeedScreen {...defaultProps} />);
+test("topicfilter filtert op categorie", async () => {
+  const { getByText, queryByText, findByText } = render(
+    <FeedScreen {...defaultProps} />
+  );
+  await findByText("Sport");
   fireEvent.press(getByText("Sport"));
+  await waitFor(() => expect(queryByText("Goed klimaatverhaal")).toBeNull());
   expect(getByText("Slecht sportverhaal")).toBeTruthy();
-  expect(queryByText("Goed klimaatverhaal")).toBeNull();
 });
 
 test("excludeId verwijdert story uit lijst", () => {
@@ -96,4 +110,17 @@ test("onOpen wordt aangeroepen bij tap op kaart", () => {
   fireEvent.press(getByText("Goed klimaatverhaal"));
   expect(onOpen).toHaveBeenCalledTimes(1);
   expect(onOpen.mock.calls[0][0].id).toBe(1);
+});
+
+test("myTags prop rendert chips voor mijn interesses + overige", async () => {
+  const { findByText, getByText } = render(
+    <FeedScreen
+      {...defaultProps}
+      myTags={[{ id: 6, name: "Natuur", category: "natuur" }]}
+    />
+  );
+
+  await findByText("Natuur");
+  expect(getByText("Politiek")).toBeTruthy();
+  expect(getByText("Sport")).toBeTruthy();
 });

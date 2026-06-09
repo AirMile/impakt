@@ -2,6 +2,12 @@ import React from "react";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { ProfileScreen } from "../../src/screens/ProfileScreen";
 
+jest.mock("../../src/lib/tags", () => ({
+  fetchTags: jest.fn().mockResolvedValue([]),
+  fetchMyTags: jest.fn().mockResolvedValue([]),
+  updateMyTags: jest.fn().mockResolvedValue([]),
+}));
+
 const defaultProps = {
   onClose: jest.fn(),
   onLogout: jest.fn(),
@@ -281,4 +287,71 @@ test("toont foutmelding als logout mislukt", async () => {
 
   expect(await findByText("Uitloggen mislukt")).toBeTruthy();
   expect(defaultProps.onLogout).not.toHaveBeenCalled();
+});
+
+test("tag verwijderen meldt nieuwe lijst aan onMyTagsChange", async () => {
+  const { updateMyTags } = require("../../src/lib/tags");
+  updateMyTags.mockResolvedValueOnce([
+    { id: 2, name: "Politiek", category: "politiek" },
+  ]);
+
+  const onMyTagsChange = jest.fn();
+  const { getByLabelText } = render(
+    <ProfileScreen
+      {...defaultProps}
+      user={{ username: "m", email: "m@m.nl", token: "abc" }}
+      myTags={[
+        { id: 2, name: "Politiek", category: "politiek" },
+        { id: 5, name: "Sport", category: "sport" },
+      ]}
+      onMyTagsChange={onMyTagsChange}
+    />
+  );
+
+  fireEvent.press(getByLabelText("Verwijder Sport"));
+
+  // optimistic: meteen zonder Sport
+  expect(onMyTagsChange).toHaveBeenNthCalledWith(1, [
+    { id: 2, name: "Politiek", category: "politiek" },
+  ]);
+
+  await waitFor(() => {
+    expect(updateMyTags).toHaveBeenCalledWith("abc", [2]);
+  });
+
+  // server-respons confirm: nog steeds [Politiek]
+  expect(onMyTagsChange).toHaveBeenNthCalledWith(2, [
+    { id: 2, name: "Politiek", category: "politiek" },
+  ]);
+});
+
+test("rollback bij gefaalde updateMyTags herstelt vorige lijst", async () => {
+  const { updateMyTags } = require("../../src/lib/tags");
+  updateMyTags.mockRejectedValueOnce(new Error("Tags bijwerken mislukt"));
+
+  const onMyTagsChange = jest.fn();
+  const previous = [
+    { id: 2, name: "Politiek", category: "politiek" },
+    { id: 5, name: "Sport", category: "sport" },
+  ];
+
+  const { getByLabelText, findByText } = render(
+    <ProfileScreen
+      {...defaultProps}
+      user={{ username: "m", email: "m@m.nl", token: "abc" }}
+      myTags={previous}
+      onMyTagsChange={onMyTagsChange}
+    />
+  );
+
+  fireEvent.press(getByLabelText("Verwijder Sport"));
+
+  // optimistic call
+  expect(onMyTagsChange).toHaveBeenNthCalledWith(1, [previous[0]]);
+
+  // rollback call met originele lijst
+  await waitFor(() =>
+    expect(onMyTagsChange).toHaveBeenNthCalledWith(2, previous)
+  );
+  expect(await findByText("Tags bijwerken mislukt")).toBeTruthy();
 });

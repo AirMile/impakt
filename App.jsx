@@ -32,6 +32,7 @@ import { SearchScreen } from "./src/screens/SearchScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { HappyFeedScreen } from "./src/screens/HappyFeedScreen";
 import { SandboxReactionsScreen } from "./src/screens/SandboxReactionsScreen";
+import { fetchMyTags } from "./src/lib/tags";
 
 const DEV_FORCE_AUTH = __DEV__;
 const DEV_SANDBOX = false; // false | "reactions"
@@ -53,11 +54,30 @@ export default function App() {
   const [tab, setTab] = useState("feed");
   const [user, setUser] = useState(null);
   const [topics, setTopics] = useState([]);
+  const [myTags, setMyTags] = useState([]);
   const [openStory, setOpenStory] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [pendingMemeStoryId, setPendingMemeStoryId] = useState(null);
   const [feedCat, setFeedCat] = useState("Voor jou");
+
+  useEffect(() => {
+    if (!user?.token) {
+      setMyTags([]);
+      return;
+    }
+    let cancelled = false;
+    fetchMyTags(user.token)
+      .then((tags) => {
+        if (!cancelled) setMyTags(tags);
+      })
+      .catch(() => {
+        if (!cancelled) setMyTags([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.token]);
 
   useEffect(() => {
     if (!fontsLoaded) return;
@@ -181,12 +201,14 @@ export default function App() {
                 onOpen={setOpenStory}
                 cat={feedCat}
                 onCatChange={setFeedCat}
+                myTags={myTags}
               />
             </View>
             <View style={[styles.tab, tab !== "good" && styles.hidden]}>
               <HappyFeedScreen
                 onOpen={setOpenStory}
                 onProfile={handleProfile}
+                myTags={myTags}
               />
             </View>
             <View style={[styles.tab, tab !== "humor" && styles.hidden]}>
@@ -208,6 +230,8 @@ export default function App() {
           <ProfileScreen
             user={user}
             onUserUpdate={setUser}
+            myTags={myTags}
+            onMyTagsChange={setMyTags}
             onClose={() => setShowProfile(false)}
             onLogout={() => {
               setShowProfile(false);
@@ -222,6 +246,7 @@ export default function App() {
               setShowSearch(false);
               setOpenStory(s);
             }}
+            myTags={myTags}
           />
         )}
         <AnimatePresence>

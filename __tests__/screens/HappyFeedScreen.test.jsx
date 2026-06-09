@@ -1,6 +1,16 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import { HappyFeedScreen } from "../../src/screens/HappyFeedScreen";
+
+jest.mock("../../src/lib/tags", () => ({
+  fetchTags: jest.fn().mockResolvedValue([
+    { id: 2, name: "Politiek", category: "politiek" },
+    { id: 3, name: "Buitenland", category: "buitenland" },
+    { id: 5, name: "Sport", category: "sport" },
+    { id: 6, name: "Natuur", category: "natuur" },
+    { id: 8, name: "Kunst", category: "kunst" },
+  ]),
+}));
 
 jest.mock("../../src/api/mock", () => ({
   STORIES: [
@@ -50,38 +60,38 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test("tap op thema filtert feed op tag", () => {
-  const { getByText, queryByText, getByTestId } = render(
+test("tap op thema filtert feed op tag", async () => {
+  const { getByText, queryByText, findByTestId } = render(
     <HappyFeedScreen {...defaultProps} />
   );
   expect(getByText("Wolf story")).toBeTruthy();
   expect(getByText("Sociaal story")).toBeTruthy();
 
-  fireEvent.press(getByTestId("happy-topic-Natuur"));
+  fireEvent.press(await findByTestId("happy-topic-Natuur"));
 
+  await waitFor(() => expect(queryByText("Sociaal story")).toBeNull());
   expect(getByText("Wolf story")).toBeTruthy();
-  expect(queryByText("Sociaal story")).toBeNull();
 });
 
-test("tweede tap op zelfde thema wist filter", () => {
-  const { getByText, queryByText, getByTestId } = render(
+test("tweede tap op zelfde thema wist filter", async () => {
+  const { getByText, queryByText, findByTestId, getByTestId } = render(
     <HappyFeedScreen {...defaultProps} />
   );
 
-  fireEvent.press(getByTestId("happy-topic-Natuur"));
-  expect(queryByText("Sociaal story")).toBeNull();
+  fireEvent.press(await findByTestId("happy-topic-Natuur"));
+  await waitFor(() => expect(queryByText("Sociaal story")).toBeNull());
 
   fireEvent.press(getByTestId("happy-topic-Natuur"));
+  await waitFor(() => expect(getByText("Sociaal story")).toBeTruthy());
   expect(getByText("Wolf story")).toBeTruthy();
-  expect(getByText("Sociaal story")).toBeTruthy();
 });
 
-test("meerdere thema's kunnen tegelijk geselecteerd worden", () => {
-  const { getByText, getByTestId } = render(
+test("meerdere thema's kunnen tegelijk geselecteerd worden", async () => {
+  const { getByText, findByTestId, getByTestId } = render(
     <HappyFeedScreen {...defaultProps} />
   );
 
-  fireEvent.press(getByTestId("happy-topic-Natuur"));
+  fireEvent.press(await findByTestId("happy-topic-Natuur"));
   fireEvent.press(getByTestId("happy-topic-Buitenland"));
 
   expect(getByText("Wolf story")).toBeTruthy();
@@ -97,12 +107,26 @@ test("EERDER-label verborgen als het de enige sectie is", () => {
   expect(queryByText("EERDER")).toBeNull();
 });
 
-test("empty-state toont filter-hint bij actief thema zonder matches", () => {
-  const { getByText, getByTestId } = render(
+test("empty-state toont filter-hint bij actief thema zonder matches", async () => {
+  const { getByText, findByTestId } = render(
     <HappyFeedScreen {...defaultProps} />
   );
 
-  fireEvent.press(getByTestId("happy-topic-Kunst"));
+  fireEvent.press(await findByTestId("happy-topic-Kunst"));
 
-  expect(getByText(/Geen leuk nieuws over Kunst/)).toBeTruthy();
+  await waitFor(() =>
+    expect(getByText(/Geen leuk nieuws over Kunst/)).toBeTruthy()
+  );
+});
+
+test("myTags prop rendert eigen interesses bovenaan", async () => {
+  const { findByTestId } = render(
+    <HappyFeedScreen
+      {...defaultProps}
+      myTags={[{ id: 6, name: "Natuur", category: "natuur" }]}
+    />
+  );
+
+  // Natuur staat in mine — chip moet bestaan
+  expect(await findByTestId("happy-topic-Natuur")).toBeTruthy();
 });

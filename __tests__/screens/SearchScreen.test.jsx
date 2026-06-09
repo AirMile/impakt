@@ -1,6 +1,14 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import { SearchScreen } from "../../src/screens/SearchScreen";
+
+jest.mock("../../src/lib/tags", () => ({
+  fetchTags: jest.fn().mockResolvedValue([
+    { id: 2, name: "Politiek", category: "politiek" },
+    { id: 5, name: "Sport", category: "sport" },
+    { id: 6, name: "Natuur", category: "natuur" },
+  ]),
+}));
 
 jest.mock("../../src/api/mock", () => ({
   STORIES: [
@@ -86,10 +94,22 @@ test("lege zoekresultaten toont geen-resultaten tekst", () => {
   expect(getByText(/Geen resultaten/)).toBeTruthy();
 });
 
-test("klik op topic selecteert filter en toont gefilterde verhalen", () => {
-  const { getByText, queryByText } = render(<SearchScreen {...defaultProps} />);
-  fireEvent.press(getByText("Sport"));
-  expect(getByText("Gefilterde verhalen")).toBeTruthy();
+test("klik op topic selecteert filter en toont gefilterde verhalen", async () => {
+  const { getByText, queryByText, findByText } = render(
+    <SearchScreen {...defaultProps} />
+  );
+  fireEvent.press(await findByText("Sport"));
+  await waitFor(() => expect(getByText("Gefilterde verhalen")).toBeTruthy());
   expect(getByText("Sportverhaal")).toBeTruthy();
   expect(queryByText("Klimaatverhaal")).toBeNull();
+});
+
+test("myTags prop rendert eigen interesses als chip", async () => {
+  const { findByText } = render(
+    <SearchScreen
+      {...defaultProps}
+      myTags={[{ id: 6, name: "Natuur", category: "natuur" }]}
+    />
+  );
+  expect(await findByText("Natuur")).toBeTruthy();
 });

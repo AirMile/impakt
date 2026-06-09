@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 
 import { AppHeader } from "../components/AppHeader";
@@ -7,39 +7,72 @@ import { FeedCard } from "./FeedScreen";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { STORIES as ALL_STORIES } from "../api/mock";
 import { groupHappyStories } from "../lib/storyDate";
+import { fetchTags } from "../lib/tags";
+import { orderUserTags } from "../lib/orderUserTags";
 
-const HAPPY_TOPICS = [
-  { label: "Politiek", icon: "topicPolitics", filters: ["Politiek"] },
-  {
-    label: "Buitenland",
-    icon: "topicWorld",
-    filters: ["Buitenland", "Wereld"],
-  },
-  { label: "Economie", icon: "topicEconomy", filters: ["Economie"] },
-  { label: "Sport", icon: "topicSport", filters: ["Sport"] },
-  { label: "Natuur", icon: "topicNature", filters: ["Natuur"] },
-  {
-    label: "Innovatie",
-    icon: "topicInnovation",
-    filters: ["Innovatie", "Tech"],
-  },
-  { label: "Kunst", icon: "topicArt", filters: ["Kunst"] },
-  { label: "Lokaal", icon: "topicLocal", filters: ["Lokaal"] },
-];
+const CATEGORY_ICONS = {
+  politiek: "topicPolitics",
+  buitenland: "topicWorld",
+  economie: "topicEconomy",
+  sport: "topicSport",
+  natuur: "topicNature",
+  innovatie: "topicInnovation",
+  kunst: "topicArt",
+  lokaal: "topicLocal",
+};
+
+// Per backend tag-category the legacy mock-cat aliases used in STORIES.
+// Verdwijnt zodra /articles de mock vervangt.
+const MOCK_FILTERS_BY_CATEGORY = {
+  politiek: ["Politiek"],
+  buitenland: ["Buitenland", "Wereld"],
+  economie: ["Economie"],
+  sport: ["Sport"],
+  natuur: ["Natuur"],
+  innovatie: ["Innovatie", "Tech"],
+  kunst: ["Kunst"],
+  lokaal: ["Lokaal"],
+};
 
 const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
 const SELECTED_BG = "#10141C";
 
-export function HappyFeedScreen({ onOpen, onProfile }) {
+export function HappyFeedScreen({ onOpen, onProfile, myTags = [] }) {
   const [selectedTopics, setSelectedTopics] = useState(new Set());
+  const [allTags, setAllTags] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTags()
+      .then((tags) => {
+        if (!cancelled) setAllTags(tags);
+      })
+      .catch(() => {
+        if (!cancelled) setAllTags([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const happyTopics = useMemo(() => {
+    const usable = allTags.filter(
+      (tag) => MOCK_FILTERS_BY_CATEGORY[tag.category]
+    );
+    return orderUserTags(usable, myTags).map((tag) => ({
+      label: tag.name,
+      icon: CATEGORY_ICONS[tag.category] ?? "topicWorld",
+      filters: MOCK_FILTERS_BY_CATEGORY[tag.category],
+    }));
+  }, [allTags, myTags]);
 
   const activeFilters = useMemo(() => {
     if (selectedTopics.size === 0) return [];
-    return HAPPY_TOPICS.filter((topic) =>
-      selectedTopics.has(topic.label)
-    ).flatMap((topic) => topic.filters);
-  }, [selectedTopics]);
+    return happyTopics
+      .filter((topic) => selectedTopics.has(topic.label))
+      .flatMap((topic) => topic.filters);
+  }, [selectedTopics, happyTopics]);
 
   const sections = useMemo(() => {
     const happyStories = ALL_STORIES.filter((story) => story.goodNews);
@@ -80,7 +113,7 @@ export function HappyFeedScreen({ onOpen, onProfile }) {
         contentContainerStyle={styles.topicChipsRow}
         style={styles.topicChipsScroll}
       >
-        {HAPPY_TOPICS.map((topic) => {
+        {happyTopics.map((topic) => {
           const isSelected = selectedTopics.has(topic.label);
 
           return (

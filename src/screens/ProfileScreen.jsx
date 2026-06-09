@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -13,13 +13,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IIcon } from "../components/Icons";
 import { AppHeader } from "../components/AppHeader";
 import { colors, fonts, surfaces } from "../theme/tokens";
-import { addTag as addTagFn, removeTag as removeTagFn } from "../lib/tagCrud";
 import {
   deleteAccount,
   logoutAccount,
   updateAccount,
 } from "../lib/auth/account";
+import { fetchTags, updateMyTags } from "../lib/tags";
 import { slideInRight, fadeUp } from "../theme/animations";
+
+// "happy" is a system tag (driver for /happy-feed), not an interest the user picks.
+const isInterestTag = (tag) => tag?.category !== "happy";
 
 // ─── ProfileRow ───────────────────────────────────────────────
 
@@ -50,11 +53,18 @@ function SectionLabel({ children }) {
 
 // ─── ProfileScreen ────────────────────────────────────────────
 
-export function ProfileScreen({ user, onClose, onLogout, onUserUpdate }) {
+export function ProfileScreen({
+  user,
+  onClose,
+  onLogout,
+  onUserUpdate,
+  myTags = [],
+  onMyTagsChange,
+}) {
   const insets = useSafeAreaInsets();
-  const [tags, setTags] = useState(["Sport", "School", "Politiek"]);
-  const [addingTag, setAddingTag] = useState(false);
-  const [newTag, setNewTag] = useState("");
+  const [availableTags, setAvailableTags] = useState([]);
+  const [picking, setPicking] = useState(false);
+  const [tagsError, setTagsError] = useState("");
   const [usernameValue, setUsernameValue] = useState(user?.username ?? "");
   const [nameValue, setNameValue] = useState(user?.name ?? "");
   const [emailValue, setEmailValue] = useState(user?.email ?? "");
@@ -68,18 +78,52 @@ export function ProfileScreen({ user, onClose, onLogout, onUserUpdate }) {
   const [logoutError, setLogoutError] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-  const inputRef = useRef(null);
 
   const displayName = nameValue || usernameValue || "Gast";
   const hasAccountInfo = Boolean(usernameValue || nameValue || emailValue);
 
-  const addTag = () => {
-    setTags((ts) => addTagFn(ts, newTag));
-    setNewTag("");
-    setAddingTag(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetchTags()
+      .then((all) => {
+        if (!cancelled) setAvailableTags(all.filter(isInterestTag));
+      })
+      .catch((err) => {
+        if (!cancelled) setTagsError(err.message || "Tags laden mislukt.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const syncTags = async (nextTags) => {
+    const previous = myTags;
+    onMyTagsChange?.(nextTags);
+    setTagsError("");
+    try {
+      const updated = await updateMyTags(
+        user?.token,
+        nextTags.map((t) => t.id)
+      );
+      onMyTagsChange?.(updated.filter(isInterestTag));
+    } catch (err) {
+      onMyTagsChange?.(previous);
+      setTagsError(err.message || "Tags bijwerken mislukt.");
+    }
   };
 
-  const removeTag = (t) => setTags((ts) => removeTagFn(ts, t));
+  const removeTag = (tag) => {
+    syncTags(myTags.filter((t) => t.id !== tag.id));
+  };
+
+  const pickTag = (tag) => {
+    if (myTags.some((t) => t.id === tag.id)) return;
+    syncTags([...myTags, tag]);
+  };
+
+  const pickableTags = availableTags.filter(
+    (t) => !myTags.some((mine) => mine.id === t.id)
+  );
 
   const handleSaveAccount = async () => {
     if (accountLoading) return;
@@ -325,13 +369,13 @@ export function ProfileScreen({ user, onClose, onLogout, onUserUpdate }) {
         {/* Tags */}
         <SectionLabel>Tags</SectionLabel>
         <View style={styles.tagsRow}>
-          {tags.map((t) => (
-            <View key={t} style={styles.tagChip}>
-              <Text style={styles.tagChipLabel}>{t}</Text>
+          {myTags.map((tag) => (
+            <View key={tag.id} style={styles.tagChip}>
+              <Text style={styles.tagChipLabel}>{tag.name}</Text>
               <Pressable
-                onPress={() => removeTag(t)}
+                onPress={() => removeTag(tag)}
                 hitSlop={8}
-                accessibilityLabel={`Verwijder ${t}`}
+                accessibilityLabel={`Verwijder ${tag.name}`}
               >
                 <IIcon
                   name="close"
@@ -342,34 +386,24 @@ export function ProfileScreen({ user, onClose, onLogout, onUserUpdate }) {
               </Pressable>
             </View>
           ))}
-          {addingTag ? (
-            <View style={styles.addTagInput}>
-              <TextInput
-                ref={inputRef}
-                style={styles.addTagField}
-                value={newTag}
-                onChangeText={setNewTag}
-                placeholder="Nieuw thema"
-                placeholderTextColor="rgba(15,17,26,0.4)"
-                autoFocus
-                returnKeyType="done"
-                onSubmitEditing={addTag}
-                autoCapitalize="words"
-                autoCorrect={false}
+          {picking ? (
+            <Pressable
+              onPress={() => setPicking(false)}
+              style={styles.addTagChip}
+            >
+              <IIcon
+                name="close"
+                size={12}
+                strokeWidth={2.4}
+                color={colors.ink}
               />
-              <Pressable onPress={addTag} style={styles.addTagConfirm}>
-                <IIcon
-                  name="check"
-                  size={14}
-                  strokeWidth={2.4}
-                  color={colors.ink}
-                />
-              </Pressable>
-            </View>
+              <Text style={styles.addTagChipLabel}>Klaar</Text>
+            </Pressable>
           ) : (
             <Pressable
-              onPress={() => setAddingTag(true)}
+              onPress={() => setPicking(true)}
               style={styles.addTagChip}
+              disabled={pickableTags.length === 0}
             >
               <IIcon
                 name="plus"
@@ -381,6 +415,27 @@ export function ProfileScreen({ user, onClose, onLogout, onUserUpdate }) {
             </Pressable>
           )}
         </View>
+        {picking && pickableTags.length > 0 ? (
+          <View style={styles.pickRow}>
+            {pickableTags.map((tag) => (
+              <Pressable
+                key={tag.id}
+                onPress={() => pickTag(tag)}
+                style={styles.pickChip}
+                accessibilityLabel={`Voeg ${tag.name} toe`}
+              >
+                <IIcon
+                  name="plus"
+                  size={12}
+                  strokeWidth={2.4}
+                  color={colors.ink}
+                />
+                <Text style={styles.pickChipLabel}>{tag.name}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+        {tagsError ? <Text style={styles.tagsError}>{tagsError}</Text> : null}
 
         {/* Opgeslagen */}
         <SectionLabel>Opgeslagen</SectionLabel>
@@ -657,34 +712,33 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     color: colors.ink,
   },
-  addTagInput: {
+  pickRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 10,
+  },
+  pickChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FFFFFF",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     borderRadius: 9999,
-    paddingVertical: 4,
-    paddingLeft: 14,
-    paddingRight: 6,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: surfaces.border,
   },
-  addTagField: {
+  pickChipLabel: {
+    fontFamily: fonts.displayMedium,
+    fontSize: 13.5,
+    color: colors.ink,
+  },
+  tagsError: {
     fontFamily: fonts.body,
     fontSize: 13,
-    color: colors.ink,
-    width: 110,
-    padding: 0,
-  },
-  addTagConfirm: {
-    width: 28,
-    height: 28,
-    borderRadius: 9999,
-    backgroundColor: colors.blue,
-    borderWidth: 1,
-    borderColor: surfaces.border,
-    alignItems: "center",
-    justifyContent: "center",
+    color: colors.red,
+    marginTop: 8,
   },
 
   // Rows

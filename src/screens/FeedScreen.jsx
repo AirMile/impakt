@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -20,26 +20,42 @@ import { fadeUp } from "../theme/animations";
 import { STORIES as FEED_STORIES } from "../api/mock";
 import { shareStory } from "../lib/share";
 import { pressFx } from "../lib/pressFeedback";
+import { fetchTags } from "../lib/tags";
+import { orderUserTags } from "../lib/orderUserTags";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 36;
 
-const FEED_TOPICS = [
-  { label: "Politiek", icon: "topicPolitics", cat: "Politiek" },
-  { label: "Buitenland", icon: "topicWorld", cat: "Wereld" },
-  { label: "Economie", icon: "topicEconomy", cat: "Economie" },
-  { label: "Sport", icon: "topicSport", cat: "Sport" },
-  { label: "Natuur", icon: "topicNature", cat: "Natuur" },
-  { label: "Innovatie", icon: "topicInnovation", cat: "Tech" },
-  { label: "Kunst", icon: "topicArt", cat: "Kunst" },
-  { label: "Lokaal", icon: "topicLocal", cat: "Lokaal" },
-];
+const CATEGORY_ICONS = {
+  politiek: "topicPolitics",
+  buitenland: "topicWorld",
+  economie: "topicEconomy",
+  sport: "topicSport",
+  natuur: "topicNature",
+  innovatie: "topicInnovation",
+  kunst: "topicArt",
+  lokaal: "topicLocal",
+};
+
+// Bridge between backend tag categories and the mock STORIES `cat` field
+// (mock uses "Wereld"/"Tech", backend uses "buitenland"/"innovatie"). Gets
+// removed once Step 2 replaces FEED_STORIES with /articles output.
+const MOCK_CAT_BY_CATEGORY = {
+  politiek: "Politiek",
+  buitenland: "Wereld",
+  economie: "Economie",
+  sport: "Sport",
+  natuur: "Natuur",
+  innovatie: "Tech",
+  kunst: "Kunst",
+  lokaal: "Lokaal",
+};
 
 const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
 const SELECTED_BG = "#10141C";
 
-function TopicChips({ selectedTopics, onToggle }) {
+function TopicChips({ topics, selectedTopics, onToggle }) {
   return (
     <View style={styles.topicSection}>
       <Text style={styles.topicSectionLabel}>Ontdek per thema</Text>
@@ -49,7 +65,7 @@ function TopicChips({ selectedTopics, onToggle }) {
         contentContainerStyle={styles.topicChipsRow}
         style={styles.topicChipsScroll}
       >
-        {FEED_TOPICS.map((topic) => {
+        {topics.map((topic) => {
           const isSelected = selectedTopics.has(topic.label);
 
           return (
@@ -188,15 +204,40 @@ export function FeedScreen({
   embedded = false,
   excludeId,
   goodNewsOnly = false,
+  myTags = [],
 }) {
   const [selectedTopics, setSelectedTopics] = useState(new Set());
+  const [allTags, setAllTags] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTags()
+      .then((tags) => {
+        if (!cancelled) setAllTags(tags);
+      })
+      .catch(() => {
+        if (!cancelled) setAllTags([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const topics = useMemo(() => {
+    const usable = allTags.filter((tag) => MOCK_CAT_BY_CATEGORY[tag.category]);
+    return orderUserTags(usable, myTags).map((tag) => ({
+      label: tag.name,
+      icon: CATEGORY_ICONS[tag.category] ?? "topicWorld",
+      cat: MOCK_CAT_BY_CATEGORY[tag.category],
+    }));
+  }, [allTags, myTags]);
 
   const activeCats = useMemo(() => {
     if (selectedTopics.size === 0) return [];
-    return FEED_TOPICS.filter((topic) => selectedTopics.has(topic.label)).map(
-      (topic) => topic.cat
-    );
-  }, [selectedTopics]);
+    return topics
+      .filter((topic) => selectedTopics.has(topic.label))
+      .map((topic) => topic.cat);
+  }, [selectedTopics, topics]);
 
   const stories = useMemo(() => {
     const base = goodNewsOnly
@@ -240,8 +281,12 @@ export function FeedScreen({
     [onOpen]
   );
 
-  const topicBar = !goodNewsOnly && (
-    <TopicChips selectedTopics={selectedTopics} onToggle={toggleTopic} />
+  const topicBar = !goodNewsOnly && topics.length > 0 && (
+    <TopicChips
+      topics={topics}
+      selectedTopics={selectedTopics}
+      onToggle={toggleTopic}
+    />
   );
 
   if (embedded) {
