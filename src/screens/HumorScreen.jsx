@@ -1,10 +1,4 @@
-import React, {
-  useRef,
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -27,7 +21,6 @@ import { IIcon } from "../components/Icons";
 import { HeroOverlay } from "../components/HeroOverlay";
 import { REACTION_COLORS } from "../components/ReactionRail";
 import { ImpaktLogo } from "../components/ImpaktLogo";
-import { MEMES, STORIES as FEED_STORIES } from "../api/mock";
 import { colors, fonts } from "../theme/tokens";
 import { shareMeme } from "../lib/share";
 import { createDoubleTapDetector } from "../lib/createDoubleTapDetector";
@@ -124,11 +117,6 @@ const MemeCard = React.memo(function MemeCard({
     }
   }, [liked]);
 
-  const linkedStory = useMemo(
-    () => FEED_STORIES.find((s) => s.id === meme.storyId),
-    [meme.storyId]
-  );
-
   const heartOpacity = useSharedValue(0);
   const heartScale = useSharedValue(0.6);
   useEffect(() => {
@@ -177,7 +165,7 @@ const MemeCard = React.memo(function MemeCard({
         <RailButton
           icon="bookmark"
           label="Bewaren"
-          count={saved ? "Bewaard" : meme.shares}
+          count={saved ? "Bewaard" : null}
           active={saved}
           fill
           color={colors.blue}
@@ -186,7 +174,7 @@ const MemeCard = React.memo(function MemeCard({
         <RailButton
           icon="share"
           label="Delen"
-          count={meme.shares}
+          count={null}
           onPress={() => shareMeme(meme)}
         />
       </View>
@@ -200,15 +188,6 @@ const MemeCard = React.memo(function MemeCard({
         ]}
       >
         <View style={styles.kickerInner}>
-          <View style={styles.kickerThumb}>
-            {linkedStory?.img != null && (
-              <Image
-                source={{ uri: linkedStory.img }}
-                style={StyleSheet.absoluteFillObject}
-                resizeMode="cover"
-              />
-            )}
-          </View>
           <View style={styles.kickerBody}>
             <Text style={styles.kickerLabel}>
               Lees meer · {meme.storySource}
@@ -216,11 +195,11 @@ const MemeCard = React.memo(function MemeCard({
             <Text style={styles.kickerHeadline} numberOfLines={2}>
               {meme.storyHeadline}
             </Text>
-            {meme.storyTeaser != null && (
+            {meme.storyTeaser ? (
               <Text style={styles.kickerTeaser} numberOfLines={1}>
                 {meme.storyTeaser}
               </Text>
-            )}
+            ) : null}
           </View>
         </View>
       </Pressable>
@@ -276,54 +255,63 @@ export function HumorScreen({
   initialStoryId,
   onInitialStoryConsumed,
   onOpenStory,
+  memes = [],
 }) {
   const insets = useSafeAreaInsets();
   const listRef = useRef(null);
 
-  const [initialIdx] = useState(() => {
-    if (initialStoryId == null) return 0;
-    const i = MEMES.findIndex((m) => m.storyId === initialStoryId);
-    return i >= 0 ? i : 0;
-  });
-
+  // Scroll naar de juiste meme wanneer App.jsx een initialStoryId doorgeeft
+  // (deeplink uit `impakt://meme/<id>` of "bekijk memes"-tap in DetailScreen).
+  // Effect-based zodat het ook werkt als memes pas ná mount binnenkomen.
   useEffect(() => {
-    if (initialStoryId != null) onInitialStoryConsumed?.();
+    if (initialStoryId == null) return;
+    if (memes.length === 0) return;
+    const idx = memes.findIndex((m) => m.storyId === initialStoryId);
+    if (idx > 0 && listRef.current) {
+      listRef.current.scrollToIndex({ index: idx, animated: false });
+    }
+    onInitialStoryConsumed?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [memes.length, initialStoryId]);
 
   const renderItem = useCallback(
     ({ item, index }) => (
       <MemeCard
         meme={item}
         idx={index}
-        total={MEMES.length}
+        total={memes.length}
         isFirst={index === 0}
         onOpenStory={onOpenStory}
       />
     ),
-    [onOpenStory]
+    [onOpenStory, memes.length]
   );
 
   return (
     <View style={styles.screen}>
-      <FlatList
-        ref={listRef}
-        data={MEMES}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        pagingEnabled
-        showsVerticalScrollIndicator={false}
-        getItemLayout={(_, index) => ({
-          length: SCREEN_H,
-          offset: SCREEN_H * index,
-          index,
-        })}
-        initialScrollIndex={initialIdx > 0 ? initialIdx : undefined}
-        decelerationRate="fast"
-        initialNumToRender={2}
-        maxToRenderPerBatch={2}
-        windowSize={5}
-      />
+      {memes.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>Nog geen memes beschikbaar.</Text>
+        </View>
+      ) : (
+        <FlatList
+          ref={listRef}
+          data={memes}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderItem}
+          pagingEnabled
+          showsVerticalScrollIndicator={false}
+          getItemLayout={(_, index) => ({
+            length: SCREEN_H,
+            offset: SCREEN_H * index,
+            index,
+          })}
+          decelerationRate="fast"
+          initialNumToRender={2}
+          maxToRenderPerBatch={2}
+          windowSize={5}
+        />
+      )}
 
       <View
         style={[styles.headerOverlay, { height: insets.top + 80 }]}
@@ -347,6 +335,18 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.ink,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  emptyText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.cream,
+    opacity: 0.7,
   },
 
   card: {

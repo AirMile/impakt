@@ -16,11 +16,11 @@ import {
   ReactionStance,
 } from "../components/sandbox/ReactionVariants";
 import { HeroOverlay } from "../components/HeroOverlay";
-import { STORIES } from "../api/mock";
+import storiesData from "../api/mock/stories.json";
 import { colors, fonts, surfaces } from "../theme/tokens";
 
-// Vier stories met spreiding in reactie-verdeling
-const SANDBOX_STORIES = [0, 1, 2, 3].map((i) => STORIES[i]);
+// Vier stories met spreiding in reactie-verdeling (dev-only sandbox)
+const SANDBOX_STORIES = [0, 1, 2, 3].map((i) => storiesData.stories?.[i]);
 
 const VARIANTS = [
   {

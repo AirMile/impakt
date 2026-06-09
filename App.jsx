@@ -18,7 +18,6 @@ import {
 
 import { AnimatePresence } from "moti";
 import { colors } from "./src/theme/tokens";
-import { MEMES } from "./src/api/mock";
 import { getOnboarded } from "./src/storage/prefs";
 import { parseImpaktUrl } from "./src/lib/parseImpaktUrl";
 import { ToastHost } from "./src/components/Toast";
@@ -34,6 +33,7 @@ import { HappyFeedScreen } from "./src/screens/HappyFeedScreen";
 import { SandboxReactionsScreen } from "./src/screens/SandboxReactionsScreen";
 import { fetchMyTags } from "./src/lib/tags";
 import { fetchArticle } from "./src/lib/articles";
+import { fetchMemes } from "./src/lib/memes";
 
 const DEV_FORCE_AUTH = __DEV__;
 const DEV_SANDBOX = false; // false | "reactions"
@@ -55,6 +55,7 @@ export default function App() {
   const [tab, setTab] = useState("feed");
   const [user, setUser] = useState(null);
   const [myTags, setMyTags] = useState([]);
+  const [memes, setMemes] = useState([]);
   const [openStory, setOpenStory] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -78,6 +79,20 @@ export default function App() {
       cancelled = true;
     };
   }, [user?.token]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchMemes()
+      .then((m) => {
+        if (!cancelled) setMemes(m);
+      })
+      .catch(() => {
+        if (!cancelled) setMemes([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!fontsLoaded) return;
@@ -107,7 +122,7 @@ export default function App() {
           })
           .catch(() => {});
       } else if (parsed.kind === "meme") {
-        const meme = MEMES.find((m) => m.id === parsed.id);
+        const meme = memes.find((m) => String(m.id) === String(parsed.id));
         if (meme) {
           setOpenStory(null);
           setTab("humor");
@@ -124,7 +139,7 @@ export default function App() {
 
     const sub = Linking.addEventListener("url", ({ url }) => handle(url));
     return () => sub.remove();
-  }, [fontsLoaded, authLoading]);
+  }, [fontsLoaded, authLoading, memes]);
 
   // Callbacks voor navigatie — vóór early returns zodat hooks altijd worden aangeroepen
   const navTab = useCallback((t) => {
@@ -146,14 +161,17 @@ export default function App() {
     setPendingMemeStoryId(storyId);
   }, []);
 
-  const openMemeById = useCallback((memeId) => {
-    const meme = MEMES.find((m) => m.id === memeId);
-    if (meme) {
-      setOpenStory(null);
-      setTab("humor");
-      setPendingMemeStoryId(meme.storyId);
-    }
-  }, []);
+  const openMemeById = useCallback(
+    (memeId) => {
+      const meme = memes.find((m) => String(m.id) === String(memeId));
+      if (meme) {
+        setOpenStory(null);
+        setTab("humor");
+        setPendingMemeStoryId(meme.storyId);
+      }
+    },
+    [memes]
+  );
 
   const handleSearch = useCallback(() => setShowSearch(true), []);
   const handleProfile = useCallback(() => setShowProfile(true), []);
@@ -225,6 +243,7 @@ export default function App() {
                 initialStoryId={pendingMemeStoryId}
                 onInitialStoryConsumed={() => setPendingMemeStoryId(null)}
                 onOpenStory={openStoryById}
+                memes={memes}
               />
             </View>
           </>
@@ -259,6 +278,7 @@ export default function App() {
             <DetailScreen
               key={openStory.id}
               story={openStory}
+              memes={memes}
               onClose={() => setOpenStory(null)}
               onOpenMeme={openMemeForStory}
               onSwapStory={setOpenStory}

@@ -2,66 +2,34 @@ import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import { HumorScreen } from "../../src/screens/HumorScreen";
 
-// jest.mock wordt gehoist boven variabele-declaraties, dus data moet inline staan
-jest.mock("../../src/api/mock", () => ({
-  MEMES: [
-    {
-      id: "m1",
-      storyId: 101,
-      img: "",
-      top: "Top tekst",
-      bot: "Bot tekst",
-      author: "auteur",
-      authorName: "Auteur Naam",
-      cat: "Klimaat",
-      reactions: { smile: 5, meh: 2, frown: 1 },
-      likes: 10,
-      comments: 3,
-      shares: 2,
-      storyHeadline: "Klimaat story",
-      storyTeaser: "...",
-      storySource: "bron",
-    },
-    {
-      id: "m2",
-      storyId: 102,
-      img: "",
-      top: "Tweede top",
-      bot: "Tweede bot",
-      author: "auteur2",
-      authorName: "Auteur Twee",
-      cat: "Sport",
-      reactions: { smile: 3, meh: 1, frown: 0 },
-      likes: 5,
-      comments: 1,
-      shares: 0,
-      storyHeadline: "Sport story",
-      storyTeaser: "...",
-      storySource: "bron2",
-    },
-  ],
-  STORIES: [
-    {
-      id: 101,
-      cat: "Klimaat",
-      title: "Klimaat story",
-      reactions: { smile: 5, meh: 2, frown: 1 },
-      body: [],
-      tags: [],
-    },
-    {
-      id: 102,
-      cat: "Sport",
-      title: "Sport story",
-      reactions: { smile: 3, meh: 1, frown: 0 },
-      body: [],
-      tags: [],
-    },
-  ],
-  CATEGORIES: ["Voor jou", "Klimaat", "Sport"],
-}));
-
 jest.mock("../../src/lib/share", () => ({ shareMeme: jest.fn() }));
+
+const MOCK_MEMES = [
+  {
+    id: "m1",
+    storyId: 101,
+    img: "",
+    top: "Top tekst",
+    bot: "Bot tekst",
+    reactions: { smile: 5, meh: 2, frown: 1 },
+    likes: 10,
+    storyHeadline: "Klimaat story",
+    storyTeaser: "",
+    storySource: "Impakt",
+  },
+  {
+    id: "m2",
+    storyId: 102,
+    img: "",
+    top: "Tweede top",
+    bot: "Tweede bot",
+    reactions: { smile: 3, meh: 1, frown: 0 },
+    likes: 5,
+    storyHeadline: "Sport story",
+    storyTeaser: "",
+    storySource: "Impakt",
+  },
+];
 
 const defaultProps = {
   onNav: jest.fn(),
@@ -69,6 +37,7 @@ const defaultProps = {
   onProfile: jest.fn(),
   activeTab: "humor",
   onOpenStory: jest.fn(),
+  memes: MOCK_MEMES,
 };
 
 beforeEach(() => {
@@ -126,4 +95,14 @@ test("niet-actieve reactie-knoppen krijgen dim-opacity 0.5 na stemmen", () => {
   expect(opacityOf("rxn-btn-smile")).toBe(1);
   expect(opacityOf("rxn-btn-meh")).toBe(0.5);
   expect(opacityOf("rxn-btn-frown")).toBe(0.5);
+});
+
+test("lege memes-prop toont 'Nog geen memes' lege-state", () => {
+  const { getByText } = render(<HumorScreen {...defaultProps} memes={[]} />);
+  expect(getByText("Nog geen memes beschikbaar.")).toBeTruthy();
+});
+
+test("rendert kicker met storyHeadline uit meme", () => {
+  const { getAllByText } = render(<HumorScreen {...defaultProps} />);
+  expect(getAllByText("Klimaat story").length).toBeGreaterThanOrEqual(1);
 });

@@ -21,7 +21,6 @@ import { FeedScreen } from "./FeedScreen";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { pressFx } from "../lib/pressFeedback";
 import { slideUpScreen } from "../theme/animations";
-import { MEMES } from "../api/mock";
 import { shareStory } from "../lib/share";
 import { sumVotes, votePct } from "../lib/pollPct";
 import { isInFeed } from "../lib/isInFeed";
@@ -29,6 +28,7 @@ import { getRelatedMemes } from "../lib/getRelatedMemes";
 
 export function DetailScreen({
   story,
+  memes = [],
   onClose,
   onOpenMeme,
   onSwapStory,
@@ -64,7 +64,7 @@ export function DetailScreen({
     return () => sub.remove();
   }, [onClose]);
 
-  const relatedMemes = getRelatedMemes(MEMES, story.id);
+  const relatedMemes = getRelatedMemes(memes, story.id);
   const firstMeme = relatedMemes[0];
 
   const totalVotes = story.poll ? sumVotes(story.poll.options, pollChoice) : 0;

@@ -4,36 +4,36 @@ import { Linking } from "react-native";
 import App from "../App";
 
 jest.mock("../src/api/mock", () => ({
-  STORIES: [
-    {
-      id: 102,
-      cat: "Sport",
-      title: "Sport story",
-      reactions: { smile: 3, meh: 1, frown: 0 },
-      body: [],
-      tags: [],
-    },
-  ],
-  MEMES: [
+  CATEGORIES: ["Voor jou", "Sport"],
+}));
+
+jest.mock("../src/lib/memes", () => ({
+  fetchMemes: jest.fn().mockResolvedValue([
     {
       id: "m1",
       storyId: 102,
       img: "",
       top: "Top",
       bot: "Bot",
-      author: "a",
-      authorName: "A",
-      cat: "Sport",
       reactions: { smile: 0, meh: 0, frown: 0 },
       likes: 0,
-      comments: 0,
-      shares: 0,
       storyHeadline: "H",
-      storyTeaser: "T",
-      storySource: "S",
+      storyTeaser: "",
+      storySource: "Impakt",
     },
-  ],
-  CATEGORIES: ["Voor jou", "Sport"],
+  ]),
+}));
+
+jest.mock("../src/lib/tags", () => ({
+  fetchTags: jest.fn().mockResolvedValue([]),
+  fetchMyTags: jest.fn().mockResolvedValue([]),
+  updateMyTags: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock("../src/lib/articles", () => ({
+  fetchArticles: jest.fn().mockResolvedValue([]),
+  fetchArticle: jest.fn().mockResolvedValue(null),
+  fetchHappyFeed: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock("../src/storage/prefs", () => ({
