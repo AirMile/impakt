@@ -30,10 +30,12 @@ import { AuthScreen } from "./src/screens/AuthScreen";
 import { SearchScreen } from "./src/screens/SearchScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { HappyFeedScreen } from "./src/screens/HappyFeedScreen";
+import { SavedScreen } from "./src/screens/SavedScreen";
 import { SandboxReactionsScreen } from "./src/screens/SandboxReactionsScreen";
 import { fetchMyTags } from "./src/lib/tags";
 import { fetchArticle } from "./src/lib/articles";
 import { fetchMemes } from "./src/lib/memes";
+import { fetchSavedArticles } from "./src/lib/saves";
 
 const DEV_FORCE_AUTH = __DEV__;
 const DEV_SANDBOX = false; // false | "reactions"
@@ -59,8 +61,15 @@ export default function App() {
   const [openStory, setOpenStory] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
+  const [savedArticles, setSavedArticles] = useState([]);
   const [pendingMemeStoryId, setPendingMemeStoryId] = useState(null);
   const [feedCat, setFeedCat] = useState("Voor jou");
+
+  const savedIds = useMemo(
+    () => new Set(savedArticles.map((a) => a.id)),
+    [savedArticles]
+  );
 
   useEffect(() => {
     if (!user?.token) {
@@ -74,6 +83,22 @@ export default function App() {
       })
       .catch(() => {
         if (!cancelled) setMyTags([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.token]);
+
+  useEffect(() => {
+    // fetchSavedArticles(undefined) resolved naar [], dus logout (token weg)
+    // leegt de lijst via de async .then — geen synchrone setState in de body.
+    let cancelled = false;
+    fetchSavedArticles(user?.token)
+      .then((articles) => {
+        if (!cancelled) setSavedArticles(articles);
+      })
+      .catch(() => {
+        if (!cancelled) setSavedArticles([]);
       });
     return () => {
       cancelled = true;
@@ -175,6 +200,8 @@ export default function App() {
 
   const handleSearch = useCallback(() => setShowSearch(true), []);
   const handleProfile = useCallback(() => setShowProfile(true), []);
+  const handleOpenSaved = useCallback(() => setShowSaved(true), []);
+  const handleSavedChange = useCallback((next) => setSavedArticles(next), []);
 
   const commonProps = useMemo(
     () => ({
@@ -257,6 +284,8 @@ export default function App() {
             onUserUpdate={setUser}
             myTags={myTags}
             onMyTagsChange={setMyTags}
+            savedCount={savedArticles.length}
+            onOpenSaved={handleOpenSaved}
             onClose={() => setShowProfile(false)}
             onLogout={() => {
               setShowProfile(false);
@@ -272,6 +301,16 @@ export default function App() {
               setOpenStory(s);
             }}
             myTags={myTags}
+          />
+        )}
+        {inApp && showSaved && (
+          <SavedScreen
+            savedArticles={savedArticles}
+            onClose={() => setShowSaved(false)}
+            onOpen={(s) => {
+              setShowSaved(false);
+              setOpenStory(s);
+            }}
           />
         )}
         <AnimatePresence>
@@ -291,6 +330,8 @@ export default function App() {
               onSearch={handleSearch}
               activeTab={tab}
               token={user?.token}
+              savedIds={savedIds}
+              onSavedChange={handleSavedChange}
             />
           )}
         </AnimatePresence>

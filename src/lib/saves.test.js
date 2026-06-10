@@ -1,4 +1,22 @@
-import { saveArticle, unsaveArticle, saveMeme, unsaveMeme } from "./saves";
+import {
+  saveArticle,
+  unsaveArticle,
+  saveMeme,
+  unsaveMeme,
+  fetchSavedArticles,
+  mapSavedFromResponse,
+} from "./saves";
+
+const RAW_SAVED = {
+  id: 3,
+  title: "Bewaard artikel",
+  summary: "Sub",
+  content: "Body.",
+  image_url: "https://x.test/i.jpg",
+  published_at: "2026-06-08T13:04:53Z",
+  views_count: 1200,
+  tags: [],
+};
 
 beforeEach(() => {
   global.fetch = jest.fn();
@@ -133,4 +151,54 @@ test("unsaveMeme gooit servermelding bij fout", async () => {
   });
 
   await expect(unsaveMeme("tok123", 7)).rejects.toThrow("Bestaat niet");
+});
+
+test("fetchSavedArticles haalt en mapt user.savedArticles uit /account", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ user: { id: 1, savedArticles: [RAW_SAVED] } }),
+  });
+
+  const saved = await fetchSavedArticles("tok123");
+
+  expect(global.fetch).toHaveBeenCalledWith(
+    "http://145.24.237.97/api/account",
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: "Bearer tok123",
+      },
+    }
+  );
+  expect(saved).toHaveLength(1);
+  expect(saved[0].id).toBe(3);
+  expect(saved[0].sub).toBe("Sub");
+});
+
+test("fetchSavedArticles geeft lege lijst zonder token", async () => {
+  const saved = await fetchSavedArticles(null);
+  expect(saved).toEqual([]);
+  expect(global.fetch).not.toHaveBeenCalled();
+});
+
+test("fetchSavedArticles geeft lege lijst bij serverfout", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: false,
+    json: async () => ({ message: "Unauthorized" }),
+  });
+
+  const saved = await fetchSavedArticles("tok123");
+  expect(saved).toEqual([]);
+});
+
+test("mapSavedFromResponse mapt save-respons en negeert ontbrekende data", () => {
+  const mapped = mapSavedFromResponse({
+    user: { savedArticles: [RAW_SAVED] },
+  });
+  expect(mapped).toHaveLength(1);
+  expect(mapped[0].id).toBe(3);
+
+  expect(mapSavedFromResponse({})).toEqual([]);
+  expect(mapSavedFromResponse(null)).toEqual([]);
 });

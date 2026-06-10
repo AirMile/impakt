@@ -60,6 +60,8 @@ export function ProfileScreen({
   onUserUpdate,
   myTags = [],
   onMyTagsChange,
+  savedCount = 0,
+  onOpenSaved,
 }) {
   const insets = useSafeAreaInsets();
   const [availableTags, setAvailableTags] = useState([]);
@@ -440,7 +442,12 @@ export function ProfileScreen({
         {/* Opgeslagen */}
         <SectionLabel>Opgeslagen</SectionLabel>
         <View style={styles.rowGroup}>
-          <ProfileRow icon="bookmark" label="Artikelen" count={3} />
+          <ProfileRow
+            icon="bookmark"
+            label="Artikelen"
+            count={savedCount}
+            onPress={onOpenSaved}
+          />
           <View style={styles.rowDivider} />
           <ProfileRow icon="image" label="Nieuws memes" count={67} />
         </View>
