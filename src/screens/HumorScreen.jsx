@@ -102,20 +102,26 @@ const MemeCard = React.memo(function MemeCard({
   total,
   isFirst,
   onOpenStory,
+  onRequireAuth,
 }) {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [reaction, setReaction] = useState(null);
   const [tapHeart, setTapHeart] = useState(false);
   const detectDoubleTap = useRef(createDoubleTapDetector(280));
+  const canInteract = useCallback(
+    () => onRequireAuth?.() !== false,
+    [onRequireAuth]
+  );
 
   const handlePress = useCallback(() => {
     if (detectDoubleTap.current(Date.now())) {
+      if (!canInteract()) return;
       if (!liked) setLiked(true);
       setTapHeart(true);
       setTimeout(() => setTapHeart(false), 700);
     }
-  }, [liked]);
+  }, [canInteract, liked]);
 
   const heartOpacity = useSharedValue(0);
   const heartScale = useSharedValue(0.6);
@@ -159,7 +165,11 @@ const MemeCard = React.memo(function MemeCard({
             dimmed={reaction !== null && reaction !== r.key}
             count={`${meme.reactions[r.key]}%`}
             color={r.color}
-            onPress={() => reaction === null && setReaction(r.key)}
+            onPress={() => {
+              if (reaction !== null) return;
+              if (!canInteract()) return;
+              setReaction(r.key);
+            }}
           />
         ))}
         <RailButton
@@ -169,13 +179,19 @@ const MemeCard = React.memo(function MemeCard({
           active={saved}
           fill
           color={colors.blue}
-          onPress={() => setSaved((s) => !s)}
+          onPress={() => {
+            if (!canInteract()) return;
+            setSaved((s) => !s);
+          }}
         />
         <RailButton
           icon="share"
           label="Delen"
           count={null}
-          onPress={() => shareMeme(meme)}
+          onPress={() => {
+            if (!canInteract()) return;
+            shareMeme(meme);
+          }}
         />
       </View>
 
@@ -256,6 +272,7 @@ export function HumorScreen({
   onInitialStoryConsumed,
   onOpenStory,
   memes = [],
+  onRequireAuth,
 }) {
   const insets = useSafeAreaInsets();
   const listRef = useRef(null);
@@ -282,9 +299,10 @@ export function HumorScreen({
         total={memes.length}
         isFirst={index === 0}
         onOpenStory={onOpenStory}
+        onRequireAuth={onRequireAuth}
       />
     ),
-    [onOpenStory, memes.length]
+    [onOpenStory, onRequireAuth, memes.length]
   );
 
   return (

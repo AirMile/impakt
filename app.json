@@ -18,6 +18,7 @@
     },
     "android": {
       "package": "nl.impakt.app",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#EFEBE6",
         "foregroundImage": "./assets/android-icon-foreground.png",

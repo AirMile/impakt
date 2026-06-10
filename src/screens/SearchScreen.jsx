@@ -36,7 +36,12 @@ const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
 const SELECTED_BG = "#10141C";
 
-export function SearchScreen({ onClose, onOpenStory, myTags = [] }) {
+export function SearchScreen({
+  onClose,
+  onOpenStory,
+  myTags = [],
+  onRequireAuth,
+}) {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
   const [selectedTopics, setSelectedTopics] = useState(new Set());
@@ -244,6 +249,7 @@ export function SearchScreen({ onClose, onOpenStory, myTags = [] }) {
                     story={story}
                     onOpen={openStory}
                     variant="compact"
+                    onRequireAuth={onRequireAuth}
                   />
                 ))
               )}
@@ -268,6 +274,7 @@ export function SearchScreen({ onClose, onOpenStory, myTags = [] }) {
                   story={story}
                   onOpen={openStory}
                   variant="full"
+                  onRequireAuth={onRequireAuth}
                 />
               ))
             )}

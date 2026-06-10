@@ -39,6 +39,7 @@ export function DetailScreen({
   onProfile,
   onSearch,
   activeTab,
+  onRequireAuth,
 }) {
   const insets = useSafeAreaInsets();
   const [reaction, setReaction] = useState(null);
@@ -66,6 +67,7 @@ export function DetailScreen({
 
   const relatedMemes = getRelatedMemes(memes, story.id);
   const firstMeme = relatedMemes[0];
+  const canInteract = () => onRequireAuth?.() !== false;
 
   const totalVotes = story.poll ? sumVotes(story.poll.options, pollChoice) : 0;
 
@@ -110,7 +112,10 @@ export function DetailScreen({
           </Pressable>
           <ImpaktLogo size={26} dark />
           <Pressable
-            onPress={() => shareStory(story)}
+            onPress={() => {
+              if (!canInteract()) return;
+              shareStory(story);
+            }}
             unstable_pressDelay={0}
             style={({ pressed }) => [
               styles.headerIconBtn,
@@ -170,10 +175,16 @@ export function DetailScreen({
           <View style={styles.heroRail}>
             <ReactionRail
               reaction={reaction}
-              onReact={setReaction}
+              onReact={(key) => {
+                if (!canInteract()) return;
+                setReaction(key);
+              }}
               reactions={story.reactions}
               saved={saved}
-              onSave={() => setSaved((s) => !s)}
+              onSave={() => {
+                if (!canInteract()) return;
+                setSaved((s) => !s);
+              }}
               light
             />
           </View>
@@ -224,7 +235,10 @@ export function DetailScreen({
                   return (
                     <Pressable
                       key={opt.id}
-                      onPress={() => setPollChoice(opt.id)}
+                      onPress={() => {
+                        if (!canInteract()) return;
+                        setPollChoice(opt.id);
+                      }}
                       style={styles.pollOpt}
                     >
                       {showResults && (
@@ -376,6 +390,7 @@ export function DetailScreen({
               onSearch={onSearch}
               onProfile={onProfile}
               activeTab={activeTab}
+              onRequireAuth={onRequireAuth}
             />
           )}
         </View>

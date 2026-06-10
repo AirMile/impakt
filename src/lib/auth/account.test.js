@@ -136,9 +136,9 @@ test("updateAccount stuurt account update met bearer token", async () => {
   });
 
   expect(global.fetch).toHaveBeenCalledWith(
-    "http://145.24.237.97/api/update-account",
+    "http://145.24.237.97/api/account",
     {
-      method: "PUT",
+      method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",

@@ -1,4 +1,4 @@
-  import React, { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -6,13 +6,13 @@ import {
   StyleSheet,
   ScrollView,
   useWindowDimensions,
-  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MotiView } from "moti";
 
 import { Btn } from "../../components/Btn";
 import { IIcon } from "../../components/Icons";
+import { ImpaktLogo } from "../../components/ImpaktLogo";
 import { colors, fonts } from "../../theme/tokens";
 import { toggleInSet } from "../../lib/toggleInSet";
 
@@ -33,8 +33,6 @@ const TOPIC_ROWS = [
   ["natuur", "innovatie"],
   ["kunst", "lokaal"],
 ];
-
-const impaktLogo = require("../../../assets/impakt-logo.webp");
 
 const SELECTED_BG = "#10141C";
 const UNSELECTED_BG = "#DDF5F8";
@@ -60,7 +58,12 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: colors.cream }]}>
+    <MotiView
+      from={{ opacity: 0, translateY: -14 }}
+      animate={{ opacity: 1, translateY: 0 }}
+      transition={{ type: "timing", duration: 520 }}
+      style={[styles.screen, { backgroundColor: colors.cream }]}
+    >
       <ScrollView
         showsVerticalScrollIndicator={false}
         bounces={false}
@@ -81,14 +84,12 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
               veryCompact && styles.logoWrapVeryCompact,
             ]}
           >
-            <Image
-              source={impaktLogo}
+            <ImpaktLogo
               style={[
                 styles.logoImage,
                 compact && styles.logoImageCompact,
                 veryCompact && styles.logoImageVeryCompact,
               ]}
-              resizeMode="contain"
             />
           </View>
 
@@ -121,27 +122,12 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
           >
             {TOPIC_ROWS.map((row, rowIndex) => (
               <View key={row.join("-")} style={styles.topicRow}>
-                {row.map((id, topicIndex) => {
+                {row.map((id) => {
                   const topic = topicsById[id];
                   const isSelected = selected.has(topic.id);
-                  const index = rowIndex * 2 + topicIndex;
 
                   return (
-                    <MotiView
-                      key={topic.id}
-                      from={{ opacity: 0, scale: 0.96, translateY: 10 }}
-                      animate={{
-                        opacity: 1,
-                        scale: isSelected ? 1.015 : 1,
-                        translateY: 0,
-                      }}
-                      transition={{
-                        type: "timing",
-                        duration: 260,
-                        delay: index * 35,
-                      }}
-                      style={styles.topicSlot}
-                    >
+                    <View key={topic.id} style={styles.topicSlot}>
                       <Pressable
                         onPress={() => toggle(topic.id)}
                         style={({ pressed }) => [
@@ -185,7 +171,7 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
                           />
                         )}
                       </Pressable>
-                    </MotiView>
+                    </View>
                   );
                 })}
               </View>
@@ -240,7 +226,7 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
           </Btn>
         </View>
       </View>
-    </View>
+    </MotiView>
   );
 }
 

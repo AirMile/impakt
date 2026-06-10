@@ -12,7 +12,7 @@ export function validateRegister({ username, email, pw, pw2 }) {
   if (!email) errs.email = "Vul je e-mail in";
   else if (!email.includes("@")) errs.email = "Dit is geen geldig e-mailadres";
   if (!pw) errs.pw = "Verzin een wachtwoord";
-  else if (pw.length < 6) errs.pw = "Min 6 tekens";
+  else if (pw.length < 8) errs.pw = "Minimaal 8 tekens";
   if (pw && pw2 !== pw) errs.pw2 = "Komt niet overeen";
   return errs;
 }

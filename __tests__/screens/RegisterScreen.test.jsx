@@ -35,6 +35,21 @@ test("toont validatiefout bij lege velden en doet geen fetch", () => {
   expect(defaultProps.onSuccess).not.toHaveBeenCalled();
 });
 
+test("toont validatiefout als wachtwoord korter is dan acht tekens", () => {
+  const { getByPlaceholderText, getByText } = render(
+    <RegisterScreen {...defaultProps} />
+  );
+
+  fireEvent.changeText(getByPlaceholderText("julia_vermeer"), "julia_vermeer");
+  fireEvent.changeText(getByPlaceholderText("jij@email.nl"), "julia@test.nl");
+  fireEvent.changeText(getByPlaceholderText("Wachtwoord"), "abcdefg");
+  fireEvent.changeText(getByPlaceholderText("Nog een keer"), "abcdefg");
+  fireEvent.press(getByText("Account aanmaken"));
+
+  expect(getByText("Minimaal 8 tekens")).toBeTruthy();
+  expect(global.fetch).not.toHaveBeenCalled();
+});
+
 test("registreert met backend payload en roept onSuccess aan", async () => {
   const apiData = { user: { id: 1, username: "julia_vermeer" }, token: "abc" };
   global.fetch.mockResolvedValueOnce({
