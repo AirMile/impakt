@@ -76,24 +76,41 @@ test("fetchArticle vereist een id", async () => {
   expect(global.fetch).not.toHaveBeenCalled();
 });
 
-test("fetchHappyFeed filtert client-side op happy-tag", async () => {
+test("fetchHappyFeed haalt mapped lijst op uit /happy-feed", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: true,
-    json: async () => ({ data: [RAW_ARTICLE, RAW_HAPPY] }),
+    json: async () => [RAW_HAPPY],
   });
 
   const happy = await fetchHappyFeed();
+
+  expect(global.fetch).toHaveBeenCalledWith(
+    "http://145.24.237.97/api/happy-feed",
+    { method: "GET", headers: { Accept: "application/json" } }
+  );
   expect(happy).toHaveLength(1);
   expect(happy[0].id).toBe(9);
   expect(happy[0].goodNews).toBe(true);
 });
 
-test("fetchHappyFeed geeft lege lijst terug als geen happy articles", async () => {
+test("fetchHappyFeed forceert goodNews ook zonder happy-tag in response", async () => {
+  // Backend stript de happy-tag uit de /happy-feed response; toch is alles
+  // hier per definitie goed nieuws.
   global.fetch.mockResolvedValueOnce({
     ok: true,
-    json: async () => ({ data: [RAW_ARTICLE] }),
+    json: async () => [RAW_ARTICLE],
   });
 
   const happy = await fetchHappyFeed();
-  expect(happy).toEqual([]);
+  expect(happy).toHaveLength(1);
+  expect(happy[0].goodNews).toBe(true);
+});
+
+test("fetchHappyFeed gooit servermelding bij fout", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: false,
+    json: async () => ({ message: "Backend down" }),
+  });
+
+  await expect(fetchHappyFeed()).rejects.toThrow("Backend down");
 });

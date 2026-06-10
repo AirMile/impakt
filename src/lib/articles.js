@@ -33,10 +33,13 @@ export async function fetchArticle(id) {
   return mapArticle(data);
 }
 
-// Backend `/happy-feed` bestaat in routes/api.php maar is niet uitgerold
-// (404 in productie). Voor nu: client-side filter op de happy-tag. Vervang
-// door `fetchJSON('/happy-feed')` zodra Martijn het endpoint deployt.
 export async function fetchHappyFeed() {
-  const articles = await fetchArticles();
-  return articles.filter((a) => a.goodNews);
+  const data = await fetchJSON(`${API_BASE_URL}/happy-feed`);
+  // Alles uit /happy-feed is per definitie goed nieuws. De backend stript de
+  // happy-tag uit de response, dus mapArticle leidt goodNews niet zelf af —
+  // hier forceren we de invariant zodat gedeelde componenten erop kunnen leunen.
+  return unwrapList(data)
+    .map(mapArticle)
+    .filter(Boolean)
+    .map((article) => ({ ...article, goodNews: true }));
 }
