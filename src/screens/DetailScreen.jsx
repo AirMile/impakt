@@ -22,7 +22,8 @@ import { colors, fonts, surfaces } from "../theme/tokens";
 import { pressFx } from "../lib/pressFeedback";
 import { slideUpScreen } from "../theme/animations";
 import { shareStory } from "../lib/share";
-import { saveArticle, unsaveArticle } from "../lib/saves";
+import { saveArticle, unsaveArticle, mapSavedFromResponse } from "../lib/saves";
+import { fetchSources } from "../lib/sources";
 import { toast } from "../lib/toast";
 import { sumVotes, votePct } from "../lib/pollPct";
 import { isInFeed } from "../lib/isInFeed";
@@ -42,14 +43,17 @@ export function DetailScreen({
   onSearch,
   activeTab,
   token,
+  savedIds,
+  onSavedChange,
 }) {
   const insets = useSafeAreaInsets();
   const [reaction, setReaction] = useState(null);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(() => savedIds?.has(story.id) ?? false);
   const [pollChoice, setPollChoice] = useState(null);
   const [activeAction, setActiveAction] = useState(null);
   const [inFeed, setInFeed] = useState(false);
   const [showRelated, setShowRelated] = useState(false);
+  const [sources, setSources] = useState(story.sources ?? []);
   const feedYRef = useRef(Infinity);
 
   useEffect(() => {
@@ -58,6 +62,21 @@ export function DetailScreen({
     });
     return () => handle.cancel();
   }, []);
+
+  // Bronnen komen niet mee in de feed-lijst; apart ophalen bij open.
+  useEffect(() => {
+    let cancelled = false;
+    fetchSources(story.id)
+      .then((list) => {
+        if (!cancelled) setSources(list);
+      })
+      .catch(() => {
+        if (!cancelled) setSources([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [story.id]);
 
   useEffect(() => {
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
@@ -68,8 +87,8 @@ export function DetailScreen({
   }, [onClose]);
 
   // Optimistic toggle: zet de UI direct, draai terug als de server faalt.
-  // De backend heeft geen "is dit bewaard?"-endpoint, dus de begin-state
-  // is altijd false bij heropenen — alleen de toggle praat met de server.
+  // De begin-state komt uit savedIds (App.jsx); de save/unsave-respons bevat
+  // de nieuwe lijst, waarmee we App.jsx updaten zonder te refetchen.
   const toggleSaved = async () => {
     if (!token) {
       toast.show("Log in om artikelen te bewaren.");
@@ -78,8 +97,10 @@ export function DetailScreen({
     const next = !saved;
     setSaved(next);
     try {
-      if (next) await saveArticle(token, story.id);
-      else await unsaveArticle(token, story.id);
+      const data = next
+        ? await saveArticle(token, story.id)
+        : await unsaveArticle(token, story.id);
+      onSavedChange?.(mapSavedFromResponse(data));
     } catch (err) {
       setSaved(!next);
       toast.show(err.message || "Bewaren mislukt.");
@@ -330,10 +351,10 @@ export function DetailScreen({
           )}
 
           {/* Bronnen */}
-          {story.sources && story.sources.length > 0 && (
+          {sources.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionHeading}>Bronnen</Text>
-              {story.sources.map((src, i) => (
+              {sources.map((src, i) => (
                 <View key={i} style={styles.sourceRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.sourceTitle}>{src.label}</Text>
