@@ -107,6 +107,20 @@ test("onOpen wordt aangeroepen bij tap op kaart", async () => {
   expect(onOpen.mock.calls[0][0].id).toBe(1);
 });
 
+test("guest-interactie triggert auth prompt en deelt niet", async () => {
+  const { shareStory } = require("../../src/lib/share");
+  const onRequireAuth = jest.fn(() => false);
+  const { findByText, getAllByLabelText } = render(
+    <FeedScreen {...defaultProps} onRequireAuth={onRequireAuth} />
+  );
+
+  await findByText("Goed klimaatverhaal");
+  fireEvent.press(getAllByLabelText("Delen")[0]);
+
+  expect(onRequireAuth).toHaveBeenCalledTimes(1);
+  expect(shareStory).not.toHaveBeenCalled();
+});
+
 test("myTags prop rendert chips voor mijn interesses + overige", async () => {
   const { findAllByText } = render(
     <FeedScreen

@@ -96,11 +96,13 @@ export const FeedCard = React.memo(function FeedCard({
   onOpen,
   variant = "full",
   index = 0,
+  onRequireAuth,
 }) {
   const [reaction, setReaction] = useState(null);
   const [saved, setSaved] = useState(false);
   const isCompact = variant === "compact";
   const aspectH = isCompact ? CARD_W * (3.4 / 4) : CARD_W * (4.3 / 4);
+  const canInteract = () => onRequireAuth?.() !== false;
 
   return (
     <MotiView {...fadeUp} style={[styles.cardWrapper, { height: aspectH }]}>
@@ -136,11 +138,20 @@ export const FeedCard = React.memo(function FeedCard({
         <View style={styles.railArea} pointerEvents="box-none">
           <ReactionRail
             reaction={reaction}
-            onReact={setReaction}
+            onReact={(key) => {
+              if (!canInteract()) return;
+              setReaction(key);
+            }}
             reactions={story.reactions}
             saved={saved}
-            onSave={() => setSaved((s) => !s)}
-            onShare={() => shareStory(story)}
+            onSave={() => {
+              if (!canInteract()) return;
+              setSaved((s) => !s);
+            }}
+            onShare={() => {
+              if (!canInteract()) return;
+              shareStory(story);
+            }}
             light
           />
         </View>
@@ -191,6 +202,7 @@ export function FeedScreen({
   excludeId,
   goodNewsOnly = false,
   myTags = [],
+  onRequireAuth,
 }) {
   const [selectedTopics, setSelectedTopics] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
@@ -283,9 +295,14 @@ export function FeedScreen({
 
   const renderItem = useCallback(
     ({ item, index }) => (
-      <FeedCard story={item} onOpen={onOpen} index={index} />
+      <FeedCard
+        story={item}
+        onOpen={onOpen}
+        index={index}
+        onRequireAuth={onRequireAuth}
+      />
     ),
-    [onOpen]
+    [onOpen, onRequireAuth]
   );
 
   const topicBar = !goodNewsOnly && topics.length > 0 && (
@@ -301,7 +318,13 @@ export function FeedScreen({
       <View>
         {topicBar}
         {stories.map((s, i) => (
-          <FeedCard key={s.id} story={s} onOpen={onOpen} index={i} />
+          <FeedCard
+            key={s.id}
+            story={s}
+            onOpen={onOpen}
+            index={i}
+            onRequireAuth={onRequireAuth}
+          />
         ))}
         {stories.length === 0 && renderEmpty()}
         {renderFooter()}

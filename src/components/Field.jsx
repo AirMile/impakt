@@ -15,6 +15,7 @@ export function Field({
   rightSlot,
   returnKeyType,
   onSubmitEditing,
+  onFocus,
   inputRef,
 }) {
   const [focused, setFocused] = useState(false);
@@ -58,7 +59,10 @@ export function Field({
           autoCorrect={false}
           returnKeyType={returnKeyType}
           onSubmitEditing={onSubmitEditing}
-          onFocus={() => setFocused(true)}
+          onFocus={() => {
+            setFocused(true);
+            onFocus?.();
+          }}
           onBlur={() => setFocused(false)}
         />
         {rightSlot}

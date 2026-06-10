@@ -25,7 +25,12 @@ const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
 const SELECTED_BG = "#10141C";
 
-export function HappyFeedScreen({ onOpen, onProfile, myTags = [] }) {
+export function HappyFeedScreen({
+  onOpen,
+  onProfile,
+  myTags = [],
+  onRequireAuth,
+}) {
   const [selectedTopics, setSelectedTopics] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
   const [stories, setStories] = useState([]);
@@ -172,6 +177,7 @@ export function HappyFeedScreen({ onOpen, onProfile, myTags = [] }) {
                 onOpen={onOpen}
                 variant="compact"
                 index={i}
+                onRequireAuth={onRequireAuth}
               />
             ))}
           </View>
@@ -188,6 +194,7 @@ export function HappyFeedScreen({ onOpen, onProfile, myTags = [] }) {
                 story={story}
                 onOpen={onOpen}
                 index={i}
+                onRequireAuth={onRequireAuth}
               />
             ))}
           </View>

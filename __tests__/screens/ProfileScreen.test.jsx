@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 test("toont accountgegevens op het profiel", () => {
-  const { getByDisplayValue, getByText } = render(
+  const { getAllByText, getByLabelText, getByText } = render(
     <ProfileScreen
       {...defaultProps}
       user={{
@@ -36,28 +36,36 @@ test("toont accountgegevens op het profiel", () => {
     />
   );
 
-  expect(getByText("Milan")).toBeTruthy();
+  expect(getAllByText("Milan").length).toBeGreaterThan(0);
   expect(getByText("Gebruikersnaam")).toBeTruthy();
-  expect(getByDisplayValue("Happymilan")).toBeTruthy();
+  expect(getByText("Happymilan")).toBeTruthy();
   expect(getByText("Naam")).toBeTruthy();
   expect(getByText("E-mail")).toBeTruthy();
-  expect(getByDisplayValue("milan@gmail.com")).toBeTruthy();
+  expect(getByText("milan@gmail.com")).toBeTruthy();
+  expect(getByLabelText("Bewerk Gebruikersnaam")).toBeTruthy();
+  expect(getByText("Wachtwoord wijzigen")).toBeTruthy();
 });
 
-test("werkt accountgegevens bij vanuit de profiel form", async () => {
+test("opent detailweergave en werkt een accountgegeven bij", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: true,
     json: async () => ({
       user: {
         id: 7,
         username: "Happyjulia",
-        name: "Julia Vermeer",
-        email: "julia@test.nl",
+        name: "Milan",
+        email: "milan@gmail.com",
       },
     }),
   });
 
-  const { getByDisplayValue, getByPlaceholderText, getByText } = render(
+  const {
+    getByDisplayValue,
+    getByLabelText,
+    getByText,
+    queryByPlaceholderText,
+    queryByText,
+  } = render(
     <ProfileScreen
       {...defaultProps}
       user={{
@@ -70,9 +78,71 @@ test("werkt accountgegevens bij vanuit de profiel form", async () => {
     />
   );
 
+  expect(queryByPlaceholderText("Nieuw wachtwoord")).toBeNull();
+  expect(queryByText("Opslaan")).toBeNull();
+
+  fireEvent.press(getByLabelText("Bewerk Gebruikersnaam"));
+  expect(queryByText("Wachtwoord wijzigen")).toBeNull();
+  expect(queryByText("Opslaan")).toBeNull();
+
   fireEvent.changeText(getByDisplayValue("Happymilan"), "Happyjulia");
-  fireEvent.changeText(getByDisplayValue("Milan"), "Julia Vermeer");
-  fireEvent.changeText(getByDisplayValue("milan@gmail.com"), "julia@test.nl");
+
+  fireEvent.press(getByText("Opslaan"));
+
+  await waitFor(() => {
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://145.24.237.97/api/account",
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: "Bearer abc",
+        },
+        body: JSON.stringify({
+          username: "Happyjulia",
+        }),
+      }
+    );
+    expect(defaultProps.onUserUpdate).toHaveBeenCalledWith({
+      id: 7,
+      username: "Happyjulia",
+      name: "Milan",
+      email: "milan@gmail.com",
+      token: "abc",
+    });
+  });
+});
+
+test("wijzigt wachtwoord via de detailweergave", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      user: {
+        id: 7,
+        username: "Happymilan",
+        name: "Milan",
+        email: "milan@gmail.com",
+      },
+    }),
+  });
+
+  const { getByPlaceholderText, getByText, queryByText } = render(
+    <ProfileScreen
+      {...defaultProps}
+      user={{
+        id: 7,
+        username: "Happymilan",
+        name: "Milan",
+        email: "milan@gmail.com",
+        token: "abc",
+      }}
+    />
+  );
+
+  fireEvent.press(getByText("Wachtwoord wijzigen"));
+  expect(getByText("Wachtwoord")).toBeTruthy();
+  expect(queryByText("Opslaan")).toBeNull();
   fireEvent.changeText(
     getByPlaceholderText("Nieuw wachtwoord"),
     "N3wStr0ngPassw0rd!"
@@ -82,34 +152,25 @@ test("werkt accountgegevens bij vanuit de profiel form", async () => {
     "N3wStr0ngPassw0rd!"
   );
 
-  fireEvent.press(getByText("Gegevens opslaan"));
+  fireEvent.press(getByText("Opslaan"));
 
   await waitFor(() => {
     expect(global.fetch).toHaveBeenCalledWith(
-      "http://145.24.237.97/api/update-account",
+      "http://145.24.237.97/api/account",
       {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
           Authorization: "Bearer abc",
         },
         body: JSON.stringify({
-          username: "Happyjulia",
-          name: "Julia Vermeer",
-          email: "julia@test.nl",
           password: "N3wStr0ngPassw0rd!",
           password_confirmation: "N3wStr0ngPassw0rd!",
         }),
       }
     );
-    expect(defaultProps.onUserUpdate).toHaveBeenCalledWith({
-      id: 7,
-      username: "Happyjulia",
-      name: "Julia Vermeer",
-      email: "julia@test.nl",
-      token: "abc",
-    });
+    expect(getByText("Wachtwoord bijgewerkt.")).toBeTruthy();
   });
 });
 
@@ -124,6 +185,8 @@ test("wachtwoordvelden zijn verborgen en kunnen zichtbaar worden gemaakt", () =>
       }}
     />
   );
+
+  fireEvent.press(getByLabelText("Wijzig wachtwoord"));
 
   expect(getByPlaceholderText("Nieuw wachtwoord").props.secureTextEntry).toBe(
     true
@@ -152,16 +215,38 @@ test("toont validatiefout als wachtwoordbevestiging niet overeenkomt", () => {
     />
   );
 
-  fireEvent.changeText(getByPlaceholderText("Nieuw wachtwoord"), "abcdef");
-  fireEvent.changeText(getByPlaceholderText("Nog een keer"), "anders");
-  fireEvent.press(getByText("Gegevens opslaan"));
+  fireEvent.press(getByText("Wachtwoord wijzigen"));
+  fireEvent.changeText(getByPlaceholderText("Nieuw wachtwoord"), "abcdefgh");
+  fireEvent.changeText(getByPlaceholderText("Nog een keer"), "anders12");
+  fireEvent.press(getByText("Opslaan"));
 
   expect(getByText("Komt niet overeen")).toBeTruthy();
   expect(global.fetch).not.toHaveBeenCalled();
 });
 
+test("toont validatiefout als nieuw wachtwoord korter is dan acht tekens", () => {
+  const { getByPlaceholderText, getByText } = render(
+    <ProfileScreen
+      {...defaultProps}
+      user={{
+        username: "Happymilan",
+        email: "milan@gmail.com",
+        token: "abc",
+      }}
+    />
+  );
+
+  fireEvent.press(getByText("Wachtwoord wijzigen"));
+  fireEvent.changeText(getByPlaceholderText("Nieuw wachtwoord"), "abcdef");
+  fireEvent.changeText(getByPlaceholderText("Nog een keer"), "abcdef");
+  fireEvent.press(getByText("Opslaan"));
+
+  expect(getByText("Minimaal 8 tekens")).toBeTruthy();
+  expect(global.fetch).not.toHaveBeenCalled();
+});
+
 test("valt terug op username als naam ontbreekt", () => {
-  const { getByDisplayValue, getByText } = render(
+  const { getAllByText, getByText } = render(
     <ProfileScreen
       {...defaultProps}
       user={{
@@ -171,8 +256,8 @@ test("valt terug op username als naam ontbreekt", () => {
     />
   );
 
-  expect(getByText("Happymilan")).toBeTruthy();
-  expect(getByDisplayValue("milan@gmail.com")).toBeTruthy();
+  expect(getAllByText("Happymilan").length).toBeGreaterThan(0);
+  expect(getByText("milan@gmail.com")).toBeTruthy();
 });
 
 test("roept logout endpoint aan met bearer token en logt lokaal uit", async () => {

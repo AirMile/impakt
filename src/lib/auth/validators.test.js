@@ -48,10 +48,10 @@ describe("validateRegister", () => {
     expect(validateRegister({ ...valid, pw: "", pw2: "" }).pw).toBeTruthy();
   });
 
-  test("wachtwoord te kort (< 6) → fout", () => {
+  test("wachtwoord te kort (< 8) → fout", () => {
     expect(
-      validateRegister({ ...valid, pw: "abc", pw2: "abc" }).pw
-    ).toBeTruthy();
+      validateRegister({ ...valid, pw: "abcdefg", pw2: "abcdefg" }).pw
+    ).toBe("Minimaal 8 tekens");
   });
 
   test("wachtwoorden komen niet overeen → fout", () => {
