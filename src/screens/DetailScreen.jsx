@@ -40,7 +40,6 @@ export function DetailScreen({
   onNav,
   onProfile,
   onSearch,
-  activeTab,
   token,
   onRequireAuth,
 }) {
@@ -90,6 +89,7 @@ export function DetailScreen({
   const relatedMemes = getRelatedMemes(memes, story.id);
   const firstMeme = relatedMemes[0];
   const canInteract = () => onRequireAuth?.() !== false;
+  const embeddedFeedActiveTab = "feed";
 
   const totalVotes = story.poll ? sumVotes(story.poll.options, pollChoice) : 0;
 
@@ -412,7 +412,7 @@ export function DetailScreen({
               onNav={onNav}
               onSearch={onSearch}
               onProfile={onProfile}
-              activeTab={activeTab}
+              activeTab={embeddedFeedActiveTab}
               onRequireAuth={onRequireAuth}
             />
           )}
@@ -427,7 +427,11 @@ export function DetailScreen({
         transition={{ type: "timing", duration: 250 }}
         style={styles.bottomNavOverlay}
       >
-        <BottomNav active={activeTab} onChange={onNav} onSearch={onSearch} />
+        <BottomNav
+          active={embeddedFeedActiveTab}
+          onChange={onNav}
+          onSearch={onSearch}
+        />
       </MotiView>
     </MotiView>
   );

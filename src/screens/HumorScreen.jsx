@@ -10,12 +10,6 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-} from "react-native-reanimated";
-import Svg, { Path } from "react-native-svg";
 
 import { IIcon } from "../components/Icons";
 import { HeroOverlay } from "../components/HeroOverlay";
@@ -25,7 +19,6 @@ import { colors, fonts } from "../theme/tokens";
 import { shareMeme } from "../lib/share";
 import { saveMeme, unsaveMeme } from "../lib/saves";
 import { toast } from "../lib/toast";
-import { createDoubleTapDetector } from "../lib/createDoubleTapDetector";
 import { pressFx } from "../lib/pressFeedback";
 
 const { height: SCREEN_H } = Dimensions.get("window");
@@ -107,7 +100,6 @@ const MemeCard = React.memo(function MemeCard({
   onRequireAuth,
   token,
 }) {
-  const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [reaction, setReaction] = useState(null);
 
@@ -129,32 +121,10 @@ const MemeCard = React.memo(function MemeCard({
       toast.show(err.message || "Bewaren mislukt.");
     }
   }, [token, saved, meme.id]);
-  const [tapHeart, setTapHeart] = useState(false);
-  const detectDoubleTap = useRef(createDoubleTapDetector(280));
   const canInteract = useCallback(
     () => onRequireAuth?.() !== false,
     [onRequireAuth]
   );
-
-  const handlePress = useCallback(() => {
-    if (detectDoubleTap.current(Date.now())) {
-      if (!canInteract()) return;
-      if (!liked) setLiked(true);
-      setTapHeart(true);
-      setTimeout(() => setTapHeart(false), 700);
-    }
-  }, [canInteract, liked]);
-
-  const heartOpacity = useSharedValue(0);
-  const heartScale = useSharedValue(0.6);
-  useEffect(() => {
-    heartOpacity.value = withTiming(tapHeart ? 1 : 0, { duration: 500 });
-    heartScale.value = withTiming(tapHeart ? 1.3 : 0.6, { duration: 500 });
-  }, [tapHeart, heartOpacity, heartScale]);
-  const heartStyle = useAnimatedStyle(() => ({
-    opacity: heartOpacity.value,
-    transform: [{ scale: heartScale.value }],
-  }));
 
   return (
     <View style={styles.card}>
@@ -165,12 +135,6 @@ const MemeCard = React.memo(function MemeCard({
       />
 
       <HeroOverlay variant="meme" />
-
-      <Pressable
-        onPress={handlePress}
-        style={StyleSheet.absoluteFillObject}
-        accessibilityLabel="Dubbel-tap voor like"
-      />
 
       <Text style={[styles.caption, { top: 96 }]}>{meme.top}</Text>
       <Text style={[styles.caption, { bottom: 310 }]}>{meme.bot}</Text>
@@ -266,18 +230,6 @@ const MemeCard = React.memo(function MemeCard({
           />
         </View>
       )}
-
-      <Animated.View
-        pointerEvents="none"
-        style={[styles.heartOverlay, heartStyle]}
-      >
-        <Svg width={130} height={130} viewBox="0 0 24 24">
-          <Path
-            d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z"
-            fill={colors.red}
-          />
-        </Svg>
-      </Animated.View>
     </View>
   );
 });
@@ -532,14 +484,6 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0,0,0,0.6)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
-  },
-
-  heartOverlay: {
-    position: "absolute",
-    top: "45%",
-    left: "50%",
-    marginLeft: -65,
-    marginTop: -65,
   },
 
   headerOverlay: {

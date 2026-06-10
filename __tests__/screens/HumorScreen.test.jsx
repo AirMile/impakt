@@ -65,6 +65,11 @@ test("toont alle drie reactie-smileys voor het stemmen", () => {
   expect(getAllByLabelText("Verdrietig")[0]).toBeTruthy();
 });
 
+test("meme canvas heeft geen dubbel-tap like laag meer", () => {
+  const { queryByLabelText } = render(<HumorScreen {...defaultProps} />);
+  expect(queryByLabelText("Dubbel-tap voor like")).toBeNull();
+});
+
 test("toont percentages van alle drie reacties na het stemmen", () => {
   const { getAllByLabelText, getByText } = render(
     <HumorScreen {...defaultProps} />
