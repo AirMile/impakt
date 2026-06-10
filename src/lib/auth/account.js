@@ -51,8 +51,8 @@ export async function logoutAccount(token) {
 export async function updateAccount(token, payload) {
   if (!token) throw new Error("Je bent niet ingelogd.");
 
-  const response = await fetch(`${API_BASE_URL}/update-account`, {
-    method: "PUT",
+  const response = await fetch(`${API_BASE_URL}/account`, {
+    method: "PATCH",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",

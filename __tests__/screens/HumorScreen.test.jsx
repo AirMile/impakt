@@ -1,4 +1,3 @@
-import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import { HumorScreen } from "../../src/screens/HumorScreen";
 
@@ -32,10 +31,6 @@ const MOCK_MEMES = [
 ];
 
 const defaultProps = {
-  onNav: jest.fn(),
-  onSearch: jest.fn(),
-  onProfile: jest.fn(),
-  activeTab: "humor",
   onOpenStory: jest.fn(),
   memes: MOCK_MEMES,
 };

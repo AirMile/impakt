@@ -17,6 +17,7 @@ import { MotiView } from "moti";
 
 import { IIcon } from "../../components/Icons";
 import { Btn } from "../../components/Btn";
+import { ImpaktLogo } from "../../components/ImpaktLogo";
 import { colors, fonts } from "../../theme/tokens";
 import { fadeUp } from "../../theme/animations";
 
@@ -25,8 +26,6 @@ const slides = [
   require("../../../assets/Impakt_Happy_Feed.jpg"),
   require("../../../assets/Impakt_Humor.jpg"),
 ];
-
-const impaktLogo = require("../../../assets/impakt-logo.webp");
 
 export function WelcomeScreen({ onLogin, onRegister, onSkip }) {
   const insets = useSafeAreaInsets();
@@ -110,8 +109,7 @@ export function WelcomeScreen({ onLogin, onRegister, onSkip }) {
       >
         <View style={styles.heroSection}>
           <MotiView {...fadeUp} delay={80} style={styles.logo}>
-            <Image
-              source={impaktLogo}
+            <ImpaktLogo
               style={[
                 styles.logoImage,
                 {
@@ -119,7 +117,6 @@ export function WelcomeScreen({ onLogin, onRegister, onSkip }) {
                   height: logoHeight,
                 },
               ]}
-              resizeMode="contain"
             />
           </MotiView>
 
@@ -189,7 +186,7 @@ export function WelcomeScreen({ onLogin, onRegister, onSkip }) {
                   key={index}
                   style={[
                     styles.slideDot,
-                    index === activeDotIndex && styles.slideDotActive
+                    index === activeDotIndex && styles.slideDotActive,
                   ]}
                 />
               ))}
@@ -369,5 +366,3 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
 });
-
-

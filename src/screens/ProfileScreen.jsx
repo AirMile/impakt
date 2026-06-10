@@ -51,6 +51,45 @@ function SectionLabel({ children }) {
   return <Text style={styles.sectionLabel}>{children}</Text>;
 }
 
+const ACCOUNT_FIELDS = {
+  username: {
+    label: "Gebruikersnaam",
+    placeholder: "Gebruikersnaam",
+    keyboardType: "default",
+    autoCapitalize: "none",
+  },
+  name: {
+    label: "Naam",
+    placeholder: "Naam",
+    keyboardType: "default",
+    autoCapitalize: "words",
+  },
+  email: {
+    label: "E-mail",
+    placeholder: "E-mail",
+    keyboardType: "email-address",
+    autoCapitalize: "none",
+  },
+};
+
+function AccountField({ label, value, onPress }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={styles.accountLine}
+      accessibilityLabel={`Bewerk ${label}`}
+    >
+      <Text style={styles.accountLabel}>{label}</Text>
+      <View style={styles.accountValueRow}>
+        <Text style={styles.accountValue} numberOfLines={1}>
+          {value || "-"}
+        </Text>
+        <IIcon name="chev" size={19} strokeWidth={2.1} color={surfaces.muted} />
+      </View>
+    </Pressable>
+  );
+}
+
 // ─── ProfileScreen ────────────────────────────────────────────
 
 export function ProfileScreen({
@@ -70,12 +109,23 @@ export function ProfileScreen({
   const [usernameValue, setUsernameValue] = useState(user?.username ?? "");
   const [nameValue, setNameValue] = useState(user?.name ?? "");
   const [emailValue, setEmailValue] = useState(user?.email ?? "");
+  const [accountBaseline, setAccountBaseline] = useState({
+    username: user?.username ?? "",
+    name: user?.name ?? "",
+    email: user?.email ?? "",
+  });
+  const [editingAccountField, setEditingAccountField] = useState(null);
+  const [editingAccountValue, setEditingAccountValue] = useState("");
   const [passwordValue, setPasswordValue] = useState("");
   const [passwordConfirmValue, setPasswordConfirmValue] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [editingPassword, setEditingPassword] = useState(false);
   const [accountLoading, setAccountLoading] = useState(false);
   const [accountError, setAccountError] = useState("");
   const [accountSuccess, setAccountSuccess] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -83,6 +133,18 @@ export function ProfileScreen({
 
   const displayName = nameValue || usernameValue || "Gast";
   const hasAccountInfo = Boolean(usernameValue || nameValue || emailValue);
+  const accountValues = {
+    username: usernameValue,
+    name: nameValue,
+    email: emailValue,
+  };
+  const editingAccountConfig = editingAccountField
+    ? ACCOUNT_FIELDS[editingAccountField]
+    : null;
+  const hasEditingAccountChange =
+    editingAccountField &&
+    editingAccountValue !== accountBaseline[editingAccountField];
+  const hasPasswordChanges = Boolean(passwordValue || passwordConfirmValue);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,18 +189,46 @@ export function ProfileScreen({
     (t) => !myTags.some((mine) => mine.id === t.id)
   );
 
-  const handleSaveAccount = async () => {
-    if (accountLoading) return;
+  const openAccountEditor = (field) => {
+    setEditingAccountField(field);
+    setEditingAccountValue(accountValues[field] ?? "");
+    setAccountError("");
+    setAccountSuccess("");
+  };
+
+  const closeAccountEditor = () => {
+    setEditingAccountField(null);
+    setEditingAccountValue("");
+    setAccountError("");
+  };
+
+  const openPasswordEditor = () => {
+    setEditingPassword(true);
+    setPasswordError("");
+    setPasswordSuccess("");
+  };
+
+  const closePasswordEditor = () => {
+    setEditingPassword(false);
+    setPasswordValue("");
+    setPasswordConfirmValue("");
+    setShowPassword(false);
+    setPasswordError("");
+  };
+
+  const handleSaveAccountField = async () => {
+    if (accountLoading || !editingAccountField || !hasEditingAccountChange)
+      return;
 
     const nextError = {};
-    if (!usernameValue.trim()) nextError.username = "Vul je gebruikersnaam in";
-    if (!emailValue.trim()) nextError.email = "Vul je e-mail in";
-    else if (!emailValue.includes("@"))
+    const trimmedValue = editingAccountValue.trim();
+
+    if (editingAccountField === "username" && !trimmedValue)
+      nextError.username = "Vul je gebruikersnaam in";
+    if (editingAccountField === "email" && !trimmedValue)
+      nextError.email = "Vul je e-mail in";
+    else if (editingAccountField === "email" && !trimmedValue.includes("@"))
       nextError.email = "Dit is geen geldig e-mailadres";
-    if (!passwordValue) nextError.password = "Vul je wachtwoord in";
-    else if (passwordValue.length < 6) nextError.password = "Minimaal 6 tekens";
-    if (passwordConfirmValue !== passwordValue)
-      nextError.passwordConfirm = "Komt niet overeen";
 
     if (Object.keys(nextError).length) {
       setAccountError(Object.values(nextError)[0]);
@@ -151,10 +241,65 @@ export function ProfileScreen({
     setAccountSuccess("");
 
     try {
+      const payload = {
+        [editingAccountField]:
+          editingAccountField === "name"
+            ? trimmedValue || undefined
+            : trimmedValue,
+      };
       const updatedUser = await updateAccount(user?.token, {
-        username: usernameValue.trim(),
-        name: nameValue.trim() || undefined,
-        email: emailValue.trim(),
+        ...payload,
+      });
+
+      onUserUpdate?.(updatedUser);
+      const nextValue =
+        updatedUser[editingAccountField] ??
+        (editingAccountField === "name"
+          ? trimmedValue
+          : payload[editingAccountField]);
+
+      if (editingAccountField === "username") setUsernameValue(nextValue);
+      if (editingAccountField === "name") setNameValue(nextValue ?? "");
+      if (editingAccountField === "email") setEmailValue(nextValue);
+
+      setAccountBaseline((current) => {
+        const next = {
+          ...current,
+          [editingAccountField]: nextValue ?? "",
+        };
+        return next;
+      });
+      setAccountSuccess("Account bijgewerkt.");
+      setEditingAccountField(null);
+      setEditingAccountValue("");
+    } catch (err) {
+      setAccountError(err.message || "Account bijwerken mislukt.");
+    } finally {
+      setAccountLoading(false);
+    }
+  };
+
+  const handleSavePassword = async () => {
+    if (passwordLoading) return;
+
+    const nextError = {};
+    if (!passwordValue) nextError.password = "Vul je wachtwoord in";
+    else if (passwordValue.length < 8) nextError.password = "Minimaal 8 tekens";
+    if (passwordConfirmValue !== passwordValue)
+      nextError.passwordConfirm = "Komt niet overeen";
+
+    if (Object.keys(nextError).length) {
+      setPasswordError(Object.values(nextError)[0]);
+      setPasswordSuccess("");
+      return;
+    }
+
+    setPasswordLoading(true);
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    try {
+      const updatedUser = await updateAccount(user?.token, {
         password: passwordValue,
         password_confirmation: passwordConfirmValue,
       });
@@ -162,11 +307,12 @@ export function ProfileScreen({
       onUserUpdate?.(updatedUser);
       setPasswordValue("");
       setPasswordConfirmValue("");
-      setAccountSuccess("Account bijgewerkt.");
+      setEditingPassword(false);
+      setPasswordSuccess("Wachtwoord bijgewerkt.");
     } catch (err) {
-      setAccountError(err.message || "Account bijwerken mislukt.");
+      setPasswordError(err.message || "Wachtwoord bijwerken mislukt.");
     } finally {
-      setAccountLoading(false);
+      setPasswordLoading(false);
     }
   };
 
@@ -204,6 +350,178 @@ export function ProfileScreen({
     }
   };
 
+  if (editingAccountConfig) {
+    return (
+      <MotiView
+        {...slideInRight}
+        style={[StyleSheet.absoluteFillObject, styles.screen]}
+      >
+        <View
+          style={[styles.editScreenHeader, { paddingTop: insets.top + 12 }]}
+        >
+          <Pressable
+            onPress={closeAccountEditor}
+            accessibilityLabel="Terug naar accountgegevens"
+            style={styles.editBackBtn}
+          >
+            <IIcon name="arrowL" size={28} strokeWidth={2} color={colors.ink} />
+          </Pressable>
+          <Text style={styles.editScreenTitle}>
+            {editingAccountConfig.label}
+          </Text>
+          {hasEditingAccountChange ? (
+            <Pressable
+              onPress={handleSaveAccountField}
+              disabled={accountLoading}
+              style={styles.editSaveBtn}
+            >
+              <Text
+                style={[
+                  styles.editSaveLabel,
+                  accountLoading && styles.editSaveDisabled,
+                ]}
+              >
+                {accountLoading ? "Opslaan..." : "Opslaan"}
+              </Text>
+            </Pressable>
+          ) : (
+            <View style={styles.editSaveBtn} />
+          )}
+        </View>
+
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.editScreenBody,
+            { paddingBottom: insets.bottom + 40 },
+          ]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.editFieldLabel}>
+            {editingAccountConfig.label}
+          </Text>
+          <TextInput
+            style={styles.editFieldInput}
+            value={editingAccountValue}
+            onChangeText={setEditingAccountValue}
+            placeholder={editingAccountConfig.placeholder}
+            placeholderTextColor="rgba(15,17,26,0.35)"
+            keyboardType={editingAccountConfig.keyboardType}
+            autoCapitalize={editingAccountConfig.autoCapitalize}
+            autoCorrect={false}
+            editable={!accountLoading}
+            autoFocus
+          />
+          {accountError ? (
+            <Text style={styles.accountError}>{accountError}</Text>
+          ) : null}
+        </ScrollView>
+      </MotiView>
+    );
+  }
+
+  if (editingPassword) {
+    return (
+      <MotiView
+        {...slideInRight}
+        style={[StyleSheet.absoluteFillObject, styles.screen]}
+      >
+        <View
+          style={[styles.editScreenHeader, { paddingTop: insets.top + 12 }]}
+        >
+          <Pressable
+            onPress={closePasswordEditor}
+            accessibilityLabel="Terug naar accountgegevens"
+            style={styles.editBackBtn}
+          >
+            <IIcon name="arrowL" size={28} strokeWidth={2} color={colors.ink} />
+          </Pressable>
+          <Text style={styles.editScreenTitle}>Wachtwoord</Text>
+          {hasPasswordChanges ? (
+            <Pressable
+              onPress={handleSavePassword}
+              disabled={passwordLoading}
+              style={styles.editSaveBtn}
+            >
+              <Text
+                style={[
+                  styles.editSaveLabel,
+                  passwordLoading && styles.editSaveDisabled,
+                ]}
+              >
+                {passwordLoading ? "Opslaan..." : "Opslaan"}
+              </Text>
+            </Pressable>
+          ) : (
+            <View style={styles.editSaveBtn} />
+          )}
+        </View>
+
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.editScreenBody,
+            { paddingBottom: insets.bottom + 40 },
+          ]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.passwordEditTitle}>Wachtwoord wijzigen</Text>
+          <Text style={styles.passwordEditCopy}>
+            Vul je nieuwe wachtwoord in en bevestig het.
+          </Text>
+          <View style={styles.passwordEditField}>
+            <Text style={styles.editFieldLabel}>Nieuw wachtwoord</Text>
+            <View style={styles.passwordEditInputRow}>
+              <TextInput
+                style={styles.passwordEditInput}
+                value={passwordValue}
+                onChangeText={setPasswordValue}
+                placeholder="Nieuw wachtwoord"
+                placeholderTextColor="rgba(15,17,26,0.35)"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                editable={!passwordLoading}
+                autoFocus
+              />
+              <Pressable
+                onPress={() => setShowPassword((v) => !v)}
+                hitSlop={8}
+                accessibilityLabel={
+                  showPassword ? "Verberg wachtwoord" : "Toon wachtwoord"
+                }
+              >
+                <IIcon
+                  name={showPassword ? "eyeOff" : "eye"}
+                  size={18}
+                  strokeWidth={1.8}
+                  color="rgba(15,17,26,0.6)"
+                />
+              </Pressable>
+            </View>
+          </View>
+          <View style={styles.passwordEditField}>
+            <Text style={styles.editFieldLabel}>Bevestig wachtwoord</Text>
+            <TextInput
+              style={styles.editFieldInput}
+              value={passwordConfirmValue}
+              onChangeText={setPasswordConfirmValue}
+              placeholder="Nog een keer"
+              placeholderTextColor="rgba(15,17,26,0.35)"
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!passwordLoading}
+            />
+          </View>
+          {passwordError ? (
+            <Text style={styles.passwordEditError}>{passwordError}</Text>
+          ) : null}
+        </ScrollView>
+      </MotiView>
+    );
+  }
+
   return (
     <MotiView
       {...slideInRight}
@@ -237,122 +555,69 @@ export function ProfileScreen({
           </View>
           <Text style={styles.userName}>{displayName}</Text>
           {hasAccountInfo ? (
-            <View style={styles.accountCard}>
-              <View style={styles.accountHeader}>
-                <Text style={styles.accountHeaderLabel}>Accountgegevens</Text>
-                <IIcon
-                  name="edit"
-                  size={15}
-                  strokeWidth={1.9}
-                  color={surfaces.muted}
-                  accessibilityLabel="Bewerkbaar"
-                />
-              </View>
-              <View style={styles.accountLine}>
-                <Text style={styles.accountLabel}>Gebruikersnaam</Text>
-                <TextInput
-                  style={styles.accountInput}
+            <>
+              <View style={styles.accountCard}>
+                <View style={styles.accountHeader}>
+                  <Text style={styles.accountHeaderLabel}>Accountgegevens</Text>
+                </View>
+                <AccountField
+                  label="Gebruikersnaam"
                   value={usernameValue}
-                  onChangeText={setUsernameValue}
-                  placeholder="Gebruikersnaam"
-                  placeholderTextColor="rgba(15,17,26,0.35)"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!accountLoading}
+                  onPress={() => openAccountEditor("username")}
                 />
-              </View>
-              <View style={styles.accountLine}>
-                <Text style={styles.accountLabel}>Naam</Text>
-                <TextInput
-                  style={styles.accountInput}
+                <View style={styles.accountDivider} />
+                <AccountField
+                  label="Naam"
                   value={nameValue}
-                  onChangeText={setNameValue}
-                  placeholder="Naam"
-                  placeholderTextColor="rgba(15,17,26,0.35)"
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                  editable={!accountLoading}
+                  onPress={() => openAccountEditor("name")}
                 />
-              </View>
-              <View style={styles.accountLine}>
-                <Text style={styles.accountLabel}>E-mail</Text>
-                <TextInput
-                  style={styles.accountInput}
+                <View style={styles.accountDivider} />
+                <AccountField
+                  label="E-mail"
                   value={emailValue}
-                  onChangeText={setEmailValue}
-                  placeholder="E-mail"
-                  placeholderTextColor="rgba(15,17,26,0.35)"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!accountLoading}
+                  onPress={() => openAccountEditor("email")}
                 />
+                {accountError ? (
+                  <Text style={styles.accountError}>{accountError}</Text>
+                ) : null}
+                {accountSuccess ? (
+                  <Text style={styles.accountSuccess}>{accountSuccess}</Text>
+                ) : null}
               </View>
-              <View style={styles.accountLine}>
-                <Text style={styles.accountLabel}>Wachtwoord</Text>
-                <View style={styles.passwordRow}>
-                  <TextInput
-                    style={styles.passwordInput}
-                    value={passwordValue}
-                    onChangeText={setPasswordValue}
-                    placeholder="Nieuw wachtwoord"
-                    placeholderTextColor="rgba(15,17,26,0.35)"
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    editable={!accountLoading}
-                  />
-                  <Pressable
-                    onPress={() => setShowPassword((v) => !v)}
-                    hitSlop={8}
-                    accessibilityLabel={
-                      showPassword ? "Verberg wachtwoord" : "Toon wachtwoord"
-                    }
-                  >
+
+              <View style={styles.passwordCard}>
+                <Pressable
+                  onPress={openPasswordEditor}
+                  disabled={passwordLoading}
+                  style={styles.changePasswordToggle}
+                  accessibilityLabel="Wijzig wachtwoord"
+                >
+                  <View style={styles.changePasswordLeft}>
                     <IIcon
-                      name={showPassword ? "eyeOff" : "eye"}
-                      size={18}
-                      strokeWidth={1.8}
-                      color="rgba(15,17,26,0.6)"
+                      name="lock"
+                      size={15}
+                      strokeWidth={1.9}
+                      color={surfaces.muted}
                     />
-                  </Pressable>
-                </View>
-              </View>
-              <View style={styles.accountLine}>
-                <Text style={styles.accountLabel}>Bevestig wachtwoord</Text>
-                <View style={styles.passwordRow}>
-                  <TextInput
-                    style={styles.passwordInput}
-                    value={passwordConfirmValue}
-                    onChangeText={setPasswordConfirmValue}
-                    placeholder="Nog een keer"
-                    placeholderTextColor="rgba(15,17,26,0.35)"
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    editable={!accountLoading}
+                    <Text style={styles.changePasswordLabel}>
+                      Wachtwoord wijzigen
+                    </Text>
+                  </View>
+                  <IIcon
+                    name="chev"
+                    size={17}
+                    strokeWidth={2}
+                    color={surfaces.muted}
                   />
-                </View>
+                </Pressable>
+                {passwordError ? (
+                  <Text style={styles.accountError}>{passwordError}</Text>
+                ) : null}
+                {passwordSuccess ? (
+                  <Text style={styles.accountSuccess}>{passwordSuccess}</Text>
+                ) : null}
               </View>
-              {accountError ? (
-                <Text style={styles.accountError}>{accountError}</Text>
-              ) : null}
-              {accountSuccess ? (
-                <Text style={styles.accountSuccess}>{accountSuccess}</Text>
-              ) : null}
-              <Pressable
-                onPress={handleSaveAccount}
-                disabled={accountLoading}
-                style={[
-                  styles.saveAccountBtn,
-                  accountLoading && styles.saveAccountDisabled,
-                ]}
-              >
-                <Text style={styles.saveAccountLabel}>
-                  {accountLoading ? "Opslaan..." : "Gegevens opslaan"}
-                </Text>
-              </Pressable>
-            </View>
+            </>
           ) : null}
         </MotiView>
 
@@ -522,6 +787,68 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 8,
   },
+  editScreenHeader: {
+    backgroundColor: colors.cream,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(15,17,26,0.08)",
+    paddingBottom: 12,
+    paddingHorizontal: 18,
+    minHeight: 68,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  editBackBtn: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  editSaveBtn: {
+    minWidth: 72,
+    minHeight: 40,
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  editSaveLabel: {
+    fontFamily: fonts.displayMedium,
+    fontSize: 15,
+    color: colors.red,
+  },
+  editSaveDisabled: {
+    opacity: 0.55,
+  },
+  editScreenTitle: {
+    flex: 1,
+    fontFamily: fonts.display,
+    fontSize: 24,
+    color: colors.ink,
+    textAlign: "left",
+    marginLeft: 8,
+  },
+  editScreenBody: {
+    paddingHorizontal: 18,
+    paddingTop: 32,
+  },
+  editFieldLabel: {
+    fontFamily: fonts.display,
+    fontSize: 12,
+    color: surfaces.muted,
+    textTransform: "uppercase",
+    letterSpacing: 1.1,
+    marginBottom: 10,
+  },
+  editFieldInput: {
+    minHeight: 58,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: surfaces.lineStrong,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 18,
+    color: colors.ink,
+  },
 
   // Avatar
   avatarSection: {
@@ -569,6 +896,16 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 16,
   },
+  passwordCard: {
+    alignSelf: "stretch",
+    marginTop: 10,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: surfaces.border,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+  },
   accountHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -587,6 +924,16 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     gap: 2,
   },
+  accountValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  accountDivider: {
+    height: 1,
+    backgroundColor: surfaces.border,
+  },
   accountLabel: {
     fontFamily: fonts.display,
     fontSize: 10.5,
@@ -594,25 +941,72 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1.1,
   },
-  accountInput: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: 14,
-    color: colors.ink,
-    paddingVertical: 2,
-    paddingHorizontal: 0,
-  },
-  passwordRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  passwordInput: {
+  accountValue: {
     flex: 1,
     fontFamily: fonts.bodyMedium,
     fontSize: 14,
     color: colors.ink,
-    paddingVertical: 2,
+    textAlign: "left",
+  },
+  changePasswordToggle: {
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  changePasswordLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  changePasswordLabel: {
+    fontFamily: fonts.displayMedium,
+    fontSize: 13,
+    color: surfaces.muted,
+  },
+  passwordEditTitle: {
+    fontFamily: fonts.display,
+    fontSize: 28,
+    lineHeight: 32,
+    color: colors.ink,
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  passwordEditCopy: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    lineHeight: 22,
+    color: surfaces.muted,
+    textAlign: "center",
+    marginBottom: 30,
+  },
+  passwordEditField: {
+    marginBottom: 22,
+  },
+  passwordEditInputRow: {
+    minHeight: 58,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: surfaces.lineStrong,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  passwordEditInput: {
+    flex: 1,
+    fontFamily: fonts.bodyMedium,
+    fontSize: 18,
+    color: colors.ink,
+    paddingVertical: 0,
     paddingHorizontal: 0,
+  },
+  passwordEditError: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.red,
+    marginTop: 6,
   },
   accountError: {
     fontFamily: fonts.body,

@@ -30,10 +30,17 @@ export function RegisterScreen({ onBack, onSuccess, onSwitchToLogin }) {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState({});
   const [loading, setLoading] = useState(false);
+  const scrollRef = useRef(null);
   const nameRef = useRef(null);
   const emailRef = useRef(null);
   const pwRef = useRef(null);
   const pw2Ref = useRef(null);
+
+  const scrollToPasswordFields = () => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 80);
+  };
 
   const submit = async () => {
     const errs = validateRegister({ username, email, pw, pw2 });
@@ -81,12 +88,17 @@ export function RegisterScreen({ onBack, onSuccess, onSwitchToLogin }) {
   return (
     <KeyboardAvoidingView
       style={styles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 36 },
+        ]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
@@ -151,6 +163,7 @@ export function RegisterScreen({ onBack, onSuccess, onSwitchToLogin }) {
               error={error.pw}
               inputRef={pwRef}
               returnKeyType="next"
+              onFocus={scrollToPasswordFields}
               onSubmitEditing={() => pw2Ref.current?.focus()}
               rightSlot={
                 <Pressable onPress={() => setShowPw((s) => !s)} hitSlop={8}>
@@ -173,6 +186,7 @@ export function RegisterScreen({ onBack, onSuccess, onSwitchToLogin }) {
               error={error.pw2}
               inputRef={pw2Ref}
               returnKeyType="done"
+              onFocus={scrollToPasswordFields}
               onSubmitEditing={submit}
             />
           </View>

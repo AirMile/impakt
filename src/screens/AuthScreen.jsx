@@ -56,7 +56,7 @@ export function AuthScreen({ initialView = "welcome", onComplete }) {
   };
 
   const handleSkip = () => {
-    goToOnboarding("welcome", null, { guest: true });
+    goToApp(resolveUser(null, { guest: true }), null);
   };
 
   if (view === "welcome") {

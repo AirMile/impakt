@@ -21,6 +21,20 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
+test("verder zonder account slaat onboarding over", async () => {
+  const { setPreferences } = require("../../src/storage/prefs");
+  const onComplete = jest.fn();
+  const { getByText } = render(<AuthScreen onComplete={onComplete} />);
+
+  fireEvent.press(getByText(/Verder zonder account/));
+
+  await waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
+  expect(onComplete.mock.calls[0][0]).toEqual(
+    expect.objectContaining({ guest: true })
+  );
+  expect(setPreferences).not.toHaveBeenCalled();
+});
+
 test("onboarding-selectie wordt naar backend gepost via updateMyTags", async () => {
   const { fetchTags, updateMyTags } = require("../../src/lib/tags");
   const { fetchAccount } = require("../../src/lib/auth/account");

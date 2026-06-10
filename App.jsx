@@ -1,5 +1,13 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { View, ActivityIndicator, StyleSheet, Linking } from "react-native";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  ActivityIndicator,
+  StyleSheet,
+  Linking,
+  Modal,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -40,6 +48,59 @@ import { fetchSavedArticles } from "./src/lib/saves";
 const DEV_FORCE_AUTH = __DEV__;
 const DEV_SANDBOX = false; // false | "reactions"
 
+function GuestAuthPrompt({ visible, onClose, onLogin, onRegister }) {
+  return (
+    <Modal
+      transparent
+      visible={visible}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalBackdrop}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={styles.authPrompt}>
+          <View style={styles.authPromptHeader}>
+            <Text style={styles.authPromptTitle}>Account nodig</Text>
+            <Pressable
+              onPress={onClose}
+              hitSlop={10}
+              style={({ pressed }) => [
+                styles.authCloseBtn,
+                pressed && styles.authBtnPressed,
+              ]}
+              accessibilityLabel="Sluiten"
+            >
+              <Text style={styles.authCloseLabel}>×</Text>
+            </Pressable>
+          </View>
+          <Text style={styles.authPromptText}>
+            Maak een account aan of log in om te delen, bewaren, liken en mee te
+            stemmen.
+          </Text>
+          <Pressable
+            onPress={onRegister}
+            style={({ pressed }) => [
+              styles.authPrimaryBtn,
+              pressed && styles.authBtnPressed,
+            ]}
+          >
+            <Text style={styles.authPrimaryLabel}>Account aanmaken</Text>
+          </Pressable>
+          <Pressable
+            onPress={onLogin}
+            style={({ pressed }) => [
+              styles.authSecondaryBtn,
+              pressed && styles.authBtnPressed,
+            ]}
+          >
+            <Text style={styles.authSecondaryLabel}>Inloggen</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     BebasNeue_400Regular,
@@ -53,7 +114,7 @@ export default function App() {
   });
 
   const [phase, setPhase] = useState("welcome");
-  const [authLoading, setAuthLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(() => !DEV_FORCE_AUTH);
   const [tab, setTab] = useState("feed");
   const [user, setUser] = useState(null);
   const [myTags, setMyTags] = useState([]);
@@ -65,6 +126,8 @@ export default function App() {
   const [savedArticles, setSavedArticles] = useState([]);
   const [pendingMemeStoryId, setPendingMemeStoryId] = useState(null);
   const [feedCat, setFeedCat] = useState("Voor jou");
+  const [authInitialView, setAuthInitialView] = useState("welcome");
+  const [authPromptVisible, setAuthPromptVisible] = useState(false);
 
   const savedIds = useMemo(
     () => new Set(savedArticles.map((a) => a.id)),
@@ -73,7 +136,6 @@ export default function App() {
 
   useEffect(() => {
     if (!user?.token) {
-      setMyTags([]);
       return;
     }
     let cancelled = false;
@@ -122,7 +184,6 @@ export default function App() {
   useEffect(() => {
     if (!fontsLoaded) return;
     if (DEV_FORCE_AUTH) {
-      setAuthLoading(false);
       return;
     }
     getOnboarded()
@@ -186,20 +247,30 @@ export default function App() {
     setPendingMemeStoryId(storyId);
   }, []);
 
-  const openMemeById = useCallback(
-    (memeId) => {
-      const meme = memes.find((m) => String(m.id) === String(memeId));
-      if (meme) {
-        setOpenStory(null);
-        setTab("humor");
-        setPendingMemeStoryId(meme.storyId);
-      }
-    },
-    [memes]
-  );
+  const inApp = phase === "app";
+  const isGuest = inApp && (!user?.token || user?.guest);
+  const requireAuth = useCallback(() => {
+    if (!isGuest) return true;
+    setAuthPromptVisible(true);
+    return false;
+  }, [isGuest]);
+
+  const openAuth = useCallback((view) => {
+    setAuthPromptVisible(false);
+    setShowProfile(false);
+    setShowSearch(false);
+    setOpenStory(null);
+    setMyTags([]);
+    setAuthInitialView(view);
+    setUser(null);
+    setPhase("welcome");
+  }, []);
 
   const handleSearch = useCallback(() => setShowSearch(true), []);
-  const handleProfile = useCallback(() => setShowProfile(true), []);
+  const handleProfile = useCallback(() => {
+    if (!requireAuth()) return;
+    setShowProfile(true);
+  }, [requireAuth]);
   const handleOpenSaved = useCallback(() => setShowSaved(true), []);
   const handleSavedChange = useCallback((next) => setSavedArticles(next), []);
 
@@ -212,8 +283,6 @@ export default function App() {
     }),
     [navTab, handleSearch, handleProfile, tab]
   );
-
-  const inApp = phase === "app";
 
   if (!fontsLoaded || authLoading) {
     return (
@@ -233,9 +302,10 @@ export default function App() {
         {/* Auth — alleen zichtbaar vóór onboarding */}
         {!inApp && (
           <AuthScreen
-            initialView="welcome"
+            initialView={authInitialView}
             onComplete={(u) => {
               setUser(u);
+              setAuthInitialView("welcome");
               setPhase("app");
             }}
           />
@@ -252,6 +322,7 @@ export default function App() {
                 cat={feedCat}
                 onCatChange={setFeedCat}
                 myTags={myTags}
+                onRequireAuth={requireAuth}
               />
             </View>
             <View style={[styles.tab, tab !== "good" && styles.hidden]}>
@@ -259,18 +330,16 @@ export default function App() {
                 onOpen={setOpenStory}
                 onProfile={handleProfile}
                 myTags={myTags}
+                onRequireAuth={requireAuth}
               />
             </View>
             <View style={[styles.tab, tab !== "humor" && styles.hidden]}>
               <HumorScreen
-                onNav={navTab}
-                onSearch={handleSearch}
-                onProfile={handleProfile}
-                activeTab={tab}
                 initialStoryId={pendingMemeStoryId}
                 onInitialStoryConsumed={() => setPendingMemeStoryId(null)}
                 onOpenStory={openStoryById}
                 memes={memes}
+                onRequireAuth={requireAuth}
                 token={user?.token}
               />
             </View>
@@ -289,6 +358,7 @@ export default function App() {
             onClose={() => setShowProfile(false)}
             onLogout={() => {
               setShowProfile(false);
+              setMyTags([]);
               setPhase("welcome");
             }}
           />
@@ -301,6 +371,7 @@ export default function App() {
               setOpenStory(s);
             }}
             myTags={myTags}
+            onRequireAuth={requireAuth}
           />
         )}
         {inApp && showSaved && (
@@ -329,6 +400,7 @@ export default function App() {
               onProfile={handleProfile}
               onSearch={handleSearch}
               activeTab={tab}
+              onRequireAuth={requireAuth}
               token={user?.token}
               savedIds={savedIds}
               onSavedChange={handleSavedChange}
@@ -348,6 +420,12 @@ export default function App() {
         )}
 
         <ToastHost />
+        <GuestAuthPrompt
+          visible={authPromptVisible}
+          onClose={() => setAuthPromptVisible(false)}
+          onLogin={() => openAuth("login")}
+          onRegister={() => openAuth("register")}
+        />
       </View>
     </SafeAreaProvider>
   );
@@ -369,5 +447,87 @@ const styles = StyleSheet.create({
   },
   hidden: {
     display: "none",
+  },
+  modalBackdrop: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    backgroundColor: "rgba(15,17,26,0.45)",
+  },
+  authPrompt: {
+    width: "100%",
+    maxWidth: 360,
+    borderRadius: 24,
+    padding: 22,
+    backgroundColor: colors.cream,
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 8,
+  },
+  authPromptHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  authPromptTitle: {
+    fontFamily: "Poppins_700Bold",
+    fontSize: 24,
+    color: colors.ink,
+    flex: 1,
+  },
+  authCloseBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 12,
+  },
+  authCloseLabel: {
+    fontFamily: "Poppins_600SemiBold",
+    fontSize: 28,
+    lineHeight: 30,
+    color: "rgba(15,17,26,0.5)",
+  },
+  authPromptText: {
+    fontFamily: "Poppins_400Regular",
+    fontSize: 14,
+    lineHeight: 22,
+    color: "rgba(15,17,26,0.68)",
+    marginBottom: 20,
+  },
+  authPrimaryBtn: {
+    height: 52,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.red,
+    marginBottom: 10,
+  },
+  authPrimaryLabel: {
+    fontFamily: "Poppins_700Bold",
+    fontSize: 15,
+    color: colors.cream,
+  },
+  authSecondaryBtn: {
+    height: 52,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(15,17,26,0.14)",
+    backgroundColor: "#FFFFFF",
+  },
+  authSecondaryLabel: {
+    fontFamily: "Poppins_700Bold",
+    fontSize: 15,
+    color: colors.ink,
+  },
+  authBtnPressed: {
+    opacity: 0.78,
   },
 });
