@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, StyleSheet } from "react-native";
+import { useRef, useState } from "react";
+import { Pressable, View, Text, TextInput, StyleSheet } from "react-native";
 import { IIcon } from "./Icons";
 import { colors, fonts } from "../theme/tokens";
 
@@ -19,11 +19,13 @@ export function Field({
   inputRef,
 }) {
   const [focused, setFocused] = useState(false);
+  const fallbackInputRef = useRef(null);
+  const resolvedInputRef = inputRef ?? fallbackInputRef;
 
   return (
     <View style={styles.field}>
       {label != null && <Text style={styles.label}>{label}</Text>}
-      <View
+      <Pressable
         style={[
           styles.row,
           {
@@ -35,6 +37,8 @@ export function Field({
                   : "rgba(15,17,26,0.18)",
           },
         ]}
+        onPress={() => resolvedInputRef.current?.focus()}
+        accessible={false}
       >
         {icon != null && (
           <IIcon
@@ -45,7 +49,7 @@ export function Field({
           />
         )}
         <TextInput
-          ref={inputRef}
+          ref={resolvedInputRef}
           style={styles.input}
           value={value}
           onChangeText={onChange}
@@ -66,7 +70,7 @@ export function Field({
           onBlur={() => setFocused(false)}
         />
         {rightSlot}
-      </View>
+      </Pressable>
       {(error != null || hint != null) && (
         <Text
           style={[
