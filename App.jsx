@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -112,7 +112,7 @@ export default function App() {
   });
 
   const [phase, setPhase] = useState("welcome");
-  const [authLoading, setAuthLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(() => !DEV_FORCE_AUTH);
   const [tab, setTab] = useState("feed");
   const [user, setUser] = useState(null);
   const [myTags, setMyTags] = useState([]);
@@ -127,7 +127,6 @@ export default function App() {
 
   useEffect(() => {
     if (!user?.token) {
-      setMyTags([]);
       return;
     }
     let cancelled = false;
@@ -160,7 +159,6 @@ export default function App() {
   useEffect(() => {
     if (!fontsLoaded) return;
     if (DEV_FORCE_AUTH) {
-      setAuthLoading(false);
       return;
     }
     getOnboarded()
@@ -224,18 +222,6 @@ export default function App() {
     setPendingMemeStoryId(storyId);
   }, []);
 
-  const openMemeById = useCallback(
-    (memeId) => {
-      const meme = memes.find((m) => String(m.id) === String(memeId));
-      if (meme) {
-        setOpenStory(null);
-        setTab("humor");
-        setPendingMemeStoryId(meme.storyId);
-      }
-    },
-    [memes]
-  );
-
   const inApp = phase === "app";
   const isGuest = inApp && (!user?.token || user?.guest);
   const requireAuth = useCallback(() => {
@@ -249,6 +235,7 @@ export default function App() {
     setShowProfile(false);
     setShowSearch(false);
     setOpenStory(null);
+    setMyTags([]);
     setAuthInitialView(view);
     setUser(null);
     setPhase("welcome");
@@ -321,10 +308,6 @@ export default function App() {
             </View>
             <View style={[styles.tab, tab !== "humor" && styles.hidden]}>
               <HumorScreen
-                onNav={navTab}
-                onSearch={handleSearch}
-                onProfile={handleProfile}
-                activeTab={tab}
                 initialStoryId={pendingMemeStoryId}
                 onInitialStoryConsumed={() => setPendingMemeStoryId(null)}
                 onOpenStory={openStoryById}
@@ -346,6 +329,7 @@ export default function App() {
             onClose={() => setShowProfile(false)}
             onLogout={() => {
               setShowProfile(false);
+              setMyTags([]);
               setPhase("welcome");
             }}
           />

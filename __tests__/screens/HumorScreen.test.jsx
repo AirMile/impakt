@@ -32,10 +32,6 @@ const MOCK_MEMES = [
 ];
 
 const defaultProps = {
-  onNav: jest.fn(),
-  onSearch: jest.fn(),
-  onProfile: jest.fn(),
-  activeTab: "humor",
   onOpenStory: jest.fn(),
   memes: MOCK_MEMES,
 };

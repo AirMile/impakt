@@ -201,10 +201,6 @@ const MemeCard = React.memo(function MemeCard({
           active={saved}
           fill
           color={colors.blue}
-          onPress={() => {
-            if (!canInteract()) return;
-            setSaved((s) => !s);
-          }}
           onPress={toggleSaved}
         />
         <RailButton
@@ -287,10 +283,6 @@ const MemeCard = React.memo(function MemeCard({
 });
 
 export function HumorScreen({
-  onNav,
-  onSearch,
-  onProfile,
-  activeTab,
   initialStoryId,
   onInitialStoryConsumed,
   onOpenStory,
@@ -327,8 +319,7 @@ export function HumorScreen({
         onRequireAuth={onRequireAuth}
       />
     ),
-    [onOpenStory, memes.length, token]
-    [onOpenStory, onRequireAuth, memes.length]
+    [onOpenStory, onRequireAuth, memes.length, token]
   );
 
   return (
