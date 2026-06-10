@@ -244,6 +244,7 @@ export default function App() {
                 onInitialStoryConsumed={() => setPendingMemeStoryId(null)}
                 onOpenStory={openStoryById}
                 memes={memes}
+                token={user?.token}
               />
             </View>
           </>
@@ -289,6 +290,7 @@ export default function App() {
               onProfile={handleProfile}
               onSearch={handleSearch}
               activeTab={tab}
+              token={user?.token}
             />
           )}
         </AnimatePresence>

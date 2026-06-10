@@ -22,6 +22,8 @@ import { colors, fonts, surfaces } from "../theme/tokens";
 import { pressFx } from "../lib/pressFeedback";
 import { slideUpScreen } from "../theme/animations";
 import { shareStory } from "../lib/share";
+import { saveArticle, unsaveArticle } from "../lib/saves";
+import { toast } from "../lib/toast";
 import { sumVotes, votePct } from "../lib/pollPct";
 import { isInFeed } from "../lib/isInFeed";
 import { getRelatedMemes } from "../lib/getRelatedMemes";
@@ -39,6 +41,7 @@ export function DetailScreen({
   onProfile,
   onSearch,
   activeTab,
+  token,
 }) {
   const insets = useSafeAreaInsets();
   const [reaction, setReaction] = useState(null);
@@ -63,6 +66,25 @@ export function DetailScreen({
     });
     return () => sub.remove();
   }, [onClose]);
+
+  // Optimistic toggle: zet de UI direct, draai terug als de server faalt.
+  // De backend heeft geen "is dit bewaard?"-endpoint, dus de begin-state
+  // is altijd false bij heropenen — alleen de toggle praat met de server.
+  const toggleSaved = async () => {
+    if (!token) {
+      toast.show("Log in om artikelen te bewaren.");
+      return;
+    }
+    const next = !saved;
+    setSaved(next);
+    try {
+      if (next) await saveArticle(token, story.id);
+      else await unsaveArticle(token, story.id);
+    } catch (err) {
+      setSaved(!next);
+      toast.show(err.message || "Bewaren mislukt.");
+    }
+  };
 
   const relatedMemes = getRelatedMemes(memes, story.id);
   const firstMeme = relatedMemes[0];
@@ -173,7 +195,7 @@ export function DetailScreen({
               onReact={setReaction}
               reactions={story.reactions}
               saved={saved}
-              onSave={() => setSaved((s) => !s)}
+              onSave={toggleSaved}
               light
             />
           </View>

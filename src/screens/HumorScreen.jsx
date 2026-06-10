@@ -23,6 +23,8 @@ import { REACTION_COLORS } from "../components/ReactionRail";
 import { ImpaktLogo } from "../components/ImpaktLogo";
 import { colors, fonts } from "../theme/tokens";
 import { shareMeme } from "../lib/share";
+import { saveMeme, unsaveMeme } from "../lib/saves";
+import { toast } from "../lib/toast";
 import { createDoubleTapDetector } from "../lib/createDoubleTapDetector";
 import { pressFx } from "../lib/pressFeedback";
 
@@ -102,10 +104,30 @@ const MemeCard = React.memo(function MemeCard({
   total,
   isFirst,
   onOpenStory,
+  token,
 }) {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [reaction, setReaction] = useState(null);
+
+  // Optimistic toggle: zet de UI direct, draai terug als de server faalt.
+  // De backend heeft geen "is deze meme bewaard?"-endpoint, dus de begin-state
+  // is altijd false bij heropenen — alleen de toggle praat met de server.
+  const toggleSaved = useCallback(async () => {
+    if (!token) {
+      toast.show("Log in om memes te bewaren.");
+      return;
+    }
+    const next = !saved;
+    setSaved(next);
+    try {
+      if (next) await saveMeme(token, meme.id);
+      else await unsaveMeme(token, meme.id);
+    } catch (err) {
+      setSaved(!next);
+      toast.show(err.message || "Bewaren mislukt.");
+    }
+  }, [token, saved, meme.id]);
   const [tapHeart, setTapHeart] = useState(false);
   const detectDoubleTap = useRef(createDoubleTapDetector(280));
 
@@ -169,7 +191,7 @@ const MemeCard = React.memo(function MemeCard({
           active={saved}
           fill
           color={colors.blue}
-          onPress={() => setSaved((s) => !s)}
+          onPress={toggleSaved}
         />
         <RailButton
           icon="share"
@@ -256,6 +278,7 @@ export function HumorScreen({
   onInitialStoryConsumed,
   onOpenStory,
   memes = [],
+  token,
 }) {
   const insets = useSafeAreaInsets();
   const listRef = useRef(null);
@@ -282,9 +305,10 @@ export function HumorScreen({
         total={memes.length}
         isFirst={index === 0}
         onOpenStory={onOpenStory}
+        token={token}
       />
     ),
-    [onOpenStory, memes.length]
+    [onOpenStory, memes.length, token]
   );
 
   return (
