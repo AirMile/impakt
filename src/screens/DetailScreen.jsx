@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -34,7 +34,6 @@ export function DetailScreen({
   onClose,
   onOpenMeme,
   onSwapStory,
-  tab,
   feedCat,
   onCatChange,
   onNav,
@@ -203,10 +202,6 @@ export function DetailScreen({
               }}
               reactions={story.reactions}
               saved={saved}
-              onSave={() => {
-                if (!canInteract()) return;
-                setSaved((s) => !s);
-              }}
               onSave={toggleSaved}
               light
             />
