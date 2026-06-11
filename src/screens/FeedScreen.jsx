@@ -22,6 +22,9 @@ import { pressFx } from "../lib/pressFeedback";
 import { fetchTags } from "../lib/tags";
 import { orderUserTags } from "../lib/orderUserTags";
 import { fetchArticles } from "../lib/articles";
+import { submitArticleReaction } from "../lib/reactions";
+import { reactionPct } from "../lib/reactionPct";
+import { toast } from "../lib/toast";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 36;
@@ -97,12 +100,31 @@ export const FeedCard = React.memo(function FeedCard({
   variant = "full",
   index = 0,
   onRequireAuth,
+  token,
 }) {
   const [reaction, setReaction] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [counts, setCounts] = useState(
+    story.reactions ?? { smile: 0, meh: 0, frown: 0 }
+  );
   const isCompact = variant === "compact";
   const aspectH = isCompact ? CARD_W * (3.4 / 4) : CARD_W * (4.3 / 4);
   const canInteract = () => onRequireAuth?.() !== false;
+
+  // Optimistisch stemmen: zet reactie + count direct, draai terug bij serverfout.
+  const react = async (key) => {
+    if (!canInteract()) return;
+    if (!token) return;
+    setReaction(key);
+    setCounts((c) => ({ ...c, [key]: (c[key] ?? 0) + 1 }));
+    try {
+      await submitArticleReaction(token, story.id, key);
+    } catch (err) {
+      setReaction(null);
+      setCounts((c) => ({ ...c, [key]: Math.max(0, (c[key] ?? 1) - 1) }));
+      toast.show(err.message || "Reactie opslaan mislukt.");
+    }
+  };
 
   return (
     <MotiView {...fadeUp} style={[styles.cardWrapper, { height: aspectH }]}>
@@ -138,11 +160,8 @@ export const FeedCard = React.memo(function FeedCard({
         <View style={styles.railArea} pointerEvents="box-none">
           <ReactionRail
             reaction={reaction}
-            onReact={(key) => {
-              if (!canInteract()) return;
-              setReaction(key);
-            }}
-            reactions={story.reactions}
+            onReact={react}
+            reactions={reactionPct(counts)}
             saved={saved}
             onSave={() => {
               if (!canInteract()) return;
@@ -203,6 +222,7 @@ export function FeedScreen({
   goodNewsOnly = false,
   myTags = [],
   onRequireAuth,
+  token,
 }) {
   const [selectedTopics, setSelectedTopics] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
@@ -300,9 +320,10 @@ export function FeedScreen({
         onOpen={onOpen}
         index={index}
         onRequireAuth={onRequireAuth}
+        token={token}
       />
     ),
-    [onOpen, onRequireAuth]
+    [onOpen, onRequireAuth, token]
   );
 
   const topicBar = !goodNewsOnly && topics.length > 0 && (
@@ -324,6 +345,7 @@ export function FeedScreen({
             onOpen={onOpen}
             index={i}
             onRequireAuth={onRequireAuth}
+            token={token}
           />
         ))}
         {stories.length === 0 && renderEmpty()}

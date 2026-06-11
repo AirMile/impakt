@@ -23,6 +23,8 @@ import { pressFx } from "../lib/pressFeedback";
 import { slideUpScreen } from "../theme/animations";
 import { shareStory } from "../lib/share";
 import { saveArticle, unsaveArticle, mapSavedFromResponse } from "../lib/saves";
+import { submitArticleReaction } from "../lib/reactions";
+import { reactionPct } from "../lib/reactionPct";
 import { fetchSources } from "../lib/sources";
 import { toast } from "../lib/toast";
 import { sumVotes, votePct } from "../lib/pollPct";
@@ -49,6 +51,10 @@ export function DetailScreen({
 }) {
   const insets = useSafeAreaInsets();
   const [reaction, setReaction] = useState(null);
+  // Absolute counts uit GET /articles; na het stemmen optimistisch +1.
+  const [counts, setCounts] = useState(
+    story.reactions ?? { smile: 0, meh: 0, frown: 0 }
+  );
   const [saved, setSaved] = useState(() => savedIds?.has(story.id) ?? false);
   const [pollChoice, setPollChoice] = useState(null);
   const [activeAction, setActiveAction] = useState(null);
@@ -110,6 +116,21 @@ export function DetailScreen({
   const relatedMemes = getRelatedMemes(memes, story.id);
   const firstMeme = relatedMemes[0];
   const canInteract = () => onRequireAuth?.() !== false;
+
+  // Optimistisch stemmen: zet reactie + count direct, draai terug bij serverfout.
+  const react = async (key) => {
+    if (!canInteract()) return;
+    if (!token) return;
+    setReaction(key);
+    setCounts((c) => ({ ...c, [key]: (c[key] ?? 0) + 1 }));
+    try {
+      await submitArticleReaction(token, story.id, key);
+    } catch (err) {
+      setReaction(null);
+      setCounts((c) => ({ ...c, [key]: Math.max(0, (c[key] ?? 1) - 1) }));
+      toast.show(err.message || "Reactie opslaan mislukt.");
+    }
+  };
 
   const totalVotes = story.poll ? sumVotes(story.poll.options, pollChoice) : 0;
 
@@ -217,11 +238,8 @@ export function DetailScreen({
           <View style={styles.heroRail}>
             <ReactionRail
               reaction={reaction}
-              onReact={(key) => {
-                if (!canInteract()) return;
-                setReaction(key);
-              }}
-              reactions={story.reactions}
+              onReact={react}
+              reactions={reactionPct(counts)}
               saved={saved}
               onSave={toggleSaved}
               light
@@ -430,6 +448,7 @@ export function DetailScreen({
               onProfile={onProfile}
               activeTab={activeTab}
               onRequireAuth={onRequireAuth}
+              token={token}
             />
           )}
         </View>

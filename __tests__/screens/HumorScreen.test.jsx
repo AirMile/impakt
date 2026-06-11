@@ -1,7 +1,11 @@
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import { HumorScreen } from "../../src/screens/HumorScreen";
+import { submitMemeReaction } from "../../src/lib/reactions";
 
 jest.mock("../../src/lib/share", () => ({ shareMeme: jest.fn() }));
+jest.mock("../../src/lib/reactions", () => ({
+  submitMemeReaction: jest.fn(),
+}));
 
 const MOCK_MEMES = [
   {
@@ -33,10 +37,12 @@ const MOCK_MEMES = [
 const defaultProps = {
   onOpenStory: jest.fn(),
   memes: MOCK_MEMES,
+  token: "tok123",
 };
 
 beforeEach(() => {
   jest.clearAllMocks();
+  submitMemeReaction.mockResolvedValue({ message: "ok" });
 });
 
 test("roept onInitialStoryConsumed aan na mount wanneer initialStoryId gegeven", async () => {
@@ -65,14 +71,29 @@ test("toont alle drie reactie-smileys voor het stemmen", () => {
   expect(getAllByLabelText("Verdrietig")[0]).toBeTruthy();
 });
 
-test("toont percentages van alle drie reacties na het stemmen", () => {
+test("POST't de reactie en toont percentages (uit counts) na het stemmen", async () => {
   const { getAllByLabelText, getByText } = render(
     <HumorScreen {...defaultProps} />
   );
   fireEvent.press(getAllByLabelText("Blij")[0]);
-  expect(getByText("5%")).toBeTruthy();
-  expect(getByText("2%")).toBeTruthy();
-  expect(getByText("1%")).toBeTruthy();
+
+  await waitFor(() =>
+    expect(submitMemeReaction).toHaveBeenCalledWith("tok123", "m1", "smile")
+  );
+
+  // counts {5,2,1} + optimistische +1 op smile = {6,2,1}, total 9.
+  expect(getByText("67%")).toBeTruthy();
+  expect(getByText("22%")).toBeTruthy();
+  expect(getByText("11%")).toBeTruthy();
+});
+
+test("zonder token wordt er niet ge-POST en geen stem gezet", () => {
+  const { getAllByLabelText, queryByText } = render(
+    <HumorScreen {...defaultProps} token={null} />
+  );
+  fireEvent.press(getAllByLabelText("Blij")[0]);
+  expect(submitMemeReaction).not.toHaveBeenCalled();
+  expect(queryByText("100%")).toBeNull();
 });
 
 test("niet-actieve reactie-knoppen krijgen dim-opacity 0.5 na stemmen", () => {

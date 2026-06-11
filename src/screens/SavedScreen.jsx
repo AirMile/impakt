@@ -8,7 +8,13 @@ import { FeedCard } from "./FeedScreen";
 import { colors, fonts } from "../theme/tokens";
 import { slideUpScreen } from "../theme/animations";
 
-export function SavedScreen({ savedArticles = [], onClose, onOpen }) {
+export function SavedScreen({
+  savedArticles = [],
+  onClose,
+  onOpen,
+  onRequireAuth,
+  token,
+}) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -48,6 +54,8 @@ export function SavedScreen({ savedArticles = [], onClose, onOpen }) {
               story={story}
               onOpen={onOpen}
               variant="compact"
+              onRequireAuth={onRequireAuth}
+              token={token}
             />
           ))
         )}

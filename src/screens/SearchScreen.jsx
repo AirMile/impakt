@@ -41,6 +41,7 @@ export function SearchScreen({
   onOpenStory,
   myTags = [],
   onRequireAuth,
+  token,
 }) {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
@@ -250,6 +251,7 @@ export function SearchScreen({
                     onOpen={openStory}
                     variant="compact"
                     onRequireAuth={onRequireAuth}
+                    token={token}
                   />
                 ))
               )}
@@ -275,6 +277,7 @@ export function SearchScreen({
                   onOpen={openStory}
                   variant="full"
                   onRequireAuth={onRequireAuth}
+                  token={token}
                 />
               ))
             )}

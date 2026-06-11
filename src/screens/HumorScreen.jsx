@@ -24,6 +24,8 @@ import { ImpaktLogo } from "../components/ImpaktLogo";
 import { colors, fonts } from "../theme/tokens";
 import { shareMeme } from "../lib/share";
 import { saveMeme, unsaveMeme } from "../lib/saves";
+import { submitMemeReaction } from "../lib/reactions";
+import { reactionPct } from "../lib/reactionPct";
 import { toast } from "../lib/toast";
 import { createDoubleTapDetector } from "../lib/createDoubleTapDetector";
 import { pressFx } from "../lib/pressFeedback";
@@ -110,6 +112,10 @@ const MemeCard = React.memo(function MemeCard({
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [reaction, setReaction] = useState(null);
+  // Absolute counts (nu {0,0,0} tot de backend ze meestuurt); na stemmen +1.
+  const [counts, setCounts] = useState(
+    meme.reactions ?? { smile: 0, meh: 0, frown: 0 }
+  );
 
   // Optimistic toggle: zet de UI direct, draai terug als de server faalt.
   // De backend heeft geen "is deze meme bewaard?"-endpoint, dus de begin-state
@@ -134,6 +140,25 @@ const MemeCard = React.memo(function MemeCard({
   const canInteract = useCallback(
     () => onRequireAuth?.() !== false,
     [onRequireAuth]
+  );
+
+  // Optimistisch stemmen: zet reactie + count direct, draai terug bij serverfout.
+  const react = useCallback(
+    async (key) => {
+      if (reaction !== null) return;
+      if (!canInteract()) return;
+      if (!token) return;
+      setReaction(key);
+      setCounts((c) => ({ ...c, [key]: (c[key] ?? 0) + 1 }));
+      try {
+        await submitMemeReaction(token, meme.id, key);
+      } catch (err) {
+        setReaction(null);
+        setCounts((c) => ({ ...c, [key]: Math.max(0, (c[key] ?? 1) - 1) }));
+        toast.show(err.message || "Reactie opslaan mislukt.");
+      }
+    },
+    [reaction, canInteract, token, meme.id]
   );
 
   const handlePress = useCallback(() => {
@@ -185,13 +210,9 @@ const MemeCard = React.memo(function MemeCard({
             voted={reaction !== null}
             active={reaction === r.key}
             dimmed={reaction !== null && reaction !== r.key}
-            count={`${meme.reactions[r.key]}%`}
+            count={`${reactionPct(counts)[r.key]}%`}
             color={r.color}
-            onPress={() => {
-              if (reaction !== null) return;
-              if (!canInteract()) return;
-              setReaction(r.key);
-            }}
+            onPress={() => react(r.key)}
           />
         ))}
         <RailButton

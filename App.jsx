@@ -323,6 +323,7 @@ export default function App() {
                 onCatChange={setFeedCat}
                 myTags={myTags}
                 onRequireAuth={requireAuth}
+                token={user?.token}
               />
             </View>
             <View style={[styles.tab, tab !== "good" && styles.hidden]}>
@@ -372,6 +373,7 @@ export default function App() {
             }}
             myTags={myTags}
             onRequireAuth={requireAuth}
+            token={user?.token}
           />
         )}
         {inApp && showSaved && (
@@ -382,6 +384,8 @@ export default function App() {
               setShowSaved(false);
               setOpenStory(s);
             }}
+            onRequireAuth={requireAuth}
+            token={user?.token}
           />
         )}
         <AnimatePresence>
