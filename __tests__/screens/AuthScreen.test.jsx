@@ -46,12 +46,16 @@ test("onboarding-selectie wordt naar backend gepost via updateMyTags", async () 
     token: "tok123",
   });
   fetchTags.mockResolvedValueOnce([
-    { id: 2, name: "Politiek", category: "politiek" },
-    { id: 5, name: "Sport", category: "sport" },
-    { id: 7, name: "Innovatie", category: "innovatie" },
-    { id: 9, name: "Lokaal", category: "lokaal" },
+    { id: 18, name: "Goed nieuws", category: "flag" },
+    { id: 3, name: "Politiek", category: "navigation" },
+    { id: 4, name: "Sport", category: "navigation" },
+    { id: 15, name: "Innovatie", category: "topic" },
+    { id: 20, name: "Lokaal", category: "topic" },
   ]);
-  updateMyTags.mockResolvedValueOnce([]);
+  updateMyTags.mockResolvedValueOnce([
+    { id: 3, name: "Politiek", category: "navigation" },
+    { id: 4, name: "Sport", category: "navigation" },
+  ]);
 
   const onComplete = jest.fn();
   const { getByText } = render(
@@ -63,9 +67,16 @@ test("onboarding-selectie wordt naar backend gepost via updateMyTags", async () 
   fireEvent.press(getByText("Bevestig"));
 
   await waitFor(() => {
-    expect(updateMyTags).toHaveBeenCalledWith("tok123", [2, 5]);
+    expect(updateMyTags).toHaveBeenCalledWith("tok123", [3, 4]);
   });
-  expect(onComplete).toHaveBeenCalled();
+  expect(onComplete).toHaveBeenCalledWith(
+    expect.objectContaining({ token: "tok123" }),
+    ["politiek", "sport"],
+    [
+      { id: 3, name: "Politiek", category: "navigation" },
+      { id: 4, name: "Sport", category: "navigation" },
+    ]
+  );
 });
 
 test("gast zonder token slaat geen tags op in backend", async () => {

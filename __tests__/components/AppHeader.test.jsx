@@ -29,6 +29,13 @@ test("profiel-knop roept onProfile aan", () => {
   expect(onProfile).toHaveBeenCalledTimes(1);
 });
 
+test("showProfile=false verbergt profiel-knop", () => {
+  const { queryByLabelText } = render(
+    <AppHeader onProfile={jest.fn()} showProfile={false} />
+  );
+  expect(queryByLabelText("Profiel")).toBeNull();
+});
+
 test("dark=true geeft een donkere achtergrondkleur", () => {
   const { UNSAFE_root } = render(<AppHeader onProfile={jest.fn()} dark />);
   const wrapper = UNSAFE_root.children[0];

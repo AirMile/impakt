@@ -4,9 +4,10 @@ import { SearchScreen } from "../../src/screens/SearchScreen";
 
 jest.mock("../../src/lib/tags", () => ({
   fetchTags: jest.fn().mockResolvedValue([
-    { id: 2, name: "Politiek", category: "politiek" },
-    { id: 5, name: "Sport", category: "sport" },
-    { id: 6, name: "Natuur", category: "natuur" },
+    { id: 18, name: "Goed nieuws", category: "flag" },
+    { id: 2, name: "Politiek", category: "navigation" },
+    { id: 5, name: "Sport", category: "navigation" },
+    { id: 6, name: "Natuur", category: "topic" },
   ]),
 }));
 
@@ -23,7 +24,7 @@ jest.mock("../../src/lib/articles", () => ({
       readers: "3k",
       trending: false,
       goodNews: true,
-      tags: [{ id: 6, name: "Natuur", category: "natuur" }],
+      tags: [{ id: 6, name: "Natuur", category: "topic" }],
       body: [],
       reactions: { smile: 10, meh: 5, frown: 2 },
     },
@@ -38,9 +39,54 @@ jest.mock("../../src/lib/articles", () => ({
       readers: "1k",
       trending: false,
       goodNews: false,
-      tags: [{ id: 5, name: "Sport", category: "sport" }],
+      tags: [{ id: 5, name: "Sport", category: "navigation" }],
       body: [],
       reactions: { smile: 3, meh: 8, frown: 1 },
+    },
+    {
+      id: 3,
+      title: "Politiek verhaal",
+      sub: "...",
+      img: "",
+      date: "1 juni 2026",
+      time: "12:00",
+      views: "900",
+      readers: "900",
+      trending: false,
+      goodNews: false,
+      tags: [{ id: 2, name: "Politiek", category: "navigation" }],
+      body: [],
+      reactions: { smile: 1, meh: 1, frown: 1 },
+    },
+    {
+      id: 4,
+      title: "Nog een sportverhaal",
+      sub: "...",
+      img: "",
+      date: "1 juni 2026",
+      time: "13:00",
+      views: "800",
+      readers: "800",
+      trending: false,
+      goodNews: false,
+      tags: [{ id: 5, name: "Sport", category: "navigation" }],
+      body: [],
+      reactions: { smile: 1, meh: 1, frown: 1 },
+    },
+    {
+      id: 5,
+      title: "Vijfde verhaal",
+      sub: "...",
+      img: "",
+      date: "1 juni 2026",
+      time: "14:00",
+      views: "700",
+      readers: "700",
+      trending: false,
+      goodNews: false,
+      tags: [{ id: 2, name: "Politiek", category: "navigation" }],
+      body: [],
+      reactions: { smile: 1, meh: 1, frown: 1 },
     },
   ]),
 }));
@@ -62,18 +108,20 @@ test("rendert topicfilter zonder populaire tags", async () => {
   );
   expect(await findByText("Ontdek per thema")).toBeTruthy();
   expect(queryByText("Populair")).toBeNull();
+  expect(queryByText("Goed nieuws")).toBeNull();
 });
 
-test("rendert 'Meest gelezen' sectie zonder zoekquery", async () => {
+test("rendert alle artikelen zonder zoekquery", async () => {
   const { findByText } = render(<SearchScreen {...defaultProps} />);
-  expect(await findByText("Meest gelezen")).toBeTruthy();
+  expect(await findByText("Alle artikelen")).toBeTruthy();
+  expect(await findByText("Vijfde verhaal")).toBeTruthy();
 });
 
 test("na invoer van query verdwijnt discover-view en verschijnen resultaten", async () => {
   const { getByPlaceholderText, findByText, queryByText } = render(
     <SearchScreen {...defaultProps} />
   );
-  await findByText("Meest gelezen");
+  await findByText("Alle artikelen");
   fireEvent.changeText(
     getByPlaceholderText("Zoek verhalen, tags, thema's..."),
     "klimaat"
@@ -86,7 +134,7 @@ test("lege zoekresultaten toont geen-resultaten tekst", async () => {
   const { getByPlaceholderText, findByText } = render(
     <SearchScreen {...defaultProps} />
   );
-  await findByText("Meest gelezen");
+  await findByText("Alle artikelen");
   fireEvent.changeText(
     getByPlaceholderText("Zoek verhalen, tags, thema's..."),
     "xyzxyzxyz"
@@ -95,21 +143,23 @@ test("lege zoekresultaten toont geen-resultaten tekst", async () => {
 });
 
 test("klik op topic selecteert filter en toont gefilterde verhalen", async () => {
-  const { getByText, queryByText, findByText } = render(
+  const { getByText, queryByText, findAllByText } = render(
     <SearchScreen {...defaultProps} />
   );
-  fireEvent.press(await findByText("Sport"));
+  const sportNodes = await findAllByText("Sport");
+  fireEvent.press(sportNodes[0]);
   await waitFor(() => expect(getByText("Gefilterde verhalen")).toBeTruthy());
   expect(getByText("Sportverhaal")).toBeTruthy();
+  expect(getByText("Nog een sportverhaal")).toBeTruthy();
   expect(queryByText("Klimaatverhaal")).toBeNull();
 });
 
 test("myTags prop rendert eigen interesses als chip", async () => {
-  const { findByText } = render(
+  const { findAllByText } = render(
     <SearchScreen
       {...defaultProps}
-      myTags={[{ id: 6, name: "Natuur", category: "natuur" }]}
+      myTags={[{ id: 6, name: "Natuur", category: "topic" }]}
     />
   );
-  expect(await findByText("Natuur")).toBeTruthy();
+  expect((await findAllByText("Natuur")).length).toBeGreaterThanOrEqual(1);
 });

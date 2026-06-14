@@ -35,6 +35,7 @@ const TOPIC_ROWS = [
 ];
 
 const SELECTED_BG = "#10141C";
+const SELECTED_TOPIC_BG = "#74CFDF";
 const UNSELECTED_BG = "#DDF5F8";
 const INK = "#10111A";
 
@@ -145,7 +146,7 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
                         <IIcon
                           name={topic.icon}
                           size={veryCompact ? 19 : compact ? 20 : 22}
-                          color={isSelected ? "#FFFFFF" : INK}
+                          color={isSelected ? SELECTED_BG : INK}
                           strokeWidth={2.45}
                         />
 
@@ -155,7 +156,7 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
                             styles.topicLabel,
                             compact && styles.topicLabelCompact,
                             {
-                              color: isSelected ? "#FFFFFF" : INK,
+                              color: isSelected ? SELECTED_BG : INK,
                             },
                           ]}
                         >
@@ -166,7 +167,7 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
                           <IIcon
                             name="check"
                             size={veryCompact ? 20 : 22}
-                            color="#FFFFFF"
+                            color={SELECTED_BG}
                             strokeWidth={3}
                           />
                         )}
@@ -344,6 +345,7 @@ const styles = StyleSheet.create({
     height: 58,
     borderRadius: 999,
     paddingHorizontal: 17,
+    borderWidth: 1.5,
     flexDirection: "row",
     alignItems: "center",
     gap: 11,
@@ -368,13 +370,15 @@ const styles = StyleSheet.create({
   },
 
   topicButtonSelected: {
-    backgroundColor: SELECTED_BG,
+    backgroundColor: SELECTED_TOPIC_BG,
+    borderColor: SELECTED_BG,
     shadowOpacity: 0.22,
     elevation: 7,
   },
 
   topicButtonIdle: {
     backgroundColor: UNSELECTED_BG,
+    borderColor: "rgba(15,17,26,0.04)",
   },
 
   topicLabel: {

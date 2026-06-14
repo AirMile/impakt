@@ -39,6 +39,7 @@ export function DetailScreen({
   onNav,
   onProfile,
   onSearch,
+  sourceTab = "feed",
   token,
   onRequireAuth,
 }) {
@@ -68,7 +69,7 @@ export function DetailScreen({
 
   // Optimistic toggle: zet de UI direct, draai terug als de server faalt.
   // De backend heeft geen "is dit bewaard?"-endpoint, dus de begin-state
-  // is altijd false bij heropenen — alleen de toggle praat met de server.
+  // is altijd false bij heropenen. Alleen de toggle praat met de server.
   const toggleSaved = async () => {
     if (!token) {
       toast.show("Log in om artikelen te bewaren.");
@@ -88,7 +89,9 @@ export function DetailScreen({
   const relatedMemes = getRelatedMemes(memes, story.id);
   const firstMeme = relatedMemes[0];
   const canInteract = () => onRequireAuth?.() !== false;
-  const embeddedFeedActiveTab = "feed";
+  const isHappyContext = sourceTab === "good";
+  const embeddedFeedActiveTab = isHappyContext ? "good" : "feed";
+  const publishedMeta = [story.date, story.time].filter(Boolean).join(" - ");
 
   const totalVotes = story.poll ? sumVotes(story.poll.options, pollChoice) : 0;
 
@@ -154,7 +157,7 @@ export function DetailScreen({
           </Pressable>
         </MotiView>
 
-        {/* Feed header: spacer + logo + profile — absolute overlay */}
+        {/* Feed header: spacer + logo + profile, absolute overlay */}
         <MotiView
           animate={{ opacity: inFeed ? 1 : 0 }}
           transition={{ type: "timing", duration: 250 }}
@@ -212,9 +215,25 @@ export function DetailScreen({
         <View style={styles.body}>
           <Text style={styles.title}>{story.title}</Text>
 
-          <Text style={styles.meta}>
-            12 min geleden · 4 min leestijd · {story.views} lezers
-          </Text>
+          <View style={styles.metaRow}>
+            {publishedMeta ? (
+              <Text style={styles.metaText}>{publishedMeta}</Text>
+            ) : null}
+            {publishedMeta && story.views ? (
+              <Text style={styles.metaDot}>{"\u00B7"}</Text>
+            ) : null}
+            {story.views ? (
+              <View style={styles.viewsMeta}>
+                <Text style={styles.metaText}>{story.views}</Text>
+                <IIcon
+                  name="eye"
+                  size={14}
+                  color={surfaces.muted}
+                  strokeWidth={2}
+                />
+              </View>
+            ) : null}
+          </View>
 
           <Text style={styles.sub}>{story.sub}</Text>
 
@@ -309,8 +328,12 @@ export function DetailScreen({
           {/* Meme-card */}
           {firstMeme && (
             <Pressable
-              onPress={() => onOpenMeme?.(story.id)}
-              style={styles.memeCard}
+              onPress={() => onOpenMeme?.(firstMeme.id, story.id)}
+              unstable_pressDelay={0}
+              style={({ pressed }) => [
+                styles.memeCard,
+                pressFx({ scale: 0.98 })({ pressed }),
+              ]}
             >
               <Image
                 source={{ uri: firstMeme.img }}
@@ -393,7 +416,7 @@ export function DetailScreen({
           <View style={styles.thinDivider} />
         </View>
 
-        {/* Embedded feed — onLayout geeft Y-positie voor inFeed-detectie */}
+        {/* Embedded feed: onLayout geeft Y-positie voor inFeed-detectie */}
         <View onLayout={onFeedSectionLayout} style={styles.relatedPlaceholder}>
           {showRelated && (
             <FeedScreen
@@ -401,6 +424,7 @@ export function DetailScreen({
               cat={feedCat}
               onCatChange={onCatChange}
               excludeId={story.id}
+              goodNewsOnly={isHappyContext}
               onOpen={(s) => {
                 onSwapStory?.(s);
               }}
@@ -432,7 +456,7 @@ export function DetailScreen({
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
+// Styles
 
 const styles = StyleSheet.create({
   screen: {
@@ -507,11 +531,26 @@ const styles = StyleSheet.create({
     color: colors.ink,
     marginBottom: 10,
   },
-  meta: {
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginBottom: 18,
+  },
+  metaText: {
     fontFamily: fonts.body,
     fontSize: 12.5,
     color: surfaces.muted,
-    marginBottom: 18,
+  },
+  metaDot: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: surfaces.textFaint,
+  },
+  viewsMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   sub: {
     fontFamily: fonts.body,

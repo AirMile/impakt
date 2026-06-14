@@ -1,3 +1,7 @@
+import { API_BASE_URL } from "./auth/account";
+
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+
 const NL_MONTHS = [
   "januari",
   "februari",
@@ -12,6 +16,16 @@ const NL_MONTHS = [
   "november",
   "december",
 ];
+
+function resolveArticleImageUrl(imageUrl) {
+  if (!imageUrl) return "";
+  const value = String(imageUrl);
+  if (/^(https?:)?\/\//i.test(value) || /^data:/i.test(value)) return value;
+
+  const path = value.replace(/^\/+/, "");
+  if (path.startsWith("storage/")) return `${API_ORIGIN}/${path}`;
+  return `${API_ORIGIN}/storage/${path}`;
+}
 
 function formatNLDate(iso) {
   if (!iso) return "";
@@ -40,7 +54,11 @@ function formatViews(n) {
 
 function paragraphsFromContent(content) {
   if (!content) return [];
-  if (Array.isArray(content)) return content.filter(Boolean);
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => (typeof item === "string" ? item : item?.value))
+      .filter(Boolean);
+  }
   return String(content)
     .split(/\n{2,}/)
     .map((p) => p.trim())
@@ -48,8 +66,19 @@ function paragraphsFromContent(content) {
 }
 
 function cleanTag(tag) {
+  if (typeof tag === "string") return { id: tag, name: tag, category: null };
   if (!tag || typeof tag !== "object") return null;
   return { id: tag.id, name: tag.name, category: tag.category };
+}
+
+function isGoodNewsTag(tag) {
+  const name = String(tag?.name ?? "")
+    .trim()
+    .toLowerCase();
+  const category = String(tag?.category ?? "")
+    .trim()
+    .toLowerCase();
+  return name === "goed nieuws" || name === "happy" || category === "happy";
 }
 
 export function mapArticle(raw) {
@@ -58,18 +87,21 @@ export function mapArticle(raw) {
   const rawTags = Array.isArray(raw.tags)
     ? raw.tags.map(cleanTag).filter(Boolean)
     : [];
-  const goodNews = rawTags.some((t) => t.category === "happy");
+  const goodNews = raw.goodNews === true || rawTags.some(isGoodNewsTag);
 
   return {
     id: raw.id,
     title: raw.title ?? "",
     sub: raw.summary ?? raw.sub ?? "",
-    img: raw.image_url ?? raw.img ?? "",
-    body: paragraphsFromContent(raw.content ?? raw.body),
-    date: formatNLDate(raw.published_at),
-    time: formatTime(raw.published_at),
-    views: formatViews(raw.views_count ?? 0),
-    readers: formatViews(raw.views_count ?? 0),
+    img:
+      raw.image_url != null
+        ? resolveArticleImageUrl(raw.image_url)
+        : resolveArticleImageUrl(raw.img),
+    body: paragraphsFromContent(raw.content ?? raw.body ?? raw.body_paragraphs),
+    date: formatNLDate(raw.published_at) || raw.date || "",
+    time: formatTime(raw.published_at) || raw.time || "",
+    views: formatViews(raw.views_count ?? raw.views ?? 0),
+    readers: formatViews(raw.views_count ?? raw.views ?? 0),
     tone: raw.tone ?? "",
     tags: rawTags,
     goodNews,

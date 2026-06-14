@@ -61,6 +61,13 @@ test("paragraphsFromContent accepteert ook bestaande array", () => {
   expect(paragraphsFromContent(["a", "b"])).toEqual(["a", "b"]);
 });
 
+test("paragraphsFromContent accepteert body_paragraph objecten uit happy-feed", () => {
+  expect(paragraphsFromContent([{ value: "a" }, { value: "b" }])).toEqual([
+    "a",
+    "b",
+  ]);
+});
+
 test("paragraphsFromContent geeft lege array bij null/undefined", () => {
   expect(paragraphsFromContent(null)).toEqual([]);
   expect(paragraphsFromContent("")).toEqual([]);
@@ -92,6 +99,27 @@ test("mapArticle stubt ontbrekende velden", () => {
   expect(article.sources).toBeNull();
 });
 
+test("mapArticle maakt relatieve article images volledig", () => {
+  const article = mapArticle({
+    ...SAMPLE_RAW,
+    image_url: "articles/test.jpg",
+  });
+
+  expect(article.img).toBe("http://145.24.237.97/storage/articles/test.jpg");
+});
+
+test("mapArticle gebruikt bestaande date en time als published_at ontbreekt", () => {
+  const article = mapArticle({
+    ...SAMPLE_RAW,
+    published_at: null,
+    date: "14 juni 2026",
+    time: "19:34",
+  });
+
+  expect(article.date).toBe("14 juni 2026");
+  expect(article.time).toBe("19:34");
+});
+
 test("mapArticle leidt goodNews af uit de happy-tag", () => {
   const happy = mapArticle({
     ...SAMPLE_RAW,
@@ -104,6 +132,28 @@ test("mapArticle leidt goodNews af uit de happy-tag", () => {
     tags: [{ id: 2, name: "Politiek", category: "politiek" }],
   });
   expect(niet.goodNews).toBe(false);
+});
+
+test("mapArticle accepteert string-tags uit de live API en raw goodNews", () => {
+  const article = mapArticle({
+    ...SAMPLE_RAW,
+    tags: ["Lokaal"],
+    goodNews: true,
+  });
+
+  expect(article.tags).toEqual([
+    { id: "Lokaal", name: "Lokaal", category: null },
+  ]);
+  expect(article.goodNews).toBe(true);
+});
+
+test("mapArticle leidt goodNews af uit Goed nieuws tag", () => {
+  const article = mapArticle({
+    ...SAMPLE_RAW,
+    tags: [{ id: 18, name: "Goed nieuws", category: "flag" }],
+  });
+
+  expect(article.goodNews).toBe(true);
 });
 
 test("mapArticle is veilig bij ontbrekende tags en content", () => {

@@ -21,6 +21,26 @@ test("mapMeme mapt backend-velden naar frontend-shape", () => {
   expect(m.storySource).toBe("Impakt");
 });
 
+test("mapMeme maakt relatieve meme image_url absoluut via storage", () => {
+  const m = mapMeme({
+    ...RAW,
+    image_url: "memes/01KTV2R4634YV2C25NZGBWJX9S.png",
+  });
+
+  expect(m.img).toBe(
+    "http://145.24.237.97/storage/memes/01KTV2R4634YV2C25NZGBWJX9S.png"
+  );
+});
+
+test("mapMeme accepteert storage-paden zonder dubbele storage-prefix", () => {
+  const m = mapMeme({
+    ...RAW,
+    image_url: "/storage/memes/x.png",
+  });
+
+  expect(m.img).toBe("http://145.24.237.97/storage/memes/x.png");
+});
+
 test("mapMeme stubt reactions met nullen als backend geen reactions levert", () => {
   const m = mapMeme(RAW);
   expect(m.reactions).toEqual({ smile: 0, meh: 0, frown: 0 });

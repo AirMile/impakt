@@ -21,8 +21,37 @@ import {
 import { fetchTags, updateMyTags } from "../lib/tags";
 import { slideInRight, fadeUp } from "../theme/animations";
 
-// "happy" is a system tag (driver for /happy-feed), not an interest the user picks.
-const isInterestTag = (tag) => tag?.category !== "happy";
+const CATEGORY_ICONS = {
+  politiek: "topicPolitics",
+  buitenland: "topicWorld",
+  economie: "topicEconomy",
+  sport: "topicSport",
+  natuur: "topicNature",
+  innovatie: "topicInnovation",
+  kunst: "topicArt",
+  lokaal: "topicLocal",
+};
+
+const TOPIC_BG = "#DDF5F8";
+const TOPIC_INK = "#10111A";
+const SELECTED_BG = "#10141C";
+const SELECTED_TOPIC_BG = "#74CFDF";
+
+function topicIcon(tagName) {
+  return CATEGORY_ICONS[String(tagName).trim().toLowerCase()] ?? "topicWorld";
+}
+
+// System tags drive app behavior, so they should not be picked as interests.
+const isInterestTag = (tag) => {
+  const name = String(tag?.name ?? "")
+    .trim()
+    .toLowerCase();
+  const category = String(tag?.category ?? "")
+    .trim()
+    .toLowerCase();
+
+  return name !== "goed nieuws" && category !== "flag" && category !== "happy";
+};
 
 // ─── ProfileRow ───────────────────────────────────────────────
 
@@ -636,6 +665,12 @@ export function ProfileScreen({
         <View style={styles.tagsRow}>
           {myTags.map((tag) => (
             <View key={tag.id} style={styles.tagChip}>
+              <IIcon
+                name={topicIcon(tag.name)}
+                size={16}
+                strokeWidth={2.3}
+                color={SELECTED_BG}
+              />
               <Text style={styles.tagChipLabel}>{tag.name}</Text>
               <Pressable
                 onPress={() => removeTag(tag)}
@@ -646,7 +681,7 @@ export function ProfileScreen({
                   name="close"
                   size={12}
                   strokeWidth={2.4}
-                  color="rgba(15,17,26,0.5)"
+                  color={SELECTED_BG}
                 />
               </Pressable>
             </View>
@@ -693,9 +728,15 @@ export function ProfileScreen({
                   name="plus"
                   size={12}
                   strokeWidth={2.4}
-                  color={colors.ink}
+                  color={TOPIC_INK}
                 />
                 <Text style={styles.pickChipLabel}>{tag.name}</Text>
+                <IIcon
+                  name={topicIcon(tag.name)}
+                  size={16}
+                  strokeWidth={2.3}
+                  color={TOPIC_INK}
+                />
               </Pressable>
             ))}
           </View>
@@ -1077,18 +1118,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   tagChip: {
+    minHeight: 40,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(122,207,223,0.28)",
+    backgroundColor: SELECTED_TOPIC_BG,
     paddingVertical: 9,
     paddingHorizontal: 14,
     borderRadius: 9999,
+    borderWidth: 1.5,
+    borderColor: SELECTED_BG,
   },
   tagChipLabel: {
-    fontFamily: fonts.displayMedium,
-    fontSize: 13.5,
-    color: colors.ink,
+    flexShrink: 1,
+    minWidth: 0,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: "900",
+    color: SELECTED_BG,
   },
   addTagChip: {
     flexDirection: "row",
@@ -1113,20 +1160,24 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   pickChip: {
+    minHeight: 40,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 9999,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: surfaces.border,
+    backgroundColor: TOPIC_BG,
+    borderWidth: 1.5,
+    borderColor: "rgba(15,17,26,0.04)",
   },
   pickChipLabel: {
-    fontFamily: fonts.displayMedium,
-    fontSize: 13.5,
-    color: colors.ink,
+    flexShrink: 1,
+    minWidth: 0,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    fontWeight: "900",
+    color: TOPIC_INK,
   },
   tagsError: {
     fontFamily: fonts.body,

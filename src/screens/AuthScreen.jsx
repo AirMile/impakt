@@ -9,19 +9,26 @@ import { LoginScreen } from "./auth/LoginScreen";
 import { RegisterScreen } from "./auth/RegisterScreen";
 import { OnboardingScreen } from "./auth/OnboardingScreen";
 
+function tagKey(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
+}
+
 async function persistOnboardingTags(token, topics) {
-  if (!token || !topics?.length) return;
+  if (!token || !topics?.length) return [];
   try {
     const allTags = await fetchTags();
-    const slugs = new Set(topics);
+    const selected = new Set(topics.map(tagKey));
     const tagIds = allTags
-      .filter((tag) => slugs.has(tag.category))
+      .filter((tag) => selected.has(tagKey(tag.name)))
       .map((tag) => tag.id);
-    if (tagIds.length === 0) return;
-    await updateMyTags(token, tagIds);
+    if (tagIds.length === 0) return [];
+    return await updateMyTags(token, tagIds);
   } catch (err) {
     // Onboarding mag niet blokkeren op backend-fout — lokale prefs blijven als fallback.
     console.warn("Onboarding-tags niet gesynchroniseerd:", err.message);
+    return [];
   }
 }
 
@@ -36,8 +43,8 @@ export function AuthScreen({ initialView = "welcome", onComplete }) {
     const finalUser = accountUser ?? user;
     await setOnboarded(true);
     if (topics) await setPreferences(topics);
-    await persistOnboardingTags(finalUser?.token, topics);
-    onComplete(finalUser, topics);
+    const syncedTags = await persistOnboardingTags(finalUser?.token, topics);
+    onComplete(finalUser, topics, syncedTags);
   };
 
   const goToOnboarding = (from, user, meta) => {

@@ -15,7 +15,7 @@ jest.mock("../../src/lib/articles", () => ({
       views: "1k",
       readers: "1k",
       trending: false,
-      tags: [{ id: 6, name: "Natuur", category: "natuur" }],
+      tags: [{ id: 6, name: "Natuur", category: "topic" }],
       body: [],
       reactions: { smile: 10, meh: 5, frown: 2 },
     },
@@ -30,7 +30,7 @@ jest.mock("../../src/lib/articles", () => ({
       views: "2k",
       readers: "2k",
       trending: false,
-      tags: [{ id: 5, name: "Sport", category: "sport" }],
+      tags: [{ id: 5, name: "Sport", category: "navigation" }],
       body: [],
       reactions: { smile: 3, meh: 8, frown: 1 },
     },
@@ -41,9 +41,10 @@ jest.mock("../../src/lib/share", () => ({ shareStory: jest.fn() }));
 
 jest.mock("../../src/lib/tags", () => ({
   fetchTags: jest.fn().mockResolvedValue([
-    { id: 2, name: "Politiek", category: "politiek" },
-    { id: 5, name: "Sport", category: "sport" },
-    { id: 6, name: "Natuur", category: "natuur" },
+    { id: 18, name: "Goed nieuws", category: "flag" },
+    { id: 2, name: "Politiek", category: "navigation" },
+    { id: 5, name: "Sport", category: "navigation" },
+    { id: 6, name: "Natuur", category: "topic" },
   ]),
   fetchMyTags: jest.fn().mockResolvedValue([]),
 }));
@@ -63,10 +64,21 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test("rendert alle articles bij geen filter", async () => {
-  const { findByText, getByText } = render(<FeedScreen {...defaultProps} />);
-  await findByText("Goed klimaatverhaal");
-  expect(getByText("Slecht sportverhaal")).toBeTruthy();
+test("normale feed verbergt goodNews articles bij geen filter", async () => {
+  const { findByText, queryByText } = render(<FeedScreen {...defaultProps} />);
+  await findByText("Slecht sportverhaal");
+  expect(queryByText("Goed klimaatverhaal")).toBeNull();
+});
+
+test("Goed nieuws flag wordt niet als topic-chip getoond", async () => {
+  const { findByText, queryByText } = render(<FeedScreen {...defaultProps} />);
+  await findByText("Slecht sportverhaal");
+  expect(queryByText("Goed nieuws")).toBeNull();
+});
+
+test("embedded goodNewsOnly=false toont normale artikelen", async () => {
+  const { findByText } = render(<FeedScreen {...defaultProps} />);
+  await findByText("Slecht sportverhaal");
 });
 
 test("goodNewsOnly=true toont alleen goodNews stories", async () => {
@@ -77,7 +89,7 @@ test("goodNewsOnly=true toont alleen goodNews stories", async () => {
   expect(queryByText("Slecht sportverhaal")).toBeNull();
 });
 
-test("topicfilter op category filtert articles", async () => {
+test("topicfilter op tagnaam filtert articles", async () => {
   const { getByText, queryByText, findAllByText } = render(
     <FeedScreen {...defaultProps} />
   );
@@ -86,6 +98,20 @@ test("topicfilter op category filtert articles", async () => {
   fireEvent.press(sportNodes[0]);
   await waitFor(() => expect(queryByText("Goed klimaatverhaal")).toBeNull());
   expect(getByText("Slecht sportverhaal")).toBeTruthy();
+});
+
+test("topicfilter meldt gewijzigde tags aan parent", async () => {
+  const onMyTagsChange = jest.fn();
+  const { findAllByText } = render(
+    <FeedScreen {...defaultProps} onMyTagsChange={onMyTagsChange} />
+  );
+
+  const sportNodes = await findAllByText("Sport");
+  fireEvent.press(sportNodes[0]);
+
+  expect(onMyTagsChange).toHaveBeenCalledWith([
+    { id: 5, name: "Sport", category: "navigation" },
+  ]);
 });
 
 test("excludeId verwijdert article uit lijst", async () => {
@@ -101,10 +127,10 @@ test("onOpen wordt aangeroepen bij tap op kaart", async () => {
   const { findByText } = render(
     <FeedScreen {...defaultProps} onOpen={onOpen} />
   );
-  const card = await findByText("Goed klimaatverhaal");
+  const card = await findByText("Slecht sportverhaal");
   fireEvent.press(card);
   expect(onOpen).toHaveBeenCalledTimes(1);
-  expect(onOpen.mock.calls[0][0].id).toBe(1);
+  expect(onOpen.mock.calls[0][0].id).toBe(2);
 });
 
 test("guest-interactie triggert auth prompt en deelt niet", async () => {
@@ -114,7 +140,7 @@ test("guest-interactie triggert auth prompt en deelt niet", async () => {
     <FeedScreen {...defaultProps} onRequireAuth={onRequireAuth} />
   );
 
-  await findByText("Goed klimaatverhaal");
+  await findByText("Slecht sportverhaal");
   fireEvent.press(getAllByLabelText("Delen")[0]);
 
   expect(onRequireAuth).toHaveBeenCalledTimes(1);
@@ -125,7 +151,7 @@ test("myTags prop rendert chips voor mijn interesses + overige", async () => {
   const { findAllByText } = render(
     <FeedScreen
       {...defaultProps}
-      myTags={[{ id: 6, name: "Natuur", category: "natuur" }]}
+      myTags={[{ id: 6, name: "Natuur", category: "topic" }]}
     />
   );
 
