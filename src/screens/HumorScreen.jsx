@@ -20,7 +20,11 @@ import {
 import { colors, fonts } from "../theme/tokens";
 import { shareMeme } from "../lib/share";
 import { saveMeme, unsaveMeme } from "../lib/saves";
-import { submitMemeReaction, removeMemeReaction } from "../lib/reactions";
+import {
+  submitMemeReaction,
+  removeMemeReaction,
+  fetchMemeMyReaction,
+} from "../lib/reactions";
 import { reactionPct } from "../lib/reactionPct";
 import { castVote, revertVote } from "../lib/reactionVote";
 import { toast } from "../lib/toast";
@@ -61,7 +65,7 @@ function RailButton({
         <View
           style={[
             styles.railCircle,
-            isReaction && active && { borderColor: color, borderWidth: 1.6 },
+            active && color && { borderColor: color, borderWidth: 1.6 },
           ]}
         >
           {isReaction && voted ? (
@@ -118,6 +122,19 @@ const MemeCard = React.memo(function MemeCard({
   const [counts, setCounts] = useState(
     meme.reactions ?? { smile: 0, meh: 0, frown: 0 }
   );
+
+  // Haal de eerdere stem op (aparte backend-route) zodat die na een reload weer
+  // zichtbaar is. Overschrijft een lokale stem nooit (cur ?? mine).
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    fetchMemeMyReaction(token, meme.id).then((mine) => {
+      if (!cancelled && mine) setReaction((cur) => cur ?? mine);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, meme.id]);
 
   // Optimistic toggle: zet de UI direct, draai terug als de server faalt.
   // De begin-state komt uit savedMemeIds (App.jsx, gevuld via GET /account).
@@ -197,7 +214,7 @@ const MemeCard = React.memo(function MemeCard({
         <RailButton
           icon="bookmark"
           label="Bewaren"
-          count={saved ? "Bewaard" : null}
+          count={null}
           active={saved}
           fill
           color={colors.blue}

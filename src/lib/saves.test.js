@@ -155,16 +155,27 @@ test("unsaveMeme DELETE naar /account/memes/{id}/save met token", async () => {
 test("unsaveMeme gooit servermelding bij fout", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: false,
+    status: 500,
     json: async () => ({ message: "Bestaat niet" }),
   });
 
   await expect(unsaveMeme("tok123", 7)).rejects.toThrow("Bestaat niet");
 });
 
-test("fetchSavedArticles haalt en mapt user.savedArticles uit /account", async () => {
+test("unsaveMeme behandelt 404 idempotent als al-verwijderd", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: false,
+    status: 404,
+    json: async () => ({ message: "Not Found" }),
+  });
+
+  await expect(unsaveMeme("tok123", 7)).resolves.toEqual({ saved: false });
+});
+
+test("fetchSavedArticles haalt en mapt user.saved_articles uit /account", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: true,
-    json: async () => ({ user: { id: 1, savedArticles: [RAW_SAVED] } }),
+    json: async () => ({ user: { id: 1, saved_articles: [RAW_SAVED] } }),
   });
 
   const saved = await fetchSavedArticles("tok123");
@@ -202,7 +213,7 @@ test("fetchSavedArticles geeft lege lijst bij serverfout", async () => {
 
 test("mapSavedFromResponse mapt save-respons en negeert ontbrekende data", () => {
   const mapped = mapSavedFromResponse({
-    user: { savedArticles: [RAW_SAVED] },
+    user: { saved_articles: [RAW_SAVED] },
   });
   expect(mapped).toHaveLength(1);
   expect(mapped[0].id).toBe(3);
@@ -211,10 +222,18 @@ test("mapSavedFromResponse mapt save-respons en negeert ontbrekende data", () =>
   expect(mapSavedFromResponse(null)).toEqual([]);
 });
 
-test("fetchSavedMemes haalt en mapt user.savedMemes uit /account", async () => {
+test("mapSavedFromResponse accepteert camelCase als fallback", () => {
+  const mapped = mapSavedFromResponse({
+    user: { savedArticles: [RAW_SAVED] },
+  });
+  expect(mapped).toHaveLength(1);
+  expect(mapped[0].id).toBe(3);
+});
+
+test("fetchSavedMemes haalt en mapt user.saved_memes uit /account", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: true,
-    json: async () => ({ user: { id: 1, savedMemes: [RAW_SAVED_MEME] } }),
+    json: async () => ({ user: { id: 1, saved_memes: [RAW_SAVED_MEME] } }),
   });
 
   const saved = await fetchSavedMemes("tok123");
@@ -240,7 +259,7 @@ test("fetchSavedMemes geeft lege lijst zonder token", async () => {
   expect(global.fetch).not.toHaveBeenCalled();
 });
 
-test("fetchSavedMemes geeft lege lijst als savedMemes ontbreekt", async () => {
+test("fetchSavedMemes geeft lege lijst als saved_memes ontbreekt", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: true,
     json: async () => ({ user: { id: 1 } }),
@@ -252,7 +271,7 @@ test("fetchSavedMemes geeft lege lijst als savedMemes ontbreekt", async () => {
 
 test("mapSavedMemesFromResponse mapt memes en negeert ontbrekende data", () => {
   const mapped = mapSavedMemesFromResponse({
-    user: { savedMemes: [RAW_SAVED_MEME] },
+    user: { saved_memes: [RAW_SAVED_MEME] },
   });
   expect(mapped).toHaveLength(1);
   expect(mapped[0].id).toBe(8);

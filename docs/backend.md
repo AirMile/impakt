@@ -340,6 +340,26 @@ Zelfde voor memes.
 
 **Response:** `{ "saved": true }` of `{ "saved": false }`.
 
+> **Let op — de app gebruikt de `/account/...`-routes**, niet de `/:id/bookmark`-vorm
+> hierboven: `POST|DELETE /account/articles/:id/save` en `POST|DELETE
+/account/memes/:id/save`. Geverifieerd op 2026-06-15 met een verse testgebruiker
+> (`POST /register` → token).
+>
+> **Bewaarde lijsten staan in `GET /account` onder snake_case-velden:**
+> `user.saved_articles` en `user.saved_memes` (niet camelCase). De frontend leest nu
+> beide vormen (`src/lib/saves.js` — snake_case eerst, camelCase als fallback).
+>
+> **Save/unsave werkt voor beide:** `POST /account/articles/:id/save` en
+> `POST /account/memes/:id/save` geven 200 en persisteren (`saved_articles` /
+> `saved_memes` bevatten het id), `DELETE` → 200. Geverifieerd op 2026-06-15.
+>
+> Tijdens het koppelen gaf de meme-save kort 200 zonder te persisteren (DELETE erna
+> → 404 `MEME_NOT_FOUND`); dat bleek een tijdelijk/deploy-probleem en is server-side
+> opgelost. Een `DELETE` op een meme die níét bewaard is geeft (terecht) nog steeds
+> 404 — de frontend behandelt die idempotent als "al verwijderd"
+> (`src/lib/saves.js#unsaveMeme`), zodat de UI niet vastloopt bij dubbel-tappen of
+> stale state.
+
 ---
 
 ### Meme liken

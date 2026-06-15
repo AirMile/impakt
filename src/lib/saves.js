@@ -2,17 +2,20 @@ import { API_BASE_URL } from "./auth/account";
 import { mapArticle } from "./mapArticle";
 import { mapMeme } from "./mapMeme";
 
-// De backend levert bewaarde artikelen via GET /account (user.savedArticles)
-// en geeft diezelfde lijst terug bij elke save/unsave. Deze helper mapt die
-// shape naar app-artikelen, zodat App.jsx na een toggle niet hoeft te refetchen.
+// De backend levert bewaarde artikelen via GET /account. De API gebruikt
+// snake_case (`saved_articles`); we houden de camelCase-variant als fallback
+// voor het geval de respons-shape verandert. Deze helper mapt naar app-artikelen,
+// zodat App.jsx na een toggle niet hoeft te refetchen.
 export function mapSavedFromResponse(data) {
-  return (data?.user?.savedArticles ?? []).map(mapArticle).filter(Boolean);
+  const list = data?.user?.saved_articles ?? data?.user?.savedArticles ?? [];
+  return list.map(mapArticle).filter(Boolean);
 }
 
-// Idem voor bewaarde memes (user.savedMemes). Defensief: ontbreekt het veld in
+// Idem voor bewaarde memes (user.saved_memes). Defensief: ontbreekt het veld in
 // de respons, dan is de lijst leeg en degradeert de meme-read-back graceful.
 export function mapSavedMemesFromResponse(data) {
-  return (data?.user?.savedMemes ?? []).map(mapMeme).filter(Boolean);
+  const list = data?.user?.saved_memes ?? data?.user?.savedMemes ?? [];
+  return list.map(mapMeme).filter(Boolean);
 }
 
 export async function fetchSavedArticles(token) {
@@ -99,6 +102,13 @@ export async function unsaveArticle(token, articleId) {
   return data;
 }
 
+// Een 404 op DELETE betekent "deze save bestaat (al) niet" — precies de
+// eindtoestand die de gebruiker wil. We behandelen dat idempotent als succes,
+// zodat de bookmark netjes leegt i.p.v. terug te springen op een serverfout.
+function isAlreadyGone(response) {
+  return response.status === 404;
+}
+
 export async function saveMeme(token, memeId) {
   if (!token) throw new Error("Je bent niet ingelogd.");
   if (memeId == null) throw new Error("Meme-id ontbreekt.");
@@ -135,6 +145,7 @@ export async function unsaveMeme(token, memeId) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    if (isAlreadyGone(response)) return { saved: false };
     throw new Error(
       data.message || "Verwijderen uit bewaard mislukt. Probeer het opnieuw."
     );
