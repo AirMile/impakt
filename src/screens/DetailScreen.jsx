@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -37,13 +37,11 @@ export function DetailScreen({
   onClose,
   onOpenMeme,
   onSwapStory,
-  tab,
   feedCat,
   onCatChange,
   onNav,
   onProfile,
   onSearch,
-  activeTab,
   token,
   savedIds,
   onSavedChange,
@@ -116,6 +114,7 @@ export function DetailScreen({
   const relatedMemes = getRelatedMemes(memes, story.id);
   const firstMeme = relatedMemes[0];
   const canInteract = () => onRequireAuth?.() !== false;
+  const embeddedFeedActiveTab = "feed";
 
   // Optimistisch stemmen: zet reactie + count direct, draai terug bij serverfout.
   const react = async (key) => {
@@ -446,7 +445,7 @@ export function DetailScreen({
               onNav={onNav}
               onSearch={onSearch}
               onProfile={onProfile}
-              activeTab={activeTab}
+              activeTab={embeddedFeedActiveTab}
               onRequireAuth={onRequireAuth}
               token={token}
             />
@@ -462,7 +461,11 @@ export function DetailScreen({
         transition={{ type: "timing", duration: 250 }}
         style={styles.bottomNavOverlay}
       >
-        <BottomNav active={activeTab} onChange={onNav} onSearch={onSearch} />
+        <BottomNav
+          active={embeddedFeedActiveTab}
+          onChange={onNav}
+          onSearch={onSearch}
+        />
       </MotiView>
     </MotiView>
   );
