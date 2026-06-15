@@ -1,4 +1,6 @@
-export const API_BASE_URL = "http://145.24.237.97/api";
+import { API_BASE_URL } from "../config";
+
+export { API_BASE_URL };
 
 export function normalizeAuthPayload(data) {
   const source = data?.user ?? data ?? {};

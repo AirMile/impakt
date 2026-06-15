@@ -8,6 +8,7 @@ jest.mock("../../src/lib/auth/account", () => ({
 }));
 
 jest.mock("../../src/lib/tags", () => ({
+  isInterestTag: jest.requireActual("../../src/lib/tags").isInterestTag,
   fetchTags: jest.fn(),
   updateMyTags: jest.fn(),
 }));
@@ -54,11 +55,12 @@ test("onboarding-selectie wordt naar backend gepost via updateMyTags", async () 
   updateMyTags.mockResolvedValueOnce([]);
 
   const onComplete = jest.fn();
-  const { getByText } = render(
+  const { getByText, findByText } = render(
     <AuthScreen initialView="onboarding" onComplete={onComplete} />
   );
 
-  fireEvent.press(getByText("Politiek"));
+  // Onboarding laadt de thema's async uit het /tags-endpoint.
+  fireEvent.press(await findByText("Politiek"));
   fireEvent.press(getByText("Sport"));
   fireEvent.press(getByText("Bevestig"));
 
@@ -72,18 +74,20 @@ test("gast zonder token slaat geen tags op in backend", async () => {
   const { fetchTags, updateMyTags } = require("../../src/lib/tags");
   const { fetchAccount } = require("../../src/lib/auth/account");
   fetchAccount.mockResolvedValueOnce(null);
+  fetchTags.mockResolvedValueOnce([
+    { id: 2, name: "Politiek", category: "politiek" },
+  ]);
 
   const onComplete = jest.fn();
-  const { getByText } = render(
+  const { getByText, findByText } = render(
     <AuthScreen initialView="onboarding" onComplete={onComplete} />
   );
 
-  fireEvent.press(getByText("Politiek"));
+  fireEvent.press(await findByText("Politiek"));
   fireEvent.press(getByText("Bevestig"));
 
   await waitFor(() => expect(onComplete).toHaveBeenCalled());
   expect(updateMyTags).not.toHaveBeenCalled();
-  expect(fetchTags).not.toHaveBeenCalled();
 });
 
 test("backend-fout tijdens tag-sync blokkeert onboarding niet", async () => {
@@ -92,18 +96,21 @@ test("backend-fout tijdens tag-sync blokkeert onboarding niet", async () => {
   const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
 
   fetchAccount.mockResolvedValueOnce({ id: 1, token: "tok" });
-  fetchTags.mockRejectedValueOnce(new Error("Server down"));
+  fetchTags.mockResolvedValueOnce([
+    { id: 2, name: "Politiek", category: "politiek" },
+  ]);
+  updateMyTags.mockRejectedValueOnce(new Error("Server down"));
 
   const onComplete = jest.fn();
-  const { getByText } = render(
+  const { getByText, findByText } = render(
     <AuthScreen initialView="onboarding" onComplete={onComplete} />
   );
 
-  fireEvent.press(getByText("Politiek"));
+  fireEvent.press(await findByText("Politiek"));
   fireEvent.press(getByText("Bevestig"));
 
   await waitFor(() => expect(onComplete).toHaveBeenCalled());
-  expect(updateMyTags).not.toHaveBeenCalled();
+  expect(updateMyTags).toHaveBeenCalledWith("tok", [2]);
   expect(warn).toHaveBeenCalled();
   warn.mockRestore();
 });

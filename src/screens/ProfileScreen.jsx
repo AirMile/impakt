@@ -18,11 +18,8 @@ import {
   logoutAccount,
   updateAccount,
 } from "../lib/auth/account";
-import { fetchTags, updateMyTags } from "../lib/tags";
+import { fetchTags, isInterestTag, updateMyTags } from "../lib/tags";
 import { slideInRight, fadeUp } from "../theme/animations";
-
-// "happy" is a system tag (driver for /happy-feed), not an interest the user picks.
-const isInterestTag = (tag) => tag?.category !== "happy";
 
 // ─── ProfileRow ───────────────────────────────────────────────
 

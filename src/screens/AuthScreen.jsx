@@ -2,22 +2,16 @@ import React, { useState } from "react";
 
 import { setOnboarded, setPreferences } from "../storage/prefs";
 import { fetchAccount, normalizeAuthPayload } from "../lib/auth/account";
-import { fetchTags, updateMyTags } from "../lib/tags";
+import { updateMyTags } from "../lib/tags";
 import { resolveUser } from "../lib/auth/resolveUser";
 import { WelcomeScreen } from "./auth/WelcomeScreen";
 import { LoginScreen } from "./auth/LoginScreen";
 import { RegisterScreen } from "./auth/RegisterScreen";
 import { OnboardingScreen } from "./auth/OnboardingScreen";
 
-async function persistOnboardingTags(token, topics) {
-  if (!token || !topics?.length) return;
+async function persistOnboardingTags(token, tagIds) {
+  if (!token || !tagIds?.length) return;
   try {
-    const allTags = await fetchTags();
-    const slugs = new Set(topics);
-    const tagIds = allTags
-      .filter((tag) => slugs.has(tag.category))
-      .map((tag) => tag.id);
-    if (tagIds.length === 0) return;
     await updateMyTags(token, tagIds);
   } catch (err) {
     // Onboarding mag niet blokkeren op backend-fout — lokale prefs blijven als fallback.

@@ -3,6 +3,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { ProfileScreen } from "../../src/screens/ProfileScreen";
 
 jest.mock("../../src/lib/tags", () => ({
+  isInterestTag: jest.requireActual("../../src/lib/tags").isInterestTag,
   fetchTags: jest.fn().mockResolvedValue([]),
   fetchMyTags: jest.fn().mockResolvedValue([]),
   updateMyTags: jest.fn().mockResolvedValue([]),

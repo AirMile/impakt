@@ -18,6 +18,7 @@ import { Field } from "../../components/Field";
 import { colors, fonts } from "../../theme/tokens";
 import { fadeUp } from "../../theme/animations";
 import { validateLogin } from "../../lib/auth/validators";
+import { API_BASE_URL } from "../../lib/config";
 
 export function LoginScreen({ onBack, onSuccess, onSwitchToRegister, onSkip }) {
   const insets = useSafeAreaInsets();
@@ -36,7 +37,7 @@ export function LoginScreen({ onBack, onSuccess, onSwitchToRegister, onSkip }) {
     setLoading(true);
 
     try {
-      const response = await fetch("http://145.24.237.97/api/login", {
+      const response = await fetch(`${API_BASE_URL}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
