@@ -55,12 +55,6 @@ function storyHasTopic(story, selectedTopics) {
   });
 }
 
-function tagsForSelectedTopics(allTags, selectedTopics) {
-  return allTags
-    .filter(isSelectableTopic)
-    .filter((tag) => selectedTopics.has(tag.name));
-}
-
 const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
 const SELECTED_BG = "#10141C";
@@ -71,7 +65,6 @@ export function SearchScreen({
   onClose,
   onOpenStory,
   myTags = EMPTY_TAGS,
-  onMyTagsChange,
   onRequireAuth,
   token,
   savedIds,
@@ -81,20 +74,12 @@ export function SearchScreen({
   const [query, setQuery] = useState("");
   const [selectedTopics, setSelectedTopics] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
-  const myTagNames = useMemo(
-    () => (myTags ?? []).map((tag) => tag.name),
-    [myTags]
-  );
-  const myTagNamesKey = myTagNames.join("");
 
+  // Onboarding/profiel-interesses staan voorgeselecteerd (en bovenaan via
+  // orderUserTags). Filteren blijft puur lokaal — geen server-sync.
+  const myTagNamesKey = (myTags ?? []).map((tag) => tag.name).join("|");
   useEffect(() => {
-    let cancelled = false;
-    Promise.resolve().then(() => {
-      if (!cancelled) setSelectedTopics(new Set(myTagNames));
-    });
-    return () => {
-      cancelled = true;
-    };
+    setSelectedTopics(new Set((myTags ?? []).map((tag) => tag.name)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myTagNamesKey]);
 
@@ -145,12 +130,10 @@ export function SearchScreen({
   };
 
   const toggleTopic = (label) => {
-    if (onRequireAuth?.() === false) return;
     const next = new Set(selectedTopics);
     if (next.has(label)) next.delete(label);
     else next.add(label);
     setSelectedTopics(next);
-    onMyTagsChange?.(tagsForSelectedTopics(allTags, next));
   };
 
   const showScrollHint = TOPICS.length > 3;

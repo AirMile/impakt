@@ -111,7 +111,8 @@ test("topicfilter op tag-naam filtert articles", async () => {
   expect(getByText("Slecht sportverhaal")).toBeTruthy();
 });
 
-test("topicfilter meldt gewijzigde tags aan parent", async () => {
+test("topicfilter is lokaal en synct interesses niet naar de parent", async () => {
+  // Feed-chips zijn een view-filter, geen profielwijziging: geen server-sync.
   const onMyTagsChange = jest.fn();
   const { findAllByText } = render(
     <FeedScreen {...defaultProps} onMyTagsChange={onMyTagsChange} />
@@ -120,9 +121,54 @@ test("topicfilter meldt gewijzigde tags aan parent", async () => {
   const sportNodes = await findAllByText("Sport");
   fireEvent.press(sportNodes[0]);
 
-  expect(onMyTagsChange).toHaveBeenCalledWith([
-    { id: 5, name: "Sport", category: "navigation" },
+  expect(onMyTagsChange).not.toHaveBeenCalled();
+});
+
+test("myTags-interesses staan voorgeselecteerd en filteren de feed bij openen", async () => {
+  const { fetchArticles } = require("../../src/lib/articles");
+  fetchArticles.mockResolvedValueOnce([
+    {
+      id: 11,
+      goodNews: false,
+      title: "Sportverhaal",
+      sub: "...",
+      img: "",
+      date: "1 juni 2026",
+      time: "10:00",
+      views: "1k",
+      readers: "1k",
+      trending: false,
+      tags: [{ id: 5, name: "Sport", category: "navigation" }],
+      body: [],
+      reactions: { smile: 0, meh: 0, frown: 0 },
+    },
+    {
+      id: 12,
+      goodNews: false,
+      title: "Natuurverhaal",
+      sub: "...",
+      img: "",
+      date: "1 juni 2026",
+      time: "11:00",
+      views: "1k",
+      readers: "1k",
+      trending: false,
+      tags: [{ id: 6, name: "Natuur", category: "topic" }],
+      body: [],
+      reactions: { smile: 0, meh: 0, frown: 0 },
+    },
   ]);
+
+  const { findByText, queryByText } = render(
+    <FeedScreen
+      {...defaultProps}
+      myTags={[{ id: 5, name: "Sport", category: "navigation" }]}
+    />
+  );
+
+  // Sport is een opgeslagen interesse → voorgeselecteerd → feed toont alleen Sport.
+  await findByText("Sportverhaal");
+  expect(queryByText("Natuurverhaal")).toBeNull();
 });
 
 test("excludeId verwijdert article uit lijst", async () => {
