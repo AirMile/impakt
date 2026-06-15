@@ -41,6 +41,7 @@ jest.mock("../../src/lib/share", () => ({ shareStory: jest.fn() }));
 
 jest.mock("../../src/lib/reactions", () => ({
   submitArticleReaction: jest.fn(),
+  removeArticleReaction: jest.fn(),
 }));
 
 jest.mock("../../src/lib/saves", () => ({
@@ -274,7 +275,11 @@ test("save-knop roept saveArticle aan met token en synct terug", async () => {
   fireEvent.press(getAllByLabelText("Bewaren")[0]);
 
   await waitFor(() => expect(saveArticle).toHaveBeenCalledWith("tok123", 2));
-  expect(onSavedChange).toHaveBeenCalled();
+  // Optimistic-lokaal: meldt het story-object + true aan de parent (geen lijst).
+  expect(onSavedChange).toHaveBeenCalledWith(
+    expect.objectContaining({ id: 2 }),
+    true
+  );
 });
 
 test("save-knop als gast triggert auth prompt en bewaart niet", async () => {
@@ -350,4 +355,89 @@ test("first reactor: stemmen op story zonder reacties toont 100%", async () => {
   // counts {0,0,0} + optimistische +1 op smile = {1,0,0}, total 1.
   expect(getByText("100%")).toBeTruthy();
   expect(getAllByText("0%")).toHaveLength(2);
+});
+
+test("switchen na stemmen verplaatst de stem en POST't de nieuwe reactie", async () => {
+  const { fetchArticles } = require("../../src/lib/articles");
+  const {
+    submitArticleReaction,
+    removeArticleReaction,
+  } = require("../../src/lib/reactions");
+  submitArticleReaction.mockResolvedValue({ message: "ok" });
+  removeArticleReaction.mockResolvedValue({ message: "ok" });
+  fetchArticles.mockResolvedValueOnce([
+    {
+      id: 9,
+      goodNews: false,
+      title: "Vers verhaal",
+      sub: "...",
+      img: "",
+      date: "1 juni 2026",
+      time: "12:00",
+      views: "0",
+      readers: "0",
+      trending: false,
+      tags: [],
+      body: [],
+      reactions: { smile: 0, meh: 0, frown: 0 },
+    },
+  ]);
+
+  const { findByText, getByLabelText, getByText, getAllByText } = render(
+    <FeedScreen {...defaultProps} token="tok123" />
+  );
+  await findByText("Vers verhaal");
+
+  // Eerste stem: smile → {1,0,0}. Geen DELETE want er was nog geen stem.
+  fireEvent.press(getByLabelText("Blij"));
+  await waitFor(() =>
+    expect(submitArticleReaction).toHaveBeenLastCalledWith("tok123", 9, "smile")
+  );
+  expect(removeArticleReaction).not.toHaveBeenCalled();
+
+  // Switch naar frown → eerst oude stem verwijderen, dan nieuwe POST'en.
+  fireEvent.press(getByLabelText("Verdrietig"));
+  await waitFor(() =>
+    expect(submitArticleReaction).toHaveBeenLastCalledWith("tok123", 9, "frown")
+  );
+  expect(removeArticleReaction).toHaveBeenCalledWith("tok123", 9);
+
+  // Nu is frown 100% en de andere twee 0%.
+  expect(getByText("100%")).toBeTruthy();
+  expect(getAllByText("0%")).toHaveLength(2);
+});
+
+test("toont de bewaarde stem (myReaction) meteen na een refresh", async () => {
+  const { fetchArticles } = require("../../src/lib/articles");
+  // Backend geeft een eerdere stem terug via myReaction → meteen percentages,
+  // geen smileys meer.
+  fetchArticles.mockResolvedValueOnce([
+    {
+      id: 9,
+      goodNews: false,
+      title: "Vers verhaal",
+      sub: "...",
+      img: "",
+      date: "1 juni 2026",
+      time: "12:00",
+      views: "0",
+      readers: "0",
+      trending: false,
+      tags: [],
+      body: [],
+      reactions: { smile: 7, meh: 2, frown: 1 },
+      myReaction: "smile",
+    },
+  ]);
+
+  const { findByText, getByText, getAllByText } = render(
+    <FeedScreen {...defaultProps} token="tok123" />
+  );
+  await findByText("Vers verhaal");
+
+  // reactionPct({7,2,1}) = 70/20/10 — direct zichtbaar zonder te drukken.
+  expect(getByText("70%")).toBeTruthy();
+  expect(getByText("20%")).toBeTruthy();
+  expect(getByText("10%")).toBeTruthy();
+  expect(getAllByText(/%$/)).toHaveLength(3);
 });

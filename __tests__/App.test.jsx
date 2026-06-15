@@ -1,5 +1,5 @@
 import React from "react";
-import { render, waitFor } from "@testing-library/react-native";
+import { render, waitFor, fireEvent } from "@testing-library/react-native";
 import { Linking } from "react-native";
 import App from "../App";
 
@@ -41,6 +41,14 @@ jest.mock("../src/storage/prefs", () => ({
   getOnboarded: jest.fn().mockResolvedValue(false),
   setOnboarded: jest.fn().mockResolvedValue(undefined),
   setPreferences: jest.fn().mockResolvedValue(undefined),
+  getToken: jest.fn().mockResolvedValue(null),
+  setToken: jest.fn().mockResolvedValue(undefined),
+  clearToken: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("../src/lib/auth/account", () => ({
+  API_BASE_URL: "http://145.24.237.97/api",
+  fetchAccount: jest.fn().mockResolvedValue(null),
 }));
 
 // Screen-mocks: routing-logica testen zonder render-complexiteit van screens
@@ -48,6 +56,15 @@ jest.mock("../src/screens/HumorScreen", () => ({
   HumorScreen: ({ initialMemeId, initialStoryId, onInitialStoryConsumed }) => {
     const React = require("react");
     const { Text } = require("react-native");
+    // Onthoud de eerste niet-lege deep-link-waarde: na consume zet de parent de
+    // pending-props weer op null, maar de assertie moet de geopende meme zien.
+    const seen = React.useRef(null);
+    if (
+      seen.current == null &&
+      (initialMemeId != null || initialStoryId != null)
+    ) {
+      seen.current = `${initialMemeId ?? ""}:${initialStoryId ?? ""}`;
+    }
     React.useEffect(() => {
       if (initialStoryId != null) onInitialStoryConsumed?.();
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -55,16 +72,25 @@ jest.mock("../src/screens/HumorScreen", () => ({
     return React.createElement(
       Text,
       { testID: "humor-screen" },
-      `${initialMemeId ?? ""}:${initialStoryId ?? ""}`
+      seen.current ?? `${initialMemeId ?? ""}:${initialStoryId ?? ""}`
     );
   },
 }));
 
 jest.mock("../src/screens/FeedScreen", () => ({
-  FeedScreen: () => {
+  FeedScreen: ({ onToggleTopic }) => {
     const React = require("react");
-    const { Text } = require("react-native");
-    return React.createElement(Text, { testID: "feed-screen" }, "Feed");
+    const { Text, Pressable } = require("react-native");
+    return React.createElement(
+      React.Fragment,
+      null,
+      React.createElement(Text, { testID: "feed-screen" }, "Feed"),
+      React.createElement(
+        Pressable,
+        { testID: "toggle-sport", onPress: () => onToggleTopic?.("Sport") },
+        React.createElement(Text, null, "toggle")
+      )
+    );
   },
 }));
 
@@ -99,4 +125,45 @@ test("deep-link impakt://meme/m1 zet tab op humor en toont HumorScreen", async (
 test("zonder deep-link URL wordt AuthScreen getoond (phase=welcome)", async () => {
   const { getByTestId } = render(<App />);
   await waitFor(() => expect(getByTestId("auth-screen")).toBeTruthy());
+});
+
+test("persistent token herstelt de sessie: app i.p.v. auth-scherm", async () => {
+  const { getToken } = require("../src/storage/prefs");
+  const { fetchAccount } = require("../src/lib/auth/account");
+  getToken.mockResolvedValueOnce("tok123");
+  fetchAccount.mockResolvedValueOnce({
+    id: 7,
+    username: "bb",
+    token: "tok123",
+  });
+
+  const { getByTestId, queryByTestId } = render(<App />);
+
+  await waitFor(() => expect(getByTestId("feed-screen")).toBeTruthy());
+  expect(fetchAccount).toHaveBeenCalledWith("tok123");
+  expect(queryByTestId("auth-screen")).toBeNull();
+});
+
+test("thema selecteren in de feed synct naar de interesses (updateMyTags)", async () => {
+  const { getToken } = require("../src/storage/prefs");
+  const { fetchAccount } = require("../src/lib/auth/account");
+  const { fetchTags, updateMyTags } = require("../src/lib/tags");
+  getToken.mockResolvedValueOnce("tok123");
+  fetchAccount.mockResolvedValueOnce({
+    id: 7,
+    username: "bb",
+    token: "tok123",
+  });
+  fetchTags.mockResolvedValueOnce([
+    { id: 5, name: "Sport", category: "sport" },
+  ]);
+
+  const { getByTestId } = render(<App />);
+  await waitFor(() => expect(getByTestId("feed-screen")).toBeTruthy());
+
+  // Feed-chip toggelen = interesse toevoegen → server-sync via PUT { tag_ids }.
+  await waitFor(() => {
+    fireEvent.press(getByTestId("toggle-sport"));
+    expect(updateMyTags).toHaveBeenCalledWith("tok123", [5]);
+  });
 });

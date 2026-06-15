@@ -118,7 +118,7 @@ export function SearchScreen({
     loading,
     error,
     reload,
-  } = useAsyncData(() => fetchArticles(), []);
+  } = useAsyncData(() => fetchArticles({ token }), [token]);
   const allArticles = useMemo(() => articlesData ?? [], [articlesData]);
 
   const TOPICS = useMemo(() => {
@@ -161,7 +161,7 @@ export function SearchScreen({
 
   const topicBar = !q && (
     <View style={styles.topicSection}>
-      <Text style={styles.topicSectionLabel}>Ontdek per thema</Text>
+      <Text style={styles.topicSectionLabel}>Jouw thema's</Text>
       <View style={styles.topicScrollFrame}>
         <ScrollView
           horizontal

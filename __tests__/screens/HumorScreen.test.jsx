@@ -5,6 +5,7 @@ import { submitMemeReaction } from "../../src/lib/reactions";
 jest.mock("../../src/lib/share", () => ({ shareMeme: jest.fn() }));
 jest.mock("../../src/lib/reactions", () => ({
   submitMemeReaction: jest.fn(),
+  removeMemeReaction: jest.fn(),
 }));
 
 const MOCK_MEMES = [

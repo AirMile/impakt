@@ -6,6 +6,9 @@ import {
   setPreferences,
   getBookmarks,
   setBookmarks,
+  getToken,
+  setToken,
+  clearToken,
 } from "./prefs";
 
 beforeEach(async () => {
@@ -65,5 +68,27 @@ describe("bookmarks", () => {
     await setBookmarks([1]);
     await setBookmarks([4, 5]);
     expect(await getBookmarks()).toEqual([4, 5]);
+  });
+});
+
+describe("token", () => {
+  test("retourneert null als niet gezet", async () => {
+    expect(await getToken()).toBeNull();
+  });
+
+  test("round-trip: schrijft en leest het token", async () => {
+    await setToken("abc123");
+    expect(await getToken()).toBe("abc123");
+  });
+
+  test("setToken negeert lege waarde", async () => {
+    await setToken("");
+    expect(await getToken()).toBeNull();
+  });
+
+  test("clearToken verwijdert het token", async () => {
+    await setToken("abc123");
+    await clearToken();
+    expect(await getToken()).toBeNull();
   });
 });

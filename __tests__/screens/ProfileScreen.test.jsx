@@ -47,6 +47,28 @@ test("toont accountgegevens op het profiel", () => {
   expect(getByText("Wachtwoord wijzigen")).toBeTruthy();
 });
 
+test("toont gescheiden tellingen voor artikelen en memes, beide klikbaar", () => {
+  const onOpenSaved = jest.fn();
+  const { getByText, getAllByText } = render(
+    <ProfileScreen
+      {...defaultProps}
+      user={{ username: "bb", email: "bb@hotmail.com" }}
+      savedArticlesCount={2}
+      savedMemesCount={5}
+      onOpenSaved={onOpenSaved}
+    />
+  );
+
+  // Artikelen-rij telt alleen artikelen, niet de memes.
+  expect(getByText("2")).toBeTruthy();
+  // Memes-telling komt uit savedMemesCount (niet langer hardcoded 67) en staat
+  // op twee plekken: de stat-tegel én de "Nieuws memes"-rij.
+  expect(getAllByText("5")).toHaveLength(2);
+
+  fireEvent.press(getByText("Nieuws memes"));
+  expect(onOpenSaved).toHaveBeenCalled();
+});
+
 test("opent detailweergave en werkt een accountgegeven bij", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: true,
@@ -373,92 +395,4 @@ test("toont foutmelding als logout mislukt", async () => {
 
   expect(await findByText("Uitloggen mislukt")).toBeTruthy();
   expect(defaultProps.onLogout).not.toHaveBeenCalled();
-});
-
-test("tag verwijderen meldt nieuwe lijst aan onMyTagsChange", async () => {
-  const { updateMyTags } = require("../../src/lib/tags");
-  updateMyTags.mockResolvedValueOnce([
-    { id: 2, name: "Politiek", category: "politiek" },
-  ]);
-
-  const onMyTagsChange = jest.fn();
-  const { getByLabelText } = render(
-    <ProfileScreen
-      {...defaultProps}
-      user={{ username: "m", email: "m@m.nl", token: "abc" }}
-      myTags={[
-        { id: 2, name: "Politiek", category: "politiek" },
-        { id: 5, name: "Sport", category: "sport" },
-      ]}
-      onMyTagsChange={onMyTagsChange}
-    />
-  );
-
-  fireEvent.press(getByLabelText("Verwijder Sport"));
-
-  // optimistic: meteen zonder Sport
-  expect(onMyTagsChange).toHaveBeenNthCalledWith(1, [
-    { id: 2, name: "Politiek", category: "politiek" },
-  ]);
-
-  await waitFor(() => {
-    expect(updateMyTags).toHaveBeenCalledWith("abc", [2]);
-  });
-
-  // server-respons confirm: nog steeds [Politiek]
-  expect(onMyTagsChange).toHaveBeenNthCalledWith(2, [
-    { id: 2, name: "Politiek", category: "politiek" },
-  ]);
-});
-
-test("laatste tag verwijderen stuurt lege taglijst naar updateMyTags", async () => {
-  const { updateMyTags } = require("../../src/lib/tags");
-  updateMyTags.mockResolvedValueOnce([]);
-  const onMyTagsChange = jest.fn();
-  const { getByLabelText } = render(
-    <ProfileScreen
-      {...defaultProps}
-      user={{ username: "m", email: "m@m.nl", token: "abc" }}
-      myTags={[{ id: 5, name: "Sport", category: "navigation" }]}
-      onMyTagsChange={onMyTagsChange}
-    />
-  );
-
-  fireEvent.press(getByLabelText("Verwijder Sport"));
-
-  expect(onMyTagsChange).toHaveBeenCalledWith([]);
-  await waitFor(() => {
-    expect(updateMyTags).toHaveBeenCalledWith("abc", []);
-  });
-});
-
-test("rollback bij gefaalde updateMyTags herstelt vorige lijst", async () => {
-  const { updateMyTags } = require("../../src/lib/tags");
-  updateMyTags.mockRejectedValueOnce(new Error("Tags bijwerken mislukt"));
-
-  const onMyTagsChange = jest.fn();
-  const previous = [
-    { id: 2, name: "Politiek", category: "politiek" },
-    { id: 5, name: "Sport", category: "sport" },
-  ];
-
-  const { getByLabelText, findByText } = render(
-    <ProfileScreen
-      {...defaultProps}
-      user={{ username: "m", email: "m@m.nl", token: "abc" }}
-      myTags={previous}
-      onMyTagsChange={onMyTagsChange}
-    />
-  );
-
-  fireEvent.press(getByLabelText("Verwijder Sport"));
-
-  // optimistic call
-  expect(onMyTagsChange).toHaveBeenNthCalledWith(1, [previous[0]]);
-
-  // rollback call met originele lijst
-  await waitFor(() =>
-    expect(onMyTagsChange).toHaveBeenNthCalledWith(2, previous)
-  );
-  expect(await findByText("Tags bijwerken mislukt")).toBeTruthy();
 });

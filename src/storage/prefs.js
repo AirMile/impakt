@@ -4,6 +4,7 @@ const KEYS = {
   onboarded: "impakt.onboarded",
   preferences: "impakt.preferences",
   bookmarks: "impakt.bookmarks",
+  token: "impakt.token",
 };
 
 export async function getOnboarded() {
@@ -31,4 +32,19 @@ export async function getBookmarks() {
 
 export async function setBookmarks(ids) {
   await AsyncStorage.setItem(KEYS.bookmarks, JSON.stringify(ids));
+}
+
+// Auth-token persistentie: bij login schrijven, bij opstart lezen (→ fetchAccount
+// haalt de verse user op), bij uitloggen/verwijderen wissen.
+export async function getToken() {
+  return AsyncStorage.getItem(KEYS.token);
+}
+
+export async function setToken(token) {
+  if (!token) return;
+  await AsyncStorage.setItem(KEYS.token, String(token));
+}
+
+export async function clearToken() {
+  await AsyncStorage.removeItem(KEYS.token);
 }

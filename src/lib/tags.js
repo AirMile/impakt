@@ -45,6 +45,9 @@ export async function fetchMyTags(token) {
   return Array.isArray(data) ? data : [];
 }
 
+// Werkt de interesses bij via PUT /me/tags { tag_ids } (full replace). Een lege
+// lijst betekent "geen interesses" en wordt gewoon meegestuurd — dat vereist dat
+// de backend-validatie van tag_ids een lege array toestaat (niet `required`).
 export async function updateMyTags(token, tagIds) {
   if (!token) throw new Error("Je bent niet ingelogd.");
 

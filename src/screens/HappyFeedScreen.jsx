@@ -106,7 +106,7 @@ export function HappyFeedScreen({
     loading,
     error,
     reload,
-  } = useAsyncData(() => fetchHappyFeed(), []);
+  } = useAsyncData(() => fetchHappyFeed({ token }), [token]);
   const stories = useMemo(() => storiesData ?? [], [storiesData]);
 
   const happyTopics = useMemo(() => {
@@ -149,7 +149,7 @@ export function HappyFeedScreen({
 
   const topicBar = (
     <View style={styles.topicSection}>
-      <Text style={styles.topicSectionLabel}>Ontdek per thema</Text>
+      <Text style={styles.topicSectionLabel}>Jouw thema's</Text>
       <View style={styles.topicScrollFrame}>
         <ScrollView
           horizontal

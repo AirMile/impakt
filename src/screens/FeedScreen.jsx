@@ -26,8 +26,9 @@ import { fetchTags } from "../lib/tags";
 import { orderUserTags } from "../lib/orderUserTags";
 import { fetchArticles } from "../lib/articles";
 import { useSaveArticle } from "../hooks/useSaveArticle";
-import { submitArticleReaction } from "../lib/reactions";
+import { submitArticleReaction, removeArticleReaction } from "../lib/reactions";
 import { reactionPct } from "../lib/reactionPct";
+import { castVote, revertVote } from "../lib/reactionVote";
 import { toast } from "../lib/toast";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -76,7 +77,7 @@ function TopicChips({ topics, selectedTopics, onToggle }) {
 
   return (
     <View style={styles.topicSection}>
-      <Text style={styles.topicSectionLabel}>Ontdek per thema</Text>
+      <Text style={styles.topicSectionLabel}>Jouw thema's</Text>
       <View style={styles.topicScrollFrame}>
         <ScrollView
           horizontal
@@ -148,7 +149,7 @@ export const FeedCard = React.memo(function FeedCard({
   savedIds,
   onSavedChange,
 }) {
-  const [reaction, setReaction] = useState(null);
+  const [reaction, setReaction] = useState(story.myReaction ?? null);
   const { saved, toggleSaved } = useSaveArticle({
     story,
     token,
@@ -163,17 +164,22 @@ export const FeedCard = React.memo(function FeedCard({
   const aspectH = isCompact ? CARD_W * (3.4 / 4) : CARD_W * (4.3 / 4);
   const canInteract = () => onRequireAuth?.() !== false;
 
-  // Optimistisch stemmen: zet reactie + count direct, draai terug bij serverfout.
+  // Optimistisch (her)stemmen: zet reactie + count direct, draai terug bij
+  // serverfout. Switchen verlaagt de oude stem en verhoogt de nieuwe.
   const react = async (key) => {
     if (!canInteract()) return;
     if (!token) return;
+    const prev = reaction;
+    if (prev === key) return;
     setReaction(key);
-    setCounts((c) => ({ ...c, [key]: (c[key] ?? 0) + 1 }));
+    setCounts((c) => castVote(c, prev, key));
     try {
+      // Switchen: verwijder eerst de oude stem, anders telt de backend beide.
+      if (prev != null) await removeArticleReaction(token, story.id);
       await submitArticleReaction(token, story.id, key);
     } catch (err) {
-      setReaction(null);
-      setCounts((c) => ({ ...c, [key]: Math.max(0, (c[key] ?? 1) - 1) }));
+      setReaction(prev);
+      setCounts((c) => revertVote(c, prev, key));
       toast.show(err.message || "Reactie opslaan mislukt.");
     }
   };
@@ -311,7 +317,7 @@ export function FeedScreen({
     loading,
     error,
     reload,
-  } = useAsyncData(() => fetchArticles(), []);
+  } = useAsyncData(() => fetchArticles({ token }), [token]);
   const articles = useMemo(() => articlesData ?? [], [articlesData]);
 
   const topics = useMemo(() => {

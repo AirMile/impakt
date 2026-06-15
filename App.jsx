@@ -24,7 +24,13 @@ import { Geist_600SemiBold } from "@expo-google-fonts/geist/600SemiBold";
 
 import { AnimatePresence } from "moti";
 import { colors } from "./src/theme/tokens";
-import { getOnboarded } from "./src/storage/prefs";
+import {
+  getOnboarded,
+  getToken,
+  setToken,
+  clearToken,
+} from "./src/storage/prefs";
+import { fetchAccount } from "./src/lib/auth/account";
 import { parseImpaktUrl } from "./src/lib/parseImpaktUrl";
 import { ToastHost } from "./src/components/Toast";
 import { BottomNav } from "./src/components/BottomNav";
@@ -38,7 +44,12 @@ import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { HappyFeedScreen } from "./src/screens/HappyFeedScreen";
 import { SavedScreen } from "./src/screens/SavedScreen";
 import { SandboxReactionsScreen } from "./src/screens/SandboxReactionsScreen";
-import { fetchMyTags, updateMyTags } from "./src/lib/tags";
+import {
+  fetchMyTags,
+  fetchTags,
+  updateMyTags,
+  isInterestTag,
+} from "./src/lib/tags";
 import { fetchArticle } from "./src/lib/articles";
 import { fetchMemes } from "./src/lib/memes";
 import { fetchSavedArticles, fetchSavedMemes } from "./src/lib/saves";
@@ -113,7 +124,9 @@ export default function App() {
   });
 
   const [phase, setPhase] = useState("welcome");
-  const [authLoading, setAuthLoading] = useState(() => !DEV_FORCE_AUTH);
+  // Altijd true bij start: de spinner blijft staan tot de async token-restore
+  // klaar is, zodat we niet kort het welkom-scherm tonen vóór een herstelde sessie.
+  const [authLoading, setAuthLoading] = useState(true);
   const [tab, setTab] = useState("feed");
   const [user, setUser] = useState(null);
   const [myTags, setMyTags] = useState([]);
@@ -130,7 +143,7 @@ export default function App() {
   const [feedCat, setFeedCat] = useState("Voor jou");
   const [authInitialView, setAuthInitialView] = useState("welcome");
   const [authPromptVisible, setAuthPromptVisible] = useState(false);
-  const [selectedTopics, setSelectedTopics] = useState(new Set());
+  const [availableTags, setAvailableTags] = useState([]);
 
   const savedIds = useMemo(
     () => new Set(savedArticles.map((a) => a.id)),
@@ -141,28 +154,29 @@ export default function App() {
     [savedMemes]
   );
 
-  // Gedeelde thema-filter over feed/happy/zoek: één bron van waarheid, zodat een
-  // (de)selectie op één scherm meteen in de andere zichtbaar is. Start op de
-  // opgeslagen interesses; daarna puur client-side (geen server-sync).
-  const myTagNamesKey = myTags.map((tag) => tag.name).join("|");
+  // Gedeelde thema-selectie = de profiel-interesses (myTags). Eén bron van
+  // waarheid: (de)selecteren in feed/happy/zoek wijzigt dezelfde interesses die
+  // het profiel toont, server-side opgeslagen via handleMyTagsChange — dus ook na
+  // uit-/inloggen bewaard. De feed-filter is hiervan afgeleid.
+  const selectedTopics = useMemo(
+    () => new Set(myTags.map((tag) => tag.name)),
+    [myTags]
+  );
+
+  // Tag-catalogus om een aangetikt label (naam) naar het volledige tag-object
+  // {id, name, category} te herleiden bij het toevoegen aan de interesses.
   useEffect(() => {
     let cancelled = false;
-    Promise.resolve().then(() => {
-      if (!cancelled) setSelectedTopics(new Set(myTags.map((tag) => tag.name)));
-    });
+    fetchTags()
+      .then((tags) => {
+        if (!cancelled) setAvailableTags(tags);
+      })
+      .catch(() => {
+        if (!cancelled) setAvailableTags([]);
+      });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [myTagNamesKey]);
-
-  const toggleTopic = useCallback((label) => {
-    setSelectedTopics((current) => {
-      const next = new Set(current);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
-    });
   }, []);
 
   useEffect(() => {
@@ -207,7 +221,9 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchMemes()
+    // Token meesturen zodat de backend `my_reaction` per meme teruggeeft en een
+    // eerdere stem na een refresh weer zichtbaar is. Herlaadt bij login-wissel.
+    fetchMemes(undefined, user?.token)
       .then((m) => {
         if (!cancelled) setMemes(m);
       })
@@ -217,19 +233,39 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user?.token]);
 
   useEffect(() => {
     if (!fontsLoaded) return;
-    if (DEV_FORCE_AUTH) {
-      return;
-    }
-    getOnboarded()
-      .then((v) => {
-        if (v) setPhase("app");
-      })
-      .catch(() => {})
-      .finally(() => setAuthLoading(false));
+    let cancelled = false;
+    (async () => {
+      try {
+        // 1. Persistente sessie herstellen: token → verse user via fetchAccount.
+        //    Draait vóór de DEV_FORCE_AUTH-gate, zodat "ingelogd blijven" ook in
+        //    dev werkt. setUser triggert de [user?.token]-effects → myTags + saves.
+        const token = await getToken();
+        if (token) {
+          const restored = await fetchAccount(token).catch(() => null);
+          if (cancelled) return;
+          if (restored?.token) {
+            setUser(restored);
+            setPhase("app");
+            return;
+          }
+          await clearToken(); // ongeldig/verlopen token opruimen
+        }
+        // 2. Geen sessie: tokenloze auto-enter op basis van onboarding (in dev
+        //    onderdrukt door DEV_FORCE_AUTH, zodat de auth-flow testbaar blijft).
+        if (cancelled || DEV_FORCE_AUTH) return;
+        const onboarded = await getOnboarded();
+        if (!cancelled && onboarded) setPhase("app");
+      } finally {
+        if (!cancelled) setAuthLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [fontsLoaded]);
 
   useEffect(() => {
@@ -317,16 +353,29 @@ export default function App() {
     return false;
   }, [isGuest]);
 
-  const openAuth = useCallback((view) => {
-    setAuthPromptVisible(false);
-    setShowProfile(false);
-    setShowSearch(false);
-    setOpenStory(null);
-    setMyTags([]);
-    setAuthInitialView(view);
+  // Eén plek voor het wissen van de sessie: token uit storage + alle in-memory
+  // gebruikersdata (user, interesses, saves, gedeelde thema-filter). Gebruikt door
+  // uitloggen/verwijderen én de guest-wall-route, zodat er niets blijft hangen.
+  const clearSession = useCallback(() => {
+    clearToken();
     setUser(null);
-    setPhase("welcome");
+    setMyTags([]);
+    setSavedArticles([]);
+    setSavedMemes([]);
   }, []);
+
+  const openAuth = useCallback(
+    (view) => {
+      setAuthPromptVisible(false);
+      setShowProfile(false);
+      setShowSearch(false);
+      setOpenStory(null);
+      setAuthInitialView(view);
+      clearSession();
+      setPhase("welcome");
+    },
+    [clearSession]
+  );
 
   const handleSearch = useCallback(() => setShowSearch(true), []);
   const handleProfile = useCallback(() => {
@@ -334,7 +383,15 @@ export default function App() {
     setShowProfile(true);
   }, [requireAuth]);
   const handleOpenSaved = useCallback(() => setShowSaved(true), []);
-  const handleSavedChange = useCallback((next) => setSavedArticles(next), []);
+  // Artikelen: optimistic add/remove van één story. Robuust ongeacht wat het
+  // save-endpoint teruggeeft ({ saved: true }, geen savedArticles-lijst) — zelfde
+  // patroon als memes, zodat de bewaar-flows consistent zijn.
+  const handleSavedChange = useCallback((story, nextSaved) => {
+    setSavedArticles((current) => {
+      const without = current.filter((a) => a.id !== story.id);
+      return nextSaved ? [story, ...without] : without;
+    });
+  }, []);
   // Memes: optimistic add/remove van één meme. Robuust ongeacht wat het
   // save-endpoint teruggeeft (de respons-shape voor memes is nog onbekend).
   const handleSavedMemesChange = useCallback((meme, nextSaved) => {
@@ -355,13 +412,30 @@ export default function App() {
         user.token,
         nextTags.map((tag) => tag.id)
       )
-        .then((updated) => setMyTags(updated))
+        .then((updated) => setMyTags(updated.filter(isInterestTag)))
         .catch((err) => {
           setMyTags(previous);
           toast.show(err.message || "Tags bijwerken mislukt.");
         });
     },
     [myTags, user?.token]
+  );
+
+  // Feed/happy/zoek-chip (de)selecteren = interesse toevoegen/verwijderen, met
+  // dezelfde backend-sync als het profiel. Verwijderen kan op naam (myTags bevat
+  // het id al); toevoegen herleidt het tag-object uit de catalogus.
+  const toggleTopic = useCallback(
+    (label) => {
+      const selected = myTags.some((tag) => tag.name === label);
+      if (selected) {
+        handleMyTagsChange(myTags.filter((tag) => tag.name !== label));
+        return;
+      }
+      const tag = availableTags.find((t) => t.name === label);
+      if (!tag) return;
+      handleMyTagsChange([...myTags, tag]);
+    },
+    [myTags, availableTags, handleMyTagsChange]
   );
 
   const commonProps = useMemo(
@@ -396,6 +470,7 @@ export default function App() {
             onComplete={(u, _topics, syncedTags = []) => {
               setUser(u);
               setMyTags(syncedTags);
+              if (u?.token) setToken(u.token);
               setAuthInitialView("welcome");
               setPhase("app");
             }}
@@ -460,14 +535,13 @@ export default function App() {
           <ProfileScreen
             user={user}
             onUserUpdate={setUser}
-            myTags={myTags}
-            onMyTagsChange={setMyTags}
-            savedCount={savedArticles.length + savedMemes.length}
+            savedArticlesCount={savedArticles.length}
+            savedMemesCount={savedMemes.length}
             onOpenSaved={handleOpenSaved}
             onClose={() => setShowProfile(false)}
             onLogout={() => {
+              clearSession();
               setShowProfile(false);
-              setMyTags([]);
               setPhase("welcome");
             }}
           />

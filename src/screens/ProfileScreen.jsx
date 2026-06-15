@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -18,28 +18,8 @@ import {
   logoutAccount,
   updateAccount,
 } from "../lib/auth/account";
-import { fetchTags, isInterestTag, updateMyTags } from "../lib/tags";
 import { slideInRight, fadeUp } from "../theme/animations";
 
-const CATEGORY_ICONS = {
-  politiek: "topicPolitics",
-  buitenland: "topicWorld",
-  economie: "topicEconomy",
-  sport: "topicSport",
-  natuur: "topicNature",
-  innovatie: "topicInnovation",
-  kunst: "topicArt",
-  lokaal: "topicLocal",
-};
-
-const TOPIC_BG = "#DDF5F8";
-const TOPIC_INK = "#10111A";
-const SELECTED_BG = "#10141C";
-const SELECTED_TOPIC_BG = "#ADE8F4";
-
-function topicIcon(tagName) {
-  return CATEGORY_ICONS[String(tagName).trim().toLowerCase()] ?? "topicWorld";
-}
 // ─── ProfileRow ───────────────────────────────────────────────
 
 function ProfileRow({ icon, label, count, onPress }) {
@@ -113,15 +93,11 @@ export function ProfileScreen({
   onClose,
   onLogout,
   onUserUpdate,
-  myTags = [],
-  onMyTagsChange,
-  savedCount = 0,
+  savedArticlesCount = 0,
+  savedMemesCount = 0,
   onOpenSaved,
 }) {
   const insets = useSafeAreaInsets();
-  const [availableTags, setAvailableTags] = useState([]);
-  const [picking, setPicking] = useState(false);
-  const [tagsError, setTagsError] = useState("");
   const [usernameValue, setUsernameValue] = useState(user?.username ?? "");
   const [nameValue, setNameValue] = useState(user?.name ?? "");
   const [emailValue, setEmailValue] = useState(user?.email ?? "");
@@ -161,49 +137,6 @@ export function ProfileScreen({
     editingAccountField &&
     editingAccountValue !== accountBaseline[editingAccountField];
   const hasPasswordChanges = Boolean(passwordValue || passwordConfirmValue);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchTags()
-      .then((all) => {
-        if (!cancelled) setAvailableTags(all.filter(isInterestTag));
-      })
-      .catch((err) => {
-        if (!cancelled) setTagsError(err.message || "Tags laden mislukt.");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const syncTags = async (nextTags) => {
-    const previous = myTags;
-    onMyTagsChange?.(nextTags);
-    setTagsError("");
-    try {
-      const updated = await updateMyTags(
-        user?.token,
-        nextTags.map((t) => t.id)
-      );
-      onMyTagsChange?.(updated.filter(isInterestTag));
-    } catch (err) {
-      onMyTagsChange?.(previous);
-      setTagsError(err.message || "Tags bijwerken mislukt.");
-    }
-  };
-
-  const removeTag = (tag) => {
-    syncTags(myTags.filter((t) => t.id !== tag.id));
-  };
-
-  const pickTag = (tag) => {
-    if (myTags.some((t) => t.id === tag.id)) return;
-    syncTags([...myTags, tag]);
-  };
-
-  const pickableTags = availableTags.filter(
-    (t) => !myTags.some((mine) => mine.id === t.id)
-  );
 
   const openAccountEditor = (field) => {
     setEditingAccountField(field);
@@ -641,93 +574,10 @@ export function ProfileScreen({
             <Text style={styles.statLabel}>{"ARTIKELEN\nGELEZEN"}</Text>
           </View>
           <View style={styles.statTile}>
-            <Text style={styles.statNumber}>67</Text>
+            <Text style={styles.statNumber}>{savedMemesCount}</Text>
             <Text style={styles.statLabel}>{"MEMES\nOPGESLAGEN"}</Text>
           </View>
         </View>
-
-        {/* Tags */}
-        <SectionLabel>Tags</SectionLabel>
-        <View style={styles.tagsRow}>
-          {myTags.map((tag) => (
-            <View key={tag.id} style={styles.tagChip}>
-              <IIcon
-                name={topicIcon(tag.name)}
-                size={16}
-                strokeWidth={2.3}
-                color={SELECTED_BG}
-              />
-              <Text style={styles.tagChipLabel}>{tag.name}</Text>
-              <Pressable
-                onPress={() => removeTag(tag)}
-                hitSlop={8}
-                accessibilityLabel={`Verwijder ${tag.name}`}
-              >
-                <IIcon
-                  name="close"
-                  size={12}
-                  strokeWidth={2.4}
-                  color={SELECTED_BG}
-                />
-              </Pressable>
-            </View>
-          ))}
-          {picking ? (
-            <Pressable
-              onPress={() => setPicking(false)}
-              style={styles.addTagChip}
-            >
-              <IIcon
-                name="close"
-                size={12}
-                strokeWidth={2.4}
-                color={colors.ink}
-              />
-              <Text style={styles.addTagChipLabel}>Klaar</Text>
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={() => setPicking(true)}
-              style={styles.addTagChip}
-              disabled={pickableTags.length === 0}
-            >
-              <IIcon
-                name="plus"
-                size={12}
-                strokeWidth={2.4}
-                color={colors.ink}
-              />
-              <Text style={styles.addTagChipLabel}>Tag toevoegen</Text>
-            </Pressable>
-          )}
-        </View>
-        {picking && pickableTags.length > 0 ? (
-          <View style={styles.pickRow}>
-            {pickableTags.map((tag) => (
-              <Pressable
-                key={tag.id}
-                onPress={() => pickTag(tag)}
-                style={styles.pickChip}
-                accessibilityLabel={`Voeg ${tag.name} toe`}
-              >
-                <IIcon
-                  name="plus"
-                  size={12}
-                  strokeWidth={2.4}
-                  color={TOPIC_INK}
-                />
-                <Text style={styles.pickChipLabel}>{tag.name}</Text>
-                <IIcon
-                  name={topicIcon(tag.name)}
-                  size={16}
-                  strokeWidth={2.3}
-                  color={TOPIC_INK}
-                />
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
-        {tagsError ? <Text style={styles.tagsError}>{tagsError}</Text> : null}
 
         {/* Opgeslagen */}
         <SectionLabel>Opgeslagen</SectionLabel>
@@ -735,11 +585,16 @@ export function ProfileScreen({
           <ProfileRow
             icon="bookmark"
             label="Artikelen"
-            count={savedCount}
+            count={savedArticlesCount}
             onPress={onOpenSaved}
           />
           <View style={styles.rowDivider} />
-          <ProfileRow icon="image" label="Nieuws memes" count={67} />
+          <ProfileRow
+            icon="image"
+            label="Nieuws memes"
+            count={savedMemesCount}
+            onPress={onOpenSaved}
+          />
         </View>
 
         {/* Hulp */}
@@ -1099,82 +954,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
     marginTop: 24,
     marginBottom: 10,
-  },
-
-  // Tags
-  tagsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    alignItems: "center",
-  },
-  tagChip: {
-    minHeight: 40,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: SELECTED_TOPIC_BG,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderRadius: 9999,
-    borderWidth: 1.5,
-    borderColor: SELECTED_BG,
-  },
-  tagChipLabel: {
-    flexShrink: 1,
-    minWidth: 0,
-    fontFamily: fonts.body,
-    fontSize: 14,
-    fontWeight: "900",
-    color: SELECTED_BG,
-  },
-  addTagChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 9999,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: surfaces.lineStrong,
-  },
-  addTagChipLabel: {
-    fontFamily: fonts.displayMedium,
-    fontSize: 13.5,
-    color: colors.ink,
-  },
-  pickRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 10,
-  },
-  pickChip: {
-    minHeight: 40,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 9999,
-    backgroundColor: TOPIC_BG,
-    borderWidth: 1.5,
-    borderColor: "rgba(15,17,26,0.04)",
-  },
-  pickChipLabel: {
-    flexShrink: 1,
-    minWidth: 0,
-    fontFamily: fonts.body,
-    fontSize: 14,
-    fontWeight: "900",
-    color: TOPIC_INK,
-  },
-  tagsError: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.red,
-    marginTop: 8,
   },
 
   // Rows

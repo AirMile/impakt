@@ -117,6 +117,22 @@ test("updateMyTags stuurt tag_ids als PUT met bearer token", async () => {
   );
 });
 
+test("updateMyTags stuurt een lege tag_ids voor 'geen interesses'", async () => {
+  // "Geen tags" wordt gewoon als lege lijst gePUT; de backend moet dat toestaan
+  // (tag_ids niet `required`), zodat de lege selectie server-side persisteert.
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ tags: [] }),
+  });
+
+  await expect(updateMyTags("abc", [])).resolves.toEqual([]);
+
+  expect(global.fetch).toHaveBeenCalledWith(
+    "http://145.24.237.97/api/me/tags",
+    expect.objectContaining({ body: JSON.stringify({ tag_ids: [] }) })
+  );
+});
+
 test("updateMyTags vereist token", async () => {
   await expect(updateMyTags(undefined, [1])).rejects.toThrow(
     "Je bent niet ingelogd."
@@ -127,10 +143,10 @@ test("updateMyTags vereist token", async () => {
 test("updateMyTags gooit servermelding door bij fout", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: false,
-    json: async () => ({ message: "tag_ids field is required" }),
+    json: async () => ({ message: "Tags bijwerken mislukt." }),
   });
 
-  await expect(updateMyTags("abc", [])).rejects.toThrow(
-    "tag_ids field is required"
+  await expect(updateMyTags("abc", [2])).rejects.toThrow(
+    "Tags bijwerken mislukt."
   );
 });

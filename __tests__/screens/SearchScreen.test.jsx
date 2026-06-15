@@ -107,7 +107,7 @@ test("rendert topicfilter zonder populaire tags", async () => {
   const { findByText, queryByText } = render(
     <SearchScreen {...defaultProps} />
   );
-  expect(await findByText("Ontdek per thema")).toBeTruthy();
+  expect(await findByText("Jouw thema's")).toBeTruthy();
   expect(queryByText("Populair")).toBeNull();
   expect(queryByText("Goed nieuws")).toBeNull();
 });
@@ -128,7 +128,7 @@ test("na invoer van query verdwijnt discover-view en verschijnen resultaten", as
     "klimaat"
   );
   expect(await findByText("Klimaatverhaal")).toBeTruthy();
-  expect(queryByText("Ontdek per thema")).toBeNull();
+  expect(queryByText("Jouw thema's")).toBeNull();
 });
 
 test("lege zoekresultaten toont geen-resultaten tekst", async () => {

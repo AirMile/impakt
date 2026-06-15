@@ -12,25 +12,27 @@ import {
 import { AppHeader } from "../components/AppHeader";
 import { IIcon } from "../components/Icons";
 import { HeroOverlay } from "../components/HeroOverlay";
-import { REACTION_COLORS } from "../components/ReactionRail";
+import {
+  REACTION_EMOJI,
+  REACTION_LABELS,
+  REACTION_COLORS,
+} from "../lib/reactionMeta";
 import { colors, fonts } from "../theme/tokens";
 import { shareMeme } from "../lib/share";
 import { saveMeme, unsaveMeme } from "../lib/saves";
-import { submitMemeReaction } from "../lib/reactions";
+import { submitMemeReaction, removeMemeReaction } from "../lib/reactions";
 import { reactionPct } from "../lib/reactionPct";
+import { castVote, revertVote } from "../lib/reactionVote";
 import { toast } from "../lib/toast";
 import { pressFx } from "../lib/pressFeedback";
 
 const { height: SCREEN_H } = Dimensions.get("window");
-
-const REACTION_EMOJI = { smile: "😊", meh: "😐", frown: "☹️" };
 
 // Stabiele constanten buiten render — voorkomt herberekening bij elke render
 const REACTION_BTNS = Object.entries(REACTION_COLORS).map(([key, color]) => ({
   key,
   color,
 }));
-const REACTION_LABELS = { smile: "Blij", meh: "Neutraal", frown: "Verdrietig" };
 
 function RailButton({
   icon,
@@ -104,7 +106,7 @@ const MemeCard = React.memo(function MemeCard({
 }) {
   const isSaved = savedMemeIds?.has(meme.id) ?? false;
   const [saved, setSaved] = useState(isSaved);
-  const [reaction, setReaction] = useState(null);
+  const [reaction, setReaction] = useState(meme.myReaction ?? null);
 
   // Houd de lokale status gelijk aan de centrale savedMemeIds (sync na een save
   // elders of na de begin-fetch). Optimistic updates schrijven dezelfde waarde.
@@ -141,19 +143,23 @@ const MemeCard = React.memo(function MemeCard({
     [onRequireAuth]
   );
 
-  // Optimistisch stemmen: zet reactie + count direct, draai terug bij serverfout.
+  // Optimistisch (her)stemmen: zet reactie + count direct, draai terug bij
+  // serverfout. Switchen verlaagt de oude stem en verhoogt de nieuwe.
   const react = useCallback(
     async (key) => {
-      if (reaction !== null) return;
       if (!canInteract()) return;
       if (!token) return;
+      const prev = reaction;
+      if (prev === key) return;
       setReaction(key);
-      setCounts((c) => ({ ...c, [key]: (c[key] ?? 0) + 1 }));
+      setCounts((c) => castVote(c, prev, key));
       try {
+        // Switchen: verwijder eerst de oude stem, anders telt de backend beide.
+        if (prev != null) await removeMemeReaction(token, meme.id);
         await submitMemeReaction(token, meme.id, key);
       } catch (err) {
-        setReaction(null);
-        setCounts((c) => ({ ...c, [key]: Math.max(0, (c[key] ?? 1) - 1) }));
+        setReaction(prev);
+        setCounts((c) => revertVote(c, prev, key));
         toast.show(err.message || "Reactie opslaan mislukt.");
       }
     },
