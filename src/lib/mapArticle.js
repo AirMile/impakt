@@ -74,7 +74,7 @@ export function mapArticle(raw) {
     tags: rawTags,
     goodNews,
     trending: false,
-    reactions: { smile: 0, meh: 0, frown: 0 },
+    reactions: raw.reactions ?? { smile: 0, meh: 0, frown: 0 },
     poll: null,
     actions: null,
     sources: null,

@@ -39,7 +39,12 @@ jest.mock("../../src/lib/articles", () => ({
 
 jest.mock("../../src/lib/share", () => ({ shareStory: jest.fn() }));
 
+jest.mock("../../src/lib/reactions", () => ({
+  submitArticleReaction: jest.fn(),
+}));
+
 jest.mock("../../src/lib/tags", () => ({
+  isInterestTag: jest.requireActual("../../src/lib/tags").isInterestTag,
   fetchTags: jest.fn().mockResolvedValue([
     { id: 2, name: "Politiek", category: "politiek" },
     { id: 5, name: "Sport", category: "sport" },
@@ -136,4 +141,43 @@ test("myTags prop rendert chips voor mijn interesses + overige", async () => {
   expect(politiek.length).toBeGreaterThanOrEqual(1);
   const sport = await findAllByText("Sport");
   expect(sport.length).toBeGreaterThanOrEqual(1);
+});
+
+test("first reactor: stemmen op story zonder reacties toont 100%", async () => {
+  const { fetchArticles } = require("../../src/lib/articles");
+  const { submitArticleReaction } = require("../../src/lib/reactions");
+  submitArticleReaction.mockResolvedValue({ message: "ok" });
+  // Geïsoleerde fixture: één story met counts {0,0,0} → precies één "Blij"-knop.
+  fetchArticles.mockResolvedValueOnce([
+    {
+      id: 9,
+      goodNews: false,
+      title: "Vers verhaal",
+      sub: "...",
+      img: "",
+      date: "1 juni 2026",
+      time: "12:00",
+      views: "0",
+      readers: "0",
+      trending: false,
+      tags: [],
+      body: [],
+      reactions: { smile: 0, meh: 0, frown: 0 },
+    },
+  ]);
+
+  const { findByText, getByLabelText, getByText, getAllByText } = render(
+    <FeedScreen {...defaultProps} token="tok123" />
+  );
+  await findByText("Vers verhaal");
+
+  fireEvent.press(getByLabelText("Blij"));
+
+  await waitFor(() =>
+    expect(submitArticleReaction).toHaveBeenCalledWith("tok123", 9, "smile")
+  );
+
+  // counts {0,0,0} + optimistische +1 op smile = {1,0,0}, total 1.
+  expect(getByText("100%")).toBeTruthy();
+  expect(getAllByText("0%")).toHaveLength(2);
 });

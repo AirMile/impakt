@@ -92,6 +92,14 @@ test("mapArticle stubt ontbrekende velden", () => {
   expect(article.sources).toBeNull();
 });
 
+test("mapArticle neemt reactie-counts over van de backend", () => {
+  const article = mapArticle({
+    ...SAMPLE_RAW,
+    reactions: { smile: 5, meh: 2, frown: 1 },
+  });
+  expect(article.reactions).toEqual({ smile: 5, meh: 2, frown: 1 });
+});
+
 test("mapArticle leidt goodNews af uit de happy-tag", () => {
   const happy = mapArticle({
     ...SAMPLE_RAW,
