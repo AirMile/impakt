@@ -129,12 +129,6 @@ export function LoginScreen({ onBack, onSuccess, onSwitchToRegister, onSkip }) {
             }
           />
 
-          <View style={styles.forgotRow}>
-            <Pressable hitSlop={8}>
-              <Text style={styles.forgotLabel}>Wachtwoord vergeten?</Text>
-            </Pressable>
-          </View>
-
           {error.general ? (
             <Text style={styles.errorText}>{error.general}</Text>
           ) : null}
@@ -208,13 +202,6 @@ const styles = StyleSheet.create({
     marginBottom: 22,
     letterSpacing: 0.5,
     color: colors.ink,
-  },
-  forgotRow: { alignItems: "flex-end", marginTop: -6, marginBottom: 18 },
-  forgotLabel: {
-    fontFamily: fonts.body,
-    fontSize: 13,
-    color: colors.ink,
-    textDecorationLine: "underline",
   },
   switchRow: {
     flexDirection: "row",

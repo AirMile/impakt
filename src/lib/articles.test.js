@@ -70,6 +70,48 @@ test("fetchArticles stuurt Authorization-header met token (voor my_reaction)", a
   expect(articles[0].myReaction).toBe("smile");
 });
 
+test("fetchArticles hydrateert polls direct wanneer token aanwezig is", async () => {
+  global.fetch
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ data: [RAW_ARTICLE] }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [{ id: 7, article_id: 1, question: "Wat vind je?" }],
+      }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          { id: 31, poll_id: 7, option_text: "Ja, absoluut" },
+          { id: 32, poll_id: 7, option_text: "Nee" },
+        ],
+      }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => [
+        { option: "Ja, absoluut", votes: 1, percentage: 50 },
+        { option: "Nee", votes: 1, percentage: 50 },
+      ],
+    });
+
+  const articles = await fetchArticles({ token: "tok123" });
+
+  expect(articles[0].poll).toEqual({
+    id: 7,
+    articleId: 1,
+    q: "Wat vind je?",
+    options: [
+      { id: 31, label: "Ja, absoluut", votes: 1, percentage: 50 },
+      { id: 32, label: "Nee", votes: 1, percentage: 50 },
+    ],
+  });
+});
+
 test("fetchArticles haalt alle gepagineerde article pagina's op", async () => {
   global.fetch
     .mockResolvedValueOnce({
@@ -89,7 +131,6 @@ test("fetchArticles haalt alle gepagineerde article pagina's op", async () => {
 
   const articles = await fetchArticles();
 
-  expect(global.fetch).toHaveBeenCalledTimes(2);
   expect(global.fetch).toHaveBeenNthCalledWith(
     2,
     "http://145.24.237.97/api/articles?page=2",
@@ -157,6 +198,39 @@ test("fetchArticle haalt één artikel op via id", async () => {
     { method: "GET", headers: { Accept: "application/json" } }
   );
   expect(article.id).toBe(1);
+});
+
+test("fetchArticle hydrateert poll direct wanneer token aanwezig is", async () => {
+  global.fetch
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => RAW_ARTICLE,
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [{ id: 7, article_id: 1, question: "Wat vind je?" }],
+      }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [{ id: 31, poll_id: 7, option_text: "Ja" }],
+      }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => [{ option: "Ja", votes: 2, percentage: 100 }],
+    });
+
+  const article = await fetchArticle(1, "tok123");
+
+  expect(article.poll.options[0]).toEqual({
+    id: 31,
+    label: "Ja",
+    votes: 2,
+    percentage: 100,
+  });
 });
 
 test("fetchArticle accepteert een data-wrapper voor detail response", async () => {

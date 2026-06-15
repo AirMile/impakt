@@ -5,6 +5,7 @@ const KEYS = {
   preferences: "impakt.preferences",
   bookmarks: "impakt.bookmarks",
   token: "impakt.token",
+  pollVotes: "impakt.pollVotes",
 };
 
 export async function getOnboarded() {
@@ -47,4 +48,23 @@ export async function setToken(token) {
 
 export async function clearToken() {
   await AsyncStorage.removeItem(KEYS.token);
+}
+
+function pollVoteKey(userId, pollId) {
+  return `${userId}:${pollId}`;
+}
+
+export async function getPollVote(userId, pollId) {
+  if (userId == null || pollId == null) return null;
+  const v = await AsyncStorage.getItem(KEYS.pollVotes);
+  const votes = v ? JSON.parse(v) : {};
+  return votes[pollVoteKey(userId, pollId)] ?? null;
+}
+
+export async function setPollVote(userId, pollId, optionId) {
+  if (userId == null || pollId == null || optionId == null) return;
+  const v = await AsyncStorage.getItem(KEYS.pollVotes);
+  const votes = v ? JSON.parse(v) : {};
+  votes[pollVoteKey(userId, pollId)] = optionId;
+  await AsyncStorage.setItem(KEYS.pollVotes, JSON.stringify(votes));
 }

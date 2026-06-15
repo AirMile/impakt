@@ -1,4 +1,4 @@
-import { InteractionManager } from "react-native";
+import { InteractionManager, Linking } from "react-native";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import { DetailScreen } from "../../src/screens/DetailScreen";
 
@@ -33,9 +33,22 @@ jest.mock("../../src/screens/FeedScreen", () => ({
 }));
 
 jest.mock("../../src/lib/share", () => ({ shareStory: jest.fn() }));
+jest.mock("../../src/lib/sources", () => ({
+  fetchSources: jest.fn(() => new Promise(() => {})),
+}));
 jest.mock("../../src/lib/saves", () => ({
   saveArticle: jest.fn(),
   unsaveArticle: jest.fn(),
+}));
+jest.mock("../../src/lib/polls", () => ({
+  fetchPollForArticle: jest.fn(() => Promise.resolve(null)),
+  fetchPollResults: jest.fn((token, pollId, poll) => Promise.resolve(poll)),
+  removePollVote: jest.fn(() => Promise.resolve({ ok: true })),
+  submitPollVote: jest.fn(() => Promise.resolve({ id: 18 })),
+}));
+jest.mock("../../src/storage/prefs", () => ({
+  getPollVote: jest.fn(() => Promise.resolve(null)),
+  setPollVote: jest.fn(() => Promise.resolve()),
 }));
 
 const story = {
@@ -55,6 +68,8 @@ const story = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  const { getPollVote } = require("../../src/storage/prefs");
+  getPollVote.mockResolvedValue(null);
   jest
     .spyOn(InteractionManager, "runAfterInteractions")
     .mockImplementation((fn) => {
@@ -146,4 +161,441 @@ test("meme-card opent de exacte bijbehorende meme, niet alleen het artikel", asy
   fireEvent.press(getByText("Naar humor"));
 
   expect(onOpenMeme).toHaveBeenCalledWith("m2", 102);
+});
+
+test("bronrij opent de bron-url", async () => {
+  Linking.canOpenURL.mockResolvedValueOnce(true);
+  const { getByText } = render(
+    <DetailScreen
+      story={{
+        ...story,
+        sources: [
+          {
+            label: "NOS",
+            sub: "https://nos.nl/artikel/aangepaste-bron-url",
+            url: "https://nos.nl/artikel/aangepaste-bron-url",
+          },
+        ],
+      }}
+      feedCat="Voor jou"
+      onCatChange={jest.fn()}
+      onNav={jest.fn()}
+      onSearch={jest.fn()}
+      onProfile={jest.fn()}
+      onClose={jest.fn()}
+      onSwapStory={jest.fn()}
+      onRequireAuth={jest.fn()}
+    />
+  );
+
+  fireEvent.press(getByText("NOS"));
+
+  await waitFor(() =>
+    expect(Linking.openURL).toHaveBeenCalledWith(
+      "https://nos.nl/artikel/aangepaste-bron-url"
+    )
+  );
+});
+
+test("peiling in detailpagina post een stem en toont percentages", async () => {
+  const { fetchPollResults, submitPollVote } = require("../../src/lib/polls");
+  const { setPollVote } = require("../../src/storage/prefs");
+  fetchPollResults.mockResolvedValueOnce({
+    id: 7,
+    q: "Wat vind je?",
+    options: [
+      { id: 31, label: "Ja", votes: 2 },
+      { id: 32, label: "Nee", votes: 1 },
+    ],
+  });
+  const onRequireAuth = jest.fn();
+  const { getAllByText, getByText } = render(
+    <DetailScreen
+      story={{
+        ...story,
+        poll: {
+          id: 7,
+          q: "Wat vind je?",
+          options: [
+            { id: 31, label: "Ja", votes: 1 },
+            { id: 32, label: "Nee", votes: 1 },
+          ],
+        },
+      }}
+      feedCat="Voor jou"
+      onCatChange={jest.fn()}
+      onNav={jest.fn()}
+      onSearch={jest.fn()}
+      onProfile={jest.fn()}
+      onClose={jest.fn()}
+      onSwapStory={jest.fn()}
+      onRequireAuth={onRequireAuth}
+      token="tok123"
+      user={{ id: 15 }}
+    />
+  );
+
+  fireEvent.press(getByText("Ja"));
+
+  await waitFor(() =>
+    expect(submitPollVote).toHaveBeenCalledWith("tok123", {
+      pollId: 7,
+      userId: 15,
+      optionId: 31,
+    })
+  );
+  expect(setPollVote).toHaveBeenCalledWith(15, 7, 31);
+  expect(onRequireAuth).toHaveBeenCalled();
+  expect(getByText("67%")).toBeTruthy();
+  expect(getByText("33%")).toBeTruthy();
+});
+
+test("peiling toont voor stemmen nog geen percentages, ook als counts bestaan", () => {
+  const { queryByText } = render(
+    <DetailScreen
+      story={{
+        ...story,
+        poll: {
+          id: 7,
+          q: "Wat vind je?",
+          options: [
+            { id: 31, label: "Ja", votes: 10 },
+            { id: 32, label: "Nee", votes: 5 },
+          ],
+        },
+      }}
+      feedCat="Voor jou"
+      onCatChange={jest.fn()}
+      onNav={jest.fn()}
+      onSearch={jest.fn()}
+      onProfile={jest.fn()}
+      onClose={jest.fn()}
+      onSwapStory={jest.fn()}
+      onRequireAuth={jest.fn()}
+      token="tok123"
+      user={{ id: 15 }}
+    />
+  );
+
+  expect(queryByText("67%")).toBeNull();
+  expect(queryByText("33%")).toBeNull();
+  expect(queryByText("15 mensen stemden mee")).toBeNull();
+});
+
+test("peiling herstelt opgeslagen keuze ook als option ids een ander type hebben", async () => {
+  const { getPollVote } = require("../../src/storage/prefs");
+  getPollVote.mockResolvedValueOnce(33);
+
+  const { getAllByText, getByText } = render(
+    <DetailScreen
+      story={{
+        ...story,
+        poll: {
+          id: 7,
+          q: "Wat vind je?",
+          options: [
+            { id: "31", label: "Ja", votes: 1 },
+            { id: "33", label: "Nee", votes: 0 },
+          ],
+        },
+      }}
+      feedCat="Voor jou"
+      onCatChange={jest.fn()}
+      onNav={jest.fn()}
+      onSearch={jest.fn()}
+      onProfile={jest.fn()}
+      onClose={jest.fn()}
+      onSwapStory={jest.fn()}
+      onRequireAuth={jest.fn()}
+      token="tok123"
+      user={{ id: 15 }}
+    />
+  );
+
+  await waitFor(() => expect(getPollVote).toHaveBeenCalledWith(15, 7));
+  expect(getAllByText("50%")).toHaveLength(2);
+  expect(getByText("2 mensen stemden mee")).toBeTruthy();
+});
+
+test("peiling gebruikt percentages uit de backend results", async () => {
+  const { getPollVote } = require("../../src/storage/prefs");
+  getPollVote.mockResolvedValueOnce(33);
+
+  const { getAllByText, getByText } = render(
+    <DetailScreen
+      story={{
+        ...story,
+        poll: {
+          id: 7,
+          q: "Wat vind je?",
+          options: [
+            { id: 31, label: "Ja, absoluut", votes: 1, percentage: 50 },
+            {
+              id: 32,
+              label: "Alleen bij grote inkomsten",
+              votes: 0,
+              percentage: 0,
+            },
+            { id: 33, label: "Nee", votes: 1, percentage: 50 },
+          ],
+        },
+      }}
+      feedCat="Voor jou"
+      onCatChange={jest.fn()}
+      onNav={jest.fn()}
+      onSearch={jest.fn()}
+      onProfile={jest.fn()}
+      onClose={jest.fn()}
+      onSwapStory={jest.fn()}
+      onRequireAuth={jest.fn()}
+      token="tok123"
+      user={{ id: 15 }}
+    />
+  );
+
+  await waitFor(() => expect(getPollVote).toHaveBeenCalledWith(15, 7));
+  expect(getAllByText("50%")).toHaveLength(2);
+  expect(getByText("0%")).toBeTruthy();
+  expect(getByText("2 mensen stemden mee")).toBeTruthy();
+});
+
+test("peiling herstelt opgeslagen keuze bij terugkomen op artikel", async () => {
+  const { getPollVote } = require("../../src/storage/prefs");
+  const { submitPollVote } = require("../../src/lib/polls");
+  getPollVote.mockResolvedValueOnce(33);
+
+  const { getAllByText, getByText } = render(
+    <DetailScreen
+      story={{
+        ...story,
+        poll: {
+          id: 7,
+          q: "Wat vind je?",
+          options: [
+            { id: 31, label: "Ja", votes: 1 },
+            { id: 32, label: "Soms", votes: 0 },
+            { id: 33, label: "Nee", votes: 1 },
+          ],
+        },
+      }}
+      feedCat="Voor jou"
+      onCatChange={jest.fn()}
+      onNav={jest.fn()}
+      onSearch={jest.fn()}
+      onProfile={jest.fn()}
+      onClose={jest.fn()}
+      onSwapStory={jest.fn()}
+      onRequireAuth={jest.fn()}
+      token="tok123"
+      user={{ id: 15 }}
+    />
+  );
+
+  await waitFor(() => expect(getPollVote).toHaveBeenCalledWith(15, 7));
+  await waitFor(() => expect(getAllByText("50%")).toHaveLength(2));
+
+  fireEvent.press(getByText("Ja"));
+
+  expect(submitPollVote).not.toHaveBeenCalled();
+});
+
+test("peiling herstelt resultaatmodus als backend zegt dat gebruiker al gestemd heeft", async () => {
+  const { fetchPollResults, submitPollVote } = require("../../src/lib/polls");
+  const { setPollVote } = require("../../src/storage/prefs");
+  submitPollVote.mockRejectedValueOnce(new Error("User has already voted"));
+  fetchPollResults.mockResolvedValueOnce({
+    id: 7,
+    q: "Wat vind je?",
+    options: [
+      { id: 31, label: "Ja", votes: 1 },
+      { id: 32, label: "Nee", votes: 1 },
+    ],
+  });
+
+  const { getAllByText, getByText } = render(
+    <DetailScreen
+      story={{
+        ...story,
+        poll: {
+          id: 7,
+          q: "Wat vind je?",
+          options: [
+            { id: 31, label: "Ja", votes: 1 },
+            { id: 32, label: "Nee", votes: 1 },
+          ],
+        },
+      }}
+      feedCat="Voor jou"
+      onCatChange={jest.fn()}
+      onNav={jest.fn()}
+      onSearch={jest.fn()}
+      onProfile={jest.fn()}
+      onClose={jest.fn()}
+      onSwapStory={jest.fn()}
+      onRequireAuth={jest.fn()}
+      token="tok123"
+      user={{ id: 15 }}
+    />
+  );
+
+  fireEvent.press(getByText("Nee"));
+
+  await waitFor(() => expect(setPollVote).toHaveBeenCalledWith(15, 7, 32));
+  expect(getAllByText("50%")).toHaveLength(2);
+  expect(getByText("2 mensen stemden mee")).toBeTruthy();
+});
+
+test("peiling blijft in resultaatmodus als dezelfde story wordt ververst", async () => {
+  const { fetchPollResults } = require("../../src/lib/polls");
+  fetchPollResults.mockResolvedValueOnce({
+    id: 7,
+    q: "Wat vind je?",
+    options: [
+      { id: 31, label: "Ja", votes: 1 },
+      { id: 32, label: "Soms", votes: 1 },
+      { id: 33, label: "Nee", votes: 0 },
+    ],
+  });
+
+  const baseProps = {
+    story: {
+      ...story,
+      poll: {
+        id: 7,
+        q: "Wat vind je?",
+        options: [
+          { id: 31, label: "Ja", votes: 1 },
+          { id: 32, label: "Soms", votes: 0 },
+          { id: 33, label: "Nee", votes: 0 },
+        ],
+      },
+    },
+    feedCat: "Voor jou",
+    onCatChange: jest.fn(),
+    onNav: jest.fn(),
+    onSearch: jest.fn(),
+    onProfile: jest.fn(),
+    onClose: jest.fn(),
+    onSwapStory: jest.fn(),
+    onRequireAuth: jest.fn(),
+    token: "tok123",
+    user: { id: 15 },
+  };
+
+  const { getAllByText, getByText, rerender } = render(
+    <DetailScreen {...baseProps} />
+  );
+
+  fireEvent.press(getByText("Soms"));
+
+  await waitFor(() => expect(getAllByText("50%")).toHaveLength(2));
+
+  rerender(
+    <DetailScreen
+      {...baseProps}
+      story={{
+        ...baseProps.story,
+        title: "Artikel uit humor - vers",
+        poll: {
+          ...baseProps.story.poll,
+          options: [
+            { id: 31, label: "Ja", votes: 1 },
+            { id: 32, label: "Soms", votes: 1 },
+            { id: 33, label: "Nee", votes: 0 },
+          ],
+        },
+      }}
+    />
+  );
+
+  expect(getAllByText("50%")).toHaveLength(2);
+});
+
+test("peiling houdt optimistische balk vast als result-refresh geen counts bevat", async () => {
+  const { fetchPollResults } = require("../../src/lib/polls");
+  fetchPollResults.mockResolvedValueOnce({
+    id: 7,
+    q: "Wat vind je?",
+    options: [
+      { id: 31, label: "Ja", votes: 0 },
+      { id: 32, label: "Nee", votes: 0 },
+    ],
+  });
+  const { getByText, queryByText } = render(
+    <DetailScreen
+      story={{
+        ...story,
+        poll: {
+          id: 7,
+          q: "Wat vind je?",
+          options: [
+            { id: 31, label: "Ja", votes: 0 },
+            { id: 32, label: "Nee", votes: 0 },
+          ],
+        },
+      }}
+      feedCat="Voor jou"
+      onCatChange={jest.fn()}
+      onNav={jest.fn()}
+      onSearch={jest.fn()}
+      onProfile={jest.fn()}
+      onClose={jest.fn()}
+      onSwapStory={jest.fn()}
+      onRequireAuth={jest.fn()}
+      token="tok123"
+      user={{ id: 15 }}
+    />
+  );
+
+  fireEvent.press(getByText("Ja"));
+
+  await waitFor(() => expect(fetchPollResults).toHaveBeenCalled());
+  expect(getByText("100%")).toBeTruthy();
+  expect(queryByText("0 mensen stemden mee")).toBeNull();
+});
+
+test("peiling houdt optimistische keuze vast als result-refresh oude counts teruggeeft", async () => {
+  const { fetchPollResults } = require("../../src/lib/polls");
+  fetchPollResults.mockResolvedValueOnce({
+    id: 7,
+    q: "Wat vind je?",
+    options: [
+      { id: 31, label: "Ja", votes: 1 },
+      { id: 32, label: "Soms", votes: 0 },
+      { id: 33, label: "Nee", votes: 0 },
+    ],
+  });
+  const { getAllByText, getByText } = render(
+    <DetailScreen
+      story={{
+        ...story,
+        poll: {
+          id: 7,
+          q: "Wat vind je?",
+          options: [
+            { id: 31, label: "Ja", votes: 1 },
+            { id: 32, label: "Soms", votes: 0 },
+            { id: 33, label: "Nee", votes: 0 },
+          ],
+        },
+      }}
+      feedCat="Voor jou"
+      onCatChange={jest.fn()}
+      onNav={jest.fn()}
+      onSearch={jest.fn()}
+      onProfile={jest.fn()}
+      onClose={jest.fn()}
+      onSwapStory={jest.fn()}
+      onRequireAuth={jest.fn()}
+      token="tok123"
+      user={{ id: 15 }}
+    />
+  );
+
+  fireEvent.press(getByText("Nee"));
+
+  await waitFor(() => expect(fetchPollResults).toHaveBeenCalled());
+  expect(getAllByText("50%")).toHaveLength(2);
+  expect(getByText("0%")).toBeTruthy();
+  expect(getByText("2 mensen stemden mee")).toBeTruthy();
 });

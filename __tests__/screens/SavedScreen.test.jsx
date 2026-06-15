@@ -56,12 +56,12 @@ test("mode=memes rendert alleen memes, geen artikelen", () => {
   expect(queryByText("Bewaard artikel")).toBeNull();
 });
 
-test("tap op meme-thumbnail roept onOpenMeme met storyId aan", () => {
+test("tap op meme-thumbnail roept onOpenMeme met memeId en storyId aan", () => {
   const onOpenMeme = jest.fn();
   const { getByLabelText } = render(
     <SavedScreen mode="memes" savedMemes={[MEME]} onOpenMeme={onOpenMeme} />
   );
 
   fireEvent.press(getByLabelText("Open meme: Grappige meme"));
-  expect(onOpenMeme).toHaveBeenCalledWith(3);
+  expect(onOpenMeme).toHaveBeenCalledWith(8, 3);
 });

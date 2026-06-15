@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "./auth/account";
 import { mapArticle } from "./mapArticle";
+import { fetchPollsForArticles } from "./polls";
 
 async function fetchJSON(url, token) {
   const response = await fetch(url, {
@@ -72,13 +73,16 @@ export async function fetchArticles(options = {}) {
     nextUrl = getNextPageUrl(data);
   }
 
-  return uniqueById(articles).map(mapArticle).filter(Boolean);
+  const mapped = uniqueById(articles).map(mapArticle).filter(Boolean);
+  return fetchPollsForArticles(token, mapped);
 }
 
 export async function fetchArticle(id, token) {
   if (id == null) throw new Error("Artikel-id ontbreekt.");
   const data = await fetchJSON(`${API_BASE_URL}/articles/${id}`, token);
-  return mapArticle(unwrapItem(data));
+  const article = mapArticle(unwrapItem(data));
+  const articles = await fetchPollsForArticles(token, article ? [article] : []);
+  return articles[0] ?? article;
 }
 
 export async function fetchHappyFeed(options = {}) {
@@ -92,8 +96,9 @@ export async function fetchHappyFeed(options = {}) {
     nextUrl = getNextPageUrl(data);
   }
   // Happy Feed gebruikt de artikelindex op views en filtert daarna op goodNews.
-  return uniqueById(articles)
+  const mapped = uniqueById(articles)
     .map(mapArticle)
     .filter(Boolean)
     .filter((article) => article.goodNews === true);
+  return fetchPollsForArticles(token, mapped);
 }
