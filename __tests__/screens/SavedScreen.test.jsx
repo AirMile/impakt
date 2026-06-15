@@ -20,26 +20,46 @@ const MEME = {
   bot: "",
 };
 
-test("toont lege staat zonder bewaarde items", () => {
-  const { getByText } = render(<SavedScreen />);
-  expect(getByText("Je hebt nog niets bewaard.")).toBeTruthy();
+test("mode=articles toont titel en lege staat voor artikelen", () => {
+  const { getByText } = render(<SavedScreen mode="articles" />);
+  expect(getByText("Bewaarde artikelen")).toBeTruthy();
+  expect(getByText("Je hebt nog geen artikelen bewaard.")).toBeTruthy();
 });
 
-test("rendert bewaarde artikelen en memes-sectie", () => {
-  const { getByText } = render(
+test("mode=memes toont titel en lege staat voor memes", () => {
+  const { getByText } = render(<SavedScreen mode="memes" />);
+  expect(getByText("Bewaarde memes")).toBeTruthy();
+  expect(getByText("Je hebt nog geen memes bewaard.")).toBeTruthy();
+});
+
+test("mode=articles rendert alleen artikelen, geen memes", () => {
+  const { getByText, queryByLabelText } = render(
     <SavedScreen
+      mode="articles"
       savedArticles={[{ id: 1, title: "Bewaard artikel" }]}
       savedMemes={[MEME]}
     />
   );
   expect(getByText("Bewaard artikel")).toBeTruthy();
-  expect(getByText("Memes")).toBeTruthy();
+  expect(queryByLabelText("Open meme: Grappige meme")).toBeNull();
+});
+
+test("mode=memes rendert alleen memes, geen artikelen", () => {
+  const { queryByText, getByLabelText } = render(
+    <SavedScreen
+      mode="memes"
+      savedArticles={[{ id: 1, title: "Bewaard artikel" }]}
+      savedMemes={[MEME]}
+    />
+  );
+  expect(getByLabelText("Open meme: Grappige meme")).toBeTruthy();
+  expect(queryByText("Bewaard artikel")).toBeNull();
 });
 
 test("tap op meme-thumbnail roept onOpenMeme met storyId aan", () => {
   const onOpenMeme = jest.fn();
   const { getByLabelText } = render(
-    <SavedScreen savedMemes={[MEME]} onOpenMeme={onOpenMeme} />
+    <SavedScreen mode="memes" savedMemes={[MEME]} onOpenMeme={onOpenMeme} />
   );
 
   fireEvent.press(getByLabelText("Open meme: Grappige meme"));

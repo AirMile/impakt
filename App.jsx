@@ -135,7 +135,8 @@ export default function App() {
   const [openStorySource, setOpenStorySource] = useState("feed");
   const [showProfile, setShowProfile] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [showSaved, setShowSaved] = useState(false);
+  // null = dicht; "articles" / "memes" = open op het bijbehorende bewaard-scherm.
+  const [savedMode, setSavedMode] = useState(null);
   const [savedArticles, setSavedArticles] = useState([]);
   const [savedMemes, setSavedMemes] = useState([]);
   const [pendingMemeId, setPendingMemeId] = useState(null);
@@ -382,7 +383,10 @@ export default function App() {
     if (!requireAuth()) return;
     setShowProfile(true);
   }, [requireAuth]);
-  const handleOpenSaved = useCallback(() => setShowSaved(true), []);
+  const handleOpenSaved = useCallback(
+    (mode) => setSavedMode(mode === "memes" ? "memes" : "articles"),
+    []
+  );
   // Artikelen: optimistic add/remove van één story. Robuust ongeacht wat het
   // save-endpoint teruggeeft ({ saved: true }, geen savedArticles-lijst) — zelfde
   // patroon als memes, zodat de bewaar-flows consistent zijn.
@@ -563,17 +567,18 @@ export default function App() {
             onSavedChange={handleSavedChange}
           />
         )}
-        {inApp && showSaved && (
+        {inApp && savedMode && (
           <SavedScreen
+            mode={savedMode}
             savedArticles={savedArticles}
             savedMemes={savedMemes}
-            onClose={() => setShowSaved(false)}
+            onClose={() => setSavedMode(null)}
             onOpen={(s) => {
-              setShowSaved(false);
+              setSavedMode(null);
               setOpenStory(s);
             }}
             onOpenMeme={(storyId) => {
-              setShowSaved(false);
+              setSavedMode(null);
               openMemeForStory(storyId);
             }}
             onRequireAuth={requireAuth}

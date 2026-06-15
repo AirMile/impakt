@@ -49,7 +49,7 @@ test("toont accountgegevens op het profiel", () => {
 
 test("toont gescheiden tellingen voor artikelen en memes, beide klikbaar", () => {
   const onOpenSaved = jest.fn();
-  const { getByText, getAllByText } = render(
+  const { getByText } = render(
     <ProfileScreen
       {...defaultProps}
       user={{ username: "bb", email: "bb@hotmail.com" }}
@@ -59,14 +59,16 @@ test("toont gescheiden tellingen voor artikelen en memes, beide klikbaar", () =>
     />
   );
 
-  // Artikelen-rij telt alleen artikelen, niet de memes.
+  // Artikelen-rij toont savedArticlesCount, memes-rij savedMemesCount.
   expect(getByText("2")).toBeTruthy();
-  // Memes-telling komt uit savedMemesCount (niet langer hardcoded 67) en staat
-  // op twee plekken: de stat-tegel én de "Nieuws memes"-rij.
-  expect(getAllByText("5")).toHaveLength(2);
+  expect(getByText("5")).toBeTruthy();
+
+  // Beide rijen openen hun eigen bewaard-scherm via de mode.
+  fireEvent.press(getByText("Artikelen"));
+  expect(onOpenSaved).toHaveBeenCalledWith("articles");
 
   fireEvent.press(getByText("Nieuws memes"));
-  expect(onOpenSaved).toHaveBeenCalled();
+  expect(onOpenSaved).toHaveBeenCalledWith("memes");
 });
 
 test("opent detailweergave en werkt een accountgegeven bij", async () => {

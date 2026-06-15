@@ -1,4 +1,3 @@
-import React from "react";
 import {
   View,
   Text,
@@ -31,7 +30,10 @@ function MemeThumb({ meme, onOpenMeme }) {
   );
 }
 
+// mode bepaalt of dit het scherm voor bewaarde artikelen of memes is. Beide delen
+// de header/scroll-structuur; alleen titel, lege staat en inhoud verschillen.
 export function SavedScreen({
+  mode = "articles",
   savedArticles = [],
   savedMemes = [],
   onClose,
@@ -43,7 +45,14 @@ export function SavedScreen({
   onSavedChange,
 }) {
   const insets = useSafeAreaInsets();
-  const isEmpty = savedArticles.length === 0 && savedMemes.length === 0;
+  const isMemes = mode === "memes";
+  const isEmpty = isMemes
+    ? savedMemes.length === 0
+    : savedArticles.length === 0;
+  const title = isMemes ? "Bewaarde memes" : "Bewaarde artikelen";
+  const emptyText = isMemes
+    ? "Je hebt nog geen memes bewaard."
+    : "Je hebt nog geen artikelen bewaard.";
 
   return (
     <MotiView
@@ -58,7 +67,7 @@ export function SavedScreen({
         >
           <IIcon name="arrowL" size={24} strokeWidth={2} color={colors.ink} />
         </Pressable>
-        <Text style={styles.title}>Bewaard</Text>
+        <Text style={styles.title}>{title}</Text>
       </View>
 
       <ScrollView
@@ -71,38 +80,29 @@ export function SavedScreen({
       >
         {isEmpty ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Je hebt nog niets bewaard.</Text>
+            <Text style={styles.emptyText}>{emptyText}</Text>
+          </View>
+        ) : isMemes ? (
+          <View style={styles.memeSection}>
+            <View style={styles.memeGrid}>
+              {savedMemes.map((meme) => (
+                <MemeThumb key={meme.id} meme={meme} onOpenMeme={onOpenMeme} />
+              ))}
+            </View>
           </View>
         ) : (
-          <>
-            {savedArticles.map((story) => (
-              <FeedCard
-                key={story.id}
-                story={story}
-                onOpen={onOpen}
-                variant="compact"
-                onRequireAuth={onRequireAuth}
-                token={token}
-                savedIds={savedIds}
-                onSavedChange={onSavedChange}
-              />
-            ))}
-
-            {savedMemes.length > 0 && (
-              <View style={styles.memeSection}>
-                <Text style={styles.sectionLabel}>Memes</Text>
-                <View style={styles.memeGrid}>
-                  {savedMemes.map((meme) => (
-                    <MemeThumb
-                      key={meme.id}
-                      meme={meme}
-                      onOpenMeme={onOpenMeme}
-                    />
-                  ))}
-                </View>
-              </View>
-            )}
-          </>
+          savedArticles.map((story) => (
+            <FeedCard
+              key={story.id}
+              story={story}
+              onOpen={onOpen}
+              variant="compact"
+              onRequireAuth={onRequireAuth}
+              token={token}
+              savedIds={savedIds}
+              onSavedChange={onSavedChange}
+            />
+          ))
         )}
       </ScrollView>
     </MotiView>
@@ -150,12 +150,6 @@ const styles = StyleSheet.create({
   memeSection: {
     paddingHorizontal: 18,
     paddingTop: 8,
-  },
-  sectionLabel: {
-    fontFamily: fonts.display,
-    fontSize: 16,
-    color: colors.ink,
-    marginBottom: 10,
   },
   memeGrid: {
     flexDirection: "row",

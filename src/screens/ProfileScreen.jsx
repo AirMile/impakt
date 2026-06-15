@@ -567,18 +567,6 @@ export function ProfileScreen({
           ) : null}
         </MotiView>
 
-        {/* Stats strip */}
-        <View style={styles.statsRow}>
-          <View style={styles.statTile}>
-            <Text style={styles.statNumber}>142</Text>
-            <Text style={styles.statLabel}>{"ARTIKELEN\nGELEZEN"}</Text>
-          </View>
-          <View style={styles.statTile}>
-            <Text style={styles.statNumber}>{savedMemesCount}</Text>
-            <Text style={styles.statLabel}>{"MEMES\nOPGESLAGEN"}</Text>
-          </View>
-        </View>
-
         {/* Opgeslagen */}
         <SectionLabel>Opgeslagen</SectionLabel>
         <View style={styles.rowGroup}>
@@ -586,14 +574,14 @@ export function ProfileScreen({
             icon="bookmark"
             label="Artikelen"
             count={savedArticlesCount}
-            onPress={onOpenSaved}
+            onPress={() => onOpenSaved?.("articles")}
           />
           <View style={styles.rowDivider} />
           <ProfileRow
             icon="image"
             label="Nieuws memes"
             count={savedMemesCount}
-            onPress={onOpenSaved}
+            onPress={() => onOpenSaved?.("memes")}
           />
         </View>
 
@@ -915,34 +903,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 13,
     color: colors.cream,
-  },
-
-  // Stats strip
-  statsRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 4,
-  },
-  statTile: {
-    flex: 1,
-    backgroundColor: colors.creamWarm,
-    borderRadius: 14,
-    padding: 16,
-  },
-  statNumber: {
-    fontFamily: fonts.header,
-    fontSize: 36,
-    lineHeight: 34,
-    color: colors.ink,
-  },
-  statLabel: {
-    fontFamily: fonts.display,
-    fontSize: 11,
-    color: surfaces.muted,
-    textTransform: "uppercase",
-    letterSpacing: 1.2,
-    marginTop: 5,
-    lineHeight: 15,
   },
 
   // Section label
