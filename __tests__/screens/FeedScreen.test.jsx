@@ -43,6 +43,12 @@ jest.mock("../../src/lib/reactions", () => ({
   submitArticleReaction: jest.fn(),
 }));
 
+jest.mock("../../src/lib/saves", () => ({
+  saveArticle: jest.fn().mockResolvedValue({ user: { savedArticles: [] } }),
+  unsaveArticle: jest.fn().mockResolvedValue({ user: { savedArticles: [] } }),
+  mapSavedFromResponse: jest.fn(() => []),
+}));
+
 jest.mock("../../src/lib/tags", () => ({
   isInterestTag: jest.requireActual("../../src/lib/tags").isInterestTag,
   fetchTags: jest.fn().mockResolvedValue([
@@ -124,6 +130,44 @@ test("guest-interactie triggert auth prompt en deelt niet", async () => {
 
   expect(onRequireAuth).toHaveBeenCalledTimes(1);
   expect(shareStory).not.toHaveBeenCalled();
+});
+
+test("save-knop roept saveArticle aan met token en synct terug", async () => {
+  const { saveArticle } = require("../../src/lib/saves");
+  const onSavedChange = jest.fn();
+  const { findByText, getAllByLabelText } = render(
+    <FeedScreen
+      {...defaultProps}
+      token="tok123"
+      savedIds={new Set()}
+      onSavedChange={onSavedChange}
+    />
+  );
+
+  await findByText("Goed klimaatverhaal");
+  fireEvent.press(getAllByLabelText("Bewaren")[0]);
+
+  await waitFor(() => expect(saveArticle).toHaveBeenCalledWith("tok123", 1));
+  expect(onSavedChange).toHaveBeenCalled();
+});
+
+test("save-knop als gast triggert auth prompt en bewaart niet", async () => {
+  const { saveArticle } = require("../../src/lib/saves");
+  const onRequireAuth = jest.fn(() => false);
+  const { findByText, getAllByLabelText } = render(
+    <FeedScreen
+      {...defaultProps}
+      token="tok123"
+      savedIds={new Set()}
+      onRequireAuth={onRequireAuth}
+    />
+  );
+
+  await findByText("Goed klimaatverhaal");
+  fireEvent.press(getAllByLabelText("Bewaren")[0]);
+
+  expect(onRequireAuth).toHaveBeenCalled();
+  expect(saveArticle).not.toHaveBeenCalled();
 });
 
 test("myTags prop rendert chips voor mijn interesses + overige", async () => {

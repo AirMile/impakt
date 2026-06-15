@@ -22,7 +22,7 @@ import { colors, fonts, surfaces } from "../theme/tokens";
 import { pressFx } from "../lib/pressFeedback";
 import { slideUpScreen } from "../theme/animations";
 import { shareStory } from "../lib/share";
-import { saveArticle, unsaveArticle, mapSavedFromResponse } from "../lib/saves";
+import { useSaveArticle } from "../hooks/useSaveArticle";
 import { submitArticleReaction } from "../lib/reactions";
 import { reactionPct } from "../lib/reactionPct";
 import { fetchSources } from "../lib/sources";
@@ -53,7 +53,13 @@ export function DetailScreen({
   const [counts, setCounts] = useState(
     story.reactions ?? { smile: 0, meh: 0, frown: 0 }
   );
-  const [saved, setSaved] = useState(() => savedIds?.has(story.id) ?? false);
+  const { saved, toggleSaved } = useSaveArticle({
+    story,
+    token,
+    savedIds,
+    onSavedChange,
+    onRequireAuth,
+  });
   const [pollChoice, setPollChoice] = useState(null);
   const [activeAction, setActiveAction] = useState(null);
   const [inFeed, setInFeed] = useState(false);
@@ -90,26 +96,6 @@ export function DetailScreen({
     });
     return () => sub.remove();
   }, [onClose]);
-
-  // Optimistic toggle: zet de UI direct, draai terug als de server faalt.
-  // De begin-state komt uit savedIds (App.jsx); de save/unsave-respons bevat
-  // de nieuwe lijst, waarmee we App.jsx updaten zonder te refetchen.
-  const toggleSaved = async () => {
-    // Gast → toon de auth-prompt (requireAuth) i.p.v. een toast.
-    if (onRequireAuth?.() === false) return;
-    if (!token) return;
-    const next = !saved;
-    setSaved(next);
-    try {
-      const data = next
-        ? await saveArticle(token, story.id)
-        : await unsaveArticle(token, story.id);
-      onSavedChange?.(mapSavedFromResponse(data));
-    } catch (err) {
-      setSaved(!next);
-      toast.show(err.message || "Bewaren mislukt.");
-    }
-  };
 
   const relatedMemes = getRelatedMemes(memes, story.id);
   const firstMeme = relatedMemes[0];
@@ -448,6 +434,8 @@ export function DetailScreen({
               activeTab={embeddedFeedActiveTab}
               onRequireAuth={onRequireAuth}
               token={token}
+              savedIds={savedIds}
+              onSavedChange={onSavedChange}
             />
           )}
         </View>

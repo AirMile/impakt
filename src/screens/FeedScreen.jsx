@@ -24,6 +24,7 @@ import { pressFx } from "../lib/pressFeedback";
 import { fetchTags, isInterestTag } from "../lib/tags";
 import { orderUserTags } from "../lib/orderUserTags";
 import { fetchArticles } from "../lib/articles";
+import { useSaveArticle } from "../hooks/useSaveArticle";
 import { submitArticleReaction } from "../lib/reactions";
 import { reactionPct } from "../lib/reactionPct";
 import { toast } from "../lib/toast";
@@ -86,9 +87,17 @@ export const FeedCard = React.memo(function FeedCard({
   index = 0,
   onRequireAuth,
   token,
+  savedIds,
+  onSavedChange,
 }) {
   const [reaction, setReaction] = useState(null);
-  const [saved, setSaved] = useState(false);
+  const { saved, toggleSaved } = useSaveArticle({
+    story,
+    token,
+    savedIds,
+    onSavedChange,
+    onRequireAuth,
+  });
   const [counts, setCounts] = useState(
     story.reactions ?? { smile: 0, meh: 0, frown: 0 }
   );
@@ -148,10 +157,7 @@ export const FeedCard = React.memo(function FeedCard({
             onReact={react}
             reactions={reactionPct(counts)}
             saved={saved}
-            onSave={() => {
-              if (!canInteract()) return;
-              setSaved((s) => !s);
-            }}
+            onSave={toggleSaved}
             onShare={() => {
               if (!canInteract()) return;
               shareStory(story);
@@ -208,6 +214,8 @@ export function FeedScreen({
   myTags = [],
   onRequireAuth,
   token,
+  savedIds,
+  onSavedChange,
 }) {
   const [selectedTopics, setSelectedTopics] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
@@ -287,9 +295,11 @@ export function FeedScreen({
         index={index}
         onRequireAuth={onRequireAuth}
         token={token}
+        savedIds={savedIds}
+        onSavedChange={onSavedChange}
       />
     ),
-    [onOpen, onRequireAuth, token]
+    [onOpen, onRequireAuth, token, savedIds, onSavedChange]
   );
 
   const topicBar = !goodNewsOnly && topics.length > 0 && (
@@ -312,6 +322,8 @@ export function FeedScreen({
             index={i}
             onRequireAuth={onRequireAuth}
             token={token}
+            savedIds={savedIds}
+            onSavedChange={onSavedChange}
           />
         ))}
         {!loading && !error && stories.length === 0 && renderEmpty()}

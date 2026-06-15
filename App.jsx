@@ -41,7 +41,7 @@ import { SandboxReactionsScreen } from "./src/screens/SandboxReactionsScreen";
 import { fetchMyTags } from "./src/lib/tags";
 import { fetchArticle } from "./src/lib/articles";
 import { fetchMemes } from "./src/lib/memes";
-import { fetchSavedArticles } from "./src/lib/saves";
+import { fetchSavedArticles, fetchSavedMemes } from "./src/lib/saves";
 
 const DEV_FORCE_AUTH = __DEV__;
 const DEV_SANDBOX = false; // false | "reactions"
@@ -122,6 +122,7 @@ export default function App() {
   const [showSearch, setShowSearch] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [savedArticles, setSavedArticles] = useState([]);
+  const [savedMemes, setSavedMemes] = useState([]);
   const [pendingMemeStoryId, setPendingMemeStoryId] = useState(null);
   const [feedCat, setFeedCat] = useState("Voor jou");
   const [authInitialView, setAuthInitialView] = useState("welcome");
@@ -130,6 +131,10 @@ export default function App() {
   const savedIds = useMemo(
     () => new Set(savedArticles.map((a) => a.id)),
     [savedArticles]
+  );
+  const savedMemeIds = useMemo(
+    () => new Set(savedMemes.map((m) => m.id)),
+    [savedMemes]
   );
 
   useEffect(() => {
@@ -150,8 +155,8 @@ export default function App() {
   }, [user?.token]);
 
   useEffect(() => {
-    // fetchSavedArticles(undefined) resolved naar [], dus logout (token weg)
-    // leegt de lijst via de async .then — geen synchrone setState in de body.
+    // fetchSavedArticles/Memes(undefined) resolven naar [], dus logout (token
+    // weg) leegt de lijsten via de async .then — geen synchrone setState in body.
     let cancelled = false;
     fetchSavedArticles(user?.token)
       .then((articles) => {
@@ -159,6 +164,13 @@ export default function App() {
       })
       .catch(() => {
         if (!cancelled) setSavedArticles([]);
+      });
+    fetchSavedMemes(user?.token)
+      .then((memez) => {
+        if (!cancelled) setSavedMemes(memez);
+      })
+      .catch(() => {
+        if (!cancelled) setSavedMemes([]);
       });
     return () => {
       cancelled = true;
@@ -271,6 +283,14 @@ export default function App() {
   }, [requireAuth]);
   const handleOpenSaved = useCallback(() => setShowSaved(true), []);
   const handleSavedChange = useCallback((next) => setSavedArticles(next), []);
+  // Memes: optimistic add/remove van één meme. Robuust ongeacht wat het
+  // save-endpoint teruggeeft (de respons-shape voor memes is nog onbekend).
+  const handleSavedMemesChange = useCallback((meme, nextSaved) => {
+    setSavedMemes((current) => {
+      const without = current.filter((m) => m.id !== meme.id);
+      return nextSaved ? [meme, ...without] : without;
+    });
+  }, []);
 
   const commonProps = useMemo(
     () => ({
@@ -322,6 +342,8 @@ export default function App() {
                 myTags={myTags}
                 onRequireAuth={requireAuth}
                 token={user?.token}
+                savedIds={savedIds}
+                onSavedChange={handleSavedChange}
               />
             </View>
             <View style={[styles.tab, tab !== "good" && styles.hidden]}>
@@ -330,6 +352,9 @@ export default function App() {
                 onProfile={handleProfile}
                 myTags={myTags}
                 onRequireAuth={requireAuth}
+                token={user?.token}
+                savedIds={savedIds}
+                onSavedChange={handleSavedChange}
               />
             </View>
             <View style={[styles.tab, tab !== "humor" && styles.hidden]}>
@@ -340,6 +365,8 @@ export default function App() {
                 memes={memes}
                 onRequireAuth={requireAuth}
                 token={user?.token}
+                savedMemeIds={savedMemeIds}
+                onSavedMemesChange={handleSavedMemesChange}
               />
             </View>
           </>
@@ -352,7 +379,7 @@ export default function App() {
             onUserUpdate={setUser}
             myTags={myTags}
             onMyTagsChange={setMyTags}
-            savedCount={savedArticles.length}
+            savedCount={savedArticles.length + savedMemes.length}
             onOpenSaved={handleOpenSaved}
             onClose={() => setShowProfile(false)}
             onLogout={() => {
@@ -372,18 +399,27 @@ export default function App() {
             myTags={myTags}
             onRequireAuth={requireAuth}
             token={user?.token}
+            savedIds={savedIds}
+            onSavedChange={handleSavedChange}
           />
         )}
         {inApp && showSaved && (
           <SavedScreen
             savedArticles={savedArticles}
+            savedMemes={savedMemes}
             onClose={() => setShowSaved(false)}
             onOpen={(s) => {
               setShowSaved(false);
               setOpenStory(s);
             }}
+            onOpenMeme={(storyId) => {
+              setShowSaved(false);
+              openMemeForStory(storyId);
+            }}
             onRequireAuth={requireAuth}
             token={user?.token}
+            savedIds={savedIds}
+            onSavedChange={handleSavedChange}
           />
         )}
         <AnimatePresence>

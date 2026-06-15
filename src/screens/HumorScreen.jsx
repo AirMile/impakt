@@ -101,17 +101,27 @@ const MemeCard = React.memo(function MemeCard({
   onOpenStory,
   onRequireAuth,
   token,
+  savedMemeIds,
+  onSavedMemesChange,
 }) {
-  const [saved, setSaved] = useState(false);
+  const isSaved = savedMemeIds?.has(meme.id) ?? false;
+  const [saved, setSaved] = useState(isSaved);
   const [reaction, setReaction] = useState(null);
+
+  // Houd de lokale status gelijk aan de centrale savedMemeIds (sync na een save
+  // elders of na de begin-fetch). Optimistic updates schrijven dezelfde waarde.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSaved(isSaved);
+  }, [isSaved]);
   // Absolute counts (nu {0,0,0} tot de backend ze meestuurt); na stemmen +1.
   const [counts, setCounts] = useState(
     meme.reactions ?? { smile: 0, meh: 0, frown: 0 }
   );
 
   // Optimistic toggle: zet de UI direct, draai terug als de server faalt.
-  // De backend heeft geen "is deze meme bewaard?"-endpoint, dus de begin-state
-  // is altijd false bij heropenen — alleen de toggle praat met de server.
+  // De begin-state komt uit savedMemeIds (App.jsx, gevuld via GET /account).
+  // Na succes synct onSavedMemesChange de centrale lijst bij (add/remove).
   const toggleSaved = useCallback(async () => {
     if (!token) {
       toast.show("Log in om memes te bewaren.");
@@ -122,11 +132,12 @@ const MemeCard = React.memo(function MemeCard({
     try {
       if (next) await saveMeme(token, meme.id);
       else await unsaveMeme(token, meme.id);
+      onSavedMemesChange?.(meme, next);
     } catch (err) {
       setSaved(!next);
       toast.show(err.message || "Bewaren mislukt.");
     }
-  }, [token, saved, meme.id]);
+  }, [token, saved, meme, onSavedMemesChange]);
   const canInteract = useCallback(
     () => onRequireAuth?.() !== false,
     [onRequireAuth]
@@ -262,6 +273,8 @@ export function HumorScreen({
   memes = [],
   onRequireAuth,
   token,
+  savedMemeIds,
+  onSavedMemesChange,
 }) {
   const insets = useSafeAreaInsets();
   const listRef = useRef(null);
@@ -290,9 +303,18 @@ export function HumorScreen({
         onOpenStory={onOpenStory}
         token={token}
         onRequireAuth={onRequireAuth}
+        savedMemeIds={savedMemeIds}
+        onSavedMemesChange={onSavedMemesChange}
       />
     ),
-    [onOpenStory, onRequireAuth, memes.length, token]
+    [
+      onOpenStory,
+      onRequireAuth,
+      memes.length,
+      token,
+      savedMemeIds,
+      onSavedMemesChange,
+    ]
   );
 
   return (

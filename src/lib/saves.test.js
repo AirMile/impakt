@@ -4,7 +4,9 @@ import {
   saveMeme,
   unsaveMeme,
   fetchSavedArticles,
+  fetchSavedMemes,
   mapSavedFromResponse,
+  mapSavedMemesFromResponse,
 } from "./saves";
 
 const RAW_SAVED = {
@@ -16,6 +18,12 @@ const RAW_SAVED = {
   published_at: "2026-06-08T13:04:53Z",
   views_count: 1200,
   tags: [],
+};
+
+const RAW_SAVED_MEME = {
+  id: 8,
+  image_url: "https://x.test/m.jpg",
+  article_id: 3,
 };
 
 beforeEach(() => {
@@ -201,4 +209,54 @@ test("mapSavedFromResponse mapt save-respons en negeert ontbrekende data", () =>
 
   expect(mapSavedFromResponse({})).toEqual([]);
   expect(mapSavedFromResponse(null)).toEqual([]);
+});
+
+test("fetchSavedMemes haalt en mapt user.savedMemes uit /account", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ user: { id: 1, savedMemes: [RAW_SAVED_MEME] } }),
+  });
+
+  const saved = await fetchSavedMemes("tok123");
+
+  expect(global.fetch).toHaveBeenCalledWith(
+    "http://145.24.237.97/api/account",
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: "Bearer tok123",
+      },
+    }
+  );
+  expect(saved).toHaveLength(1);
+  expect(saved[0].id).toBe(8);
+  expect(saved[0].storyId).toBe(3);
+});
+
+test("fetchSavedMemes geeft lege lijst zonder token", async () => {
+  const saved = await fetchSavedMemes(null);
+  expect(saved).toEqual([]);
+  expect(global.fetch).not.toHaveBeenCalled();
+});
+
+test("fetchSavedMemes geeft lege lijst als savedMemes ontbreekt", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ user: { id: 1 } }),
+  });
+
+  const saved = await fetchSavedMemes("tok123");
+  expect(saved).toEqual([]);
+});
+
+test("mapSavedMemesFromResponse mapt memes en negeert ontbrekende data", () => {
+  const mapped = mapSavedMemesFromResponse({
+    user: { savedMemes: [RAW_SAVED_MEME] },
+  });
+  expect(mapped).toHaveLength(1);
+  expect(mapped[0].id).toBe(8);
+
+  expect(mapSavedMemesFromResponse({})).toEqual([]);
+  expect(mapSavedMemesFromResponse(null)).toEqual([]);
 });

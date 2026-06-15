@@ -21,6 +21,9 @@ export function HappyFeedScreen({
   onProfile,
   myTags = [],
   onRequireAuth,
+  token,
+  savedIds,
+  onSavedChange,
 }) {
   const [selectedTopics, setSelectedTopics] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
@@ -145,6 +148,9 @@ export function HappyFeedScreen({
                   variant="compact"
                   index={i}
                   onRequireAuth={onRequireAuth}
+                  token={token}
+                  savedIds={savedIds}
+                  onSavedChange={onSavedChange}
                 />
               ))}
             </View>
@@ -162,6 +168,9 @@ export function HappyFeedScreen({
                   onOpen={onOpen}
                   index={i}
                   onRequireAuth={onRequireAuth}
+                  token={token}
+                  savedIds={savedIds}
+                  onSavedChange={onSavedChange}
                 />
               ))}
             </View>

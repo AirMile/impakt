@@ -33,6 +33,8 @@ export function SearchScreen({
   myTags = [],
   onRequireAuth,
   token,
+  savedIds,
+  onSavedChange,
 }) {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
@@ -219,6 +221,8 @@ export function SearchScreen({
                       variant="compact"
                       onRequireAuth={onRequireAuth}
                       token={token}
+                      savedIds={savedIds}
+                      onSavedChange={onSavedChange}
                     />
                   ))
                 )}
@@ -246,6 +250,8 @@ export function SearchScreen({
                     variant="full"
                     onRequireAuth={onRequireAuth}
                     token={token}
+                    savedIds={savedIds}
+                    onSavedChange={onSavedChange}
                   />
                 ))
               )}

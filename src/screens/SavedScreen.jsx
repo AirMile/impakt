@@ -1,5 +1,12 @@
 import React from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MotiView } from "moti";
 
@@ -8,14 +15,35 @@ import { FeedCard } from "./FeedScreen";
 import { colors, fonts } from "../theme/tokens";
 import { slideUpScreen } from "../theme/animations";
 
+function MemeThumb({ meme, onOpenMeme }) {
+  return (
+    <Pressable
+      onPress={() => onOpenMeme?.(meme.storyId)}
+      style={styles.memeThumb}
+      accessibilityLabel={`Open meme: ${meme.top ?? ""}`}
+    >
+      <Image
+        source={{ uri: meme.img }}
+        style={StyleSheet.absoluteFillObject}
+        resizeMode="cover"
+      />
+    </Pressable>
+  );
+}
+
 export function SavedScreen({
   savedArticles = [],
+  savedMemes = [],
   onClose,
   onOpen,
+  onOpenMeme,
   onRequireAuth,
   token,
+  savedIds,
+  onSavedChange,
 }) {
   const insets = useSafeAreaInsets();
+  const isEmpty = savedArticles.length === 0 && savedMemes.length === 0;
 
   return (
     <MotiView
@@ -41,23 +69,40 @@ export function SavedScreen({
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {savedArticles.length === 0 ? (
+        {isEmpty ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>
-              Je hebt nog geen artikelen bewaard.
-            </Text>
+            <Text style={styles.emptyText}>Je hebt nog niets bewaard.</Text>
           </View>
         ) : (
-          savedArticles.map((story) => (
-            <FeedCard
-              key={story.id}
-              story={story}
-              onOpen={onOpen}
-              variant="compact"
-              onRequireAuth={onRequireAuth}
-              token={token}
-            />
-          ))
+          <>
+            {savedArticles.map((story) => (
+              <FeedCard
+                key={story.id}
+                story={story}
+                onOpen={onOpen}
+                variant="compact"
+                onRequireAuth={onRequireAuth}
+                token={token}
+                savedIds={savedIds}
+                onSavedChange={onSavedChange}
+              />
+            ))}
+
+            {savedMemes.length > 0 && (
+              <View style={styles.memeSection}>
+                <Text style={styles.sectionLabel}>Memes</Text>
+                <View style={styles.memeGrid}>
+                  {savedMemes.map((meme) => (
+                    <MemeThumb
+                      key={meme.id}
+                      meme={meme}
+                      onOpenMeme={onOpenMeme}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
     </MotiView>
@@ -101,5 +146,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "rgba(15,17,26,0.55)",
     textAlign: "center",
+  },
+  memeSection: {
+    paddingHorizontal: 18,
+    paddingTop: 8,
+  },
+  sectionLabel: {
+    fontFamily: fonts.display,
+    fontSize: 16,
+    color: colors.ink,
+    marginBottom: 10,
+  },
+  memeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  memeThumb: {
+    width: "31.5%",
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "rgba(15,17,26,0.08)",
   },
 });
