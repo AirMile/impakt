@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { saveArticle, unsaveArticle, mapSavedFromResponse } from "../lib/saves";
+import { saveArticle, unsaveArticle } from "../lib/saves";
 import { toast } from "../lib/toast";
 
 // Gedeelde bewaar-logica voor artikelen: optimistic toggle → endpoint →
@@ -14,7 +14,10 @@ import { toast } from "../lib/toast";
 //
 // savedIds:      Set<id> uit App.jsx — bepaalt de begin-status en houdt de kaart
 //                in sync als dezelfde story elders wordt ge(un)saved.
-// onSavedChange: krijgt de nieuwe bewaar-lijst (gemapt uit de save-respons).
+// onSavedChange: krijgt (story, nextSaved) — App.jsx voegt de story optimistisch
+//                toe of verwijdert 'm. Hangt NIET af van de save-respons-shape
+//                (het endpoint geeft { saved: true }, geen savedArticles-lijst),
+//                net als de meme-flow.
 // onRequireAuth: gast → toont de auth-prompt i.p.v. te bewaren.
 export function useSaveArticle({
   story,
@@ -41,10 +44,9 @@ export function useSaveArticle({
     const next = !saved;
     setSaved(next);
     try {
-      const data = next
-        ? await saveArticle(token, story.id)
-        : await unsaveArticle(token, story.id);
-      onSavedChange?.(mapSavedFromResponse(data));
+      if (next) await saveArticle(token, story.id);
+      else await unsaveArticle(token, story.id);
+      onSavedChange?.(story, next);
     } catch (err) {
       setSaved(!next);
       toast.show(err.message || "Bewaren mislukt.");

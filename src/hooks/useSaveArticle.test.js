@@ -7,7 +7,6 @@ import { toast } from "../lib/toast";
 jest.mock("../lib/saves", () => ({
   saveArticle: jest.fn(),
   unsaveArticle: jest.fn(),
-  mapSavedFromResponse: jest.fn(() => [{ id: 7 }]),
 }));
 jest.mock("../lib/toast", () => ({ toast: { show: jest.fn() } }));
 
@@ -24,8 +23,8 @@ test("begin-status komt uit savedIds", () => {
   expect(result.current.saved).toBe(true);
 });
 
-test("toggle bewaart via saveArticle en synct terug", async () => {
-  saveArticle.mockResolvedValueOnce({ user: { savedArticles: [] } });
+test("toggle bewaart via saveArticle en synct (story, true) terug", async () => {
+  saveArticle.mockResolvedValueOnce({ saved: true });
   const onSavedChange = jest.fn();
   const { result } = renderHook(() =>
     useSaveArticle({
@@ -41,7 +40,8 @@ test("toggle bewaart via saveArticle en synct terug", async () => {
   });
 
   expect(saveArticle).toHaveBeenCalledWith("tok", 7);
-  expect(onSavedChange).toHaveBeenCalledWith([{ id: 7 }]);
+  // Optimistic-lokaal: hangt niet af van de respons-shape ({ saved: true }).
+  expect(onSavedChange).toHaveBeenCalledWith(STORY, true);
   expect(result.current.saved).toBe(true);
 });
 
