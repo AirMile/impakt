@@ -4,6 +4,7 @@ import {
   formatViews,
   mapArticle,
   paragraphsFromContent,
+  resolveImageUrl,
 } from "./mapArticle";
 
 const SAMPLE_RAW = {
@@ -20,8 +21,8 @@ const SAMPLE_RAW = {
   published_at: "2026-06-08T13:04:53.000000Z",
   views_count: 34200,
   tags: [
-    { id: 2, name: "Politiek", category: "politiek", pivot: {} },
-    { id: 6, name: "Natuur", category: "natuur", pivot: {} },
+    { id: 2, name: "Politiek", category: "politiek", icon: "info", pivot: {} },
+    { id: 6, name: "Natuur", category: "natuur", icon: "sparkle", pivot: {} },
   ],
   call_to_action: { id: 1, title: "Help" },
   memes: [{ id: 1, image_url: "x" }],
@@ -75,12 +76,34 @@ test("mapArticle bevat de hoofdvelden uit een live backend article", () => {
   expect(article.body).toHaveLength(2);
   expect(article.views).toBe("34.2k");
   expect(article.tone).toBe("light");
-  expect(article.tags).toEqual([
-    { id: 2, name: "Politiek", category: "politiek" },
-    { id: 6, name: "Natuur", category: "natuur" },
-  ]);
+  expect(article.tags).toEqual(["Politiek", "Natuur"]);
   expect(article.callToAction).toEqual({ id: 1, title: "Help" });
   expect(article.memes).toHaveLength(1);
+});
+
+test("resolveImageUrl laat absolute URLs ongemoeid", () => {
+  expect(resolveImageUrl({ img: "http://host/storage/a.jpg" })).toBe(
+    "http://host/storage/a.jpg"
+  );
+  expect(resolveImageUrl({ image_url: "https://images.unsplash.com/x" })).toBe(
+    "https://images.unsplash.com/x"
+  );
+});
+
+test("resolveImageUrl prefixt relatieve happy-feed paden met host + /storage/", () => {
+  // /happy-feed levert image_url als "articles/xxx.jpg" zonder host of /storage/.
+  expect(resolveImageUrl({ image_url: "articles/abc.jpg" })).toBe(
+    "http://145.24.237.97/storage/articles/abc.jpg"
+  );
+  // Pad dat al met storage/ begint krijgt geen dubbele prefix.
+  expect(resolveImageUrl({ image_url: "/storage/articles/abc.jpg" })).toBe(
+    "http://145.24.237.97/storage/articles/abc.jpg"
+  );
+});
+
+test("resolveImageUrl geeft lege string bij ontbrekend beeld", () => {
+  expect(resolveImageUrl({})).toBe("");
+  expect(resolveImageUrl({ image_url: "" })).toBe("");
 });
 
 test("mapArticle stubt ontbrekende velden", () => {
@@ -100,18 +123,20 @@ test("mapArticle neemt reactie-counts over van de backend", () => {
   expect(article.reactions).toEqual({ smile: 5, meh: 2, frown: 1 });
 });
 
-test("mapArticle leidt goodNews af uit de happy-tag", () => {
-  const happy = mapArticle({
-    ...SAMPLE_RAW,
-    tags: [{ id: 1, name: "happy", category: "happy" }],
-  });
-  expect(happy.goodNews).toBe(true);
+test("mapArticle normaliseert tags naar namen (string of object)", () => {
+  expect(mapArticle({ ...SAMPLE_RAW, tags: ["Lokaal", "Kunst"] }).tags).toEqual(
+    ["Lokaal", "Kunst"]
+  );
+  expect(
+    mapArticle({ ...SAMPLE_RAW, tags: [{ name: "Lokaal" }, "Kunst"] }).tags
+  ).toEqual(["Lokaal", "Kunst"]);
+});
 
-  const niet = mapArticle({
-    ...SAMPLE_RAW,
-    tags: [{ id: 2, name: "Politiek", category: "politiek" }],
-  });
-  expect(niet.goodNews).toBe(false);
+test("mapArticle neemt goodNews over van de backend", () => {
+  expect(mapArticle({ ...SAMPLE_RAW, goodNews: true }).goodNews).toBe(true);
+  expect(mapArticle({ ...SAMPLE_RAW, goodNews: false }).goodNews).toBe(false);
+  // Zonder expliciet veld is het geen goed-nieuws-artikel.
+  expect(mapArticle({ ...SAMPLE_RAW }).goodNews).toBe(false);
 });
 
 test("mapArticle is veilig bij ontbrekende tags en content", () => {

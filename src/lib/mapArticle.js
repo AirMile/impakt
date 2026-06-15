@@ -1,3 +1,20 @@
+import { API_BASE_URL } from "./config";
+
+// Backend levert het beeld soms absoluut (/articles → `img`) en soms als
+// relatief storage-pad (/happy-feed → `image_url` = "articles/xxx.jpg"). We
+// strippen `/api` van de base-URL en normaliseren naar een absolute URL, zodat
+// <Image> 'm in beide feeds kan laden.
+const ASSET_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
+
+function resolveImageUrl(raw) {
+  const value = raw.image_url ?? raw.img ?? "";
+  if (!value) return "";
+  if (/^https?:\/\//.test(value)) return value;
+  const path = value.replace(/^\/+/, "");
+  const withStorage = path.startsWith("storage/") ? path : `storage/${path}`;
+  return `${ASSET_BASE_URL}/${withStorage}`;
+}
+
 const NL_MONTHS = [
   "januari",
   "februari",
@@ -47,24 +64,29 @@ function paragraphsFromContent(content) {
     .filter(Boolean);
 }
 
-function cleanTag(tag) {
-  if (!tag || typeof tag !== "object") return null;
-  return { id: tag.id, name: tag.name, category: tag.category };
+// De backend levert article-tags als losse namen ("Lokaal"); ouder/mock-data
+// soms als object. Normaliseer beide naar de tag-naam (string).
+function tagName(tag) {
+  if (typeof tag === "string") return tag;
+  if (tag && typeof tag === "object") return tag.name ?? null;
+  return null;
 }
 
 export function mapArticle(raw) {
   if (!raw || typeof raw !== "object") return null;
 
   const rawTags = Array.isArray(raw.tags)
-    ? raw.tags.map(cleanTag).filter(Boolean)
+    ? raw.tags.map(tagName).filter(Boolean)
     : [];
-  const goodNews = rawTags.some((t) => t.category === "happy");
+  // goodNews komt expliciet van de backend; de tag-categorie is niet langer
+  // beschikbaar (tags zijn nu enkel namen).
+  const goodNews = Boolean(raw.goodNews);
 
   return {
     id: raw.id,
     title: raw.title ?? "",
     sub: raw.summary ?? raw.sub ?? "",
-    img: raw.image_url ?? raw.img ?? "",
+    img: resolveImageUrl(raw),
     body: paragraphsFromContent(raw.content ?? raw.body),
     date: formatNLDate(raw.published_at),
     time: formatTime(raw.published_at),
@@ -83,4 +105,10 @@ export function mapArticle(raw) {
   };
 }
 
-export { formatNLDate, formatTime, formatViews, paragraphsFromContent };
+export {
+  formatNLDate,
+  formatTime,
+  formatViews,
+  paragraphsFromContent,
+  resolveImageUrl,
+};

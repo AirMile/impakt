@@ -14,12 +14,14 @@ import { MotiView } from "moti";
 import { AppHeader } from "../components/AppHeader";
 import { HeroOverlay } from "../components/HeroOverlay";
 import { ReactionRail } from "../components/ReactionRail";
+import { DataState } from "../components/DataState";
 import { IIcon } from "../components/Icons";
+import { useAsyncData } from "../hooks/useAsyncData";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { fadeUp } from "../theme/animations";
 import { shareStory } from "../lib/share";
 import { pressFx } from "../lib/pressFeedback";
-import { fetchTags } from "../lib/tags";
+import { fetchTags, isInterestTag } from "../lib/tags";
 import { orderUserTags } from "../lib/orderUserTags";
 import { fetchArticles } from "../lib/articles";
 import { submitArticleReaction } from "../lib/reactions";
@@ -28,17 +30,6 @@ import { toast } from "../lib/toast";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 36;
-
-const CATEGORY_ICONS = {
-  politiek: "topicPolitics",
-  buitenland: "topicWorld",
-  economie: "topicEconomy",
-  sport: "topicSport",
-  natuur: "topicNature",
-  innovatie: "topicInnovation",
-  kunst: "topicArt",
-  lokaal: "topicLocal",
-};
 
 const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
@@ -67,12 +58,6 @@ function TopicChips({ topics, selectedTopics, onToggle }) {
                 { opacity: pressed ? 0.78 : 1 },
               ]}
             >
-              <IIcon
-                name={topic.icon}
-                size={16}
-                color={isSelected ? "#FFFFFF" : TOPIC_INK}
-                strokeWidth={2.3}
-              />
               <Text
                 numberOfLines={1}
                 style={[
@@ -202,8 +187,8 @@ export const FeedCard = React.memo(function FeedCard({
                 </View>
               )}
               {(story.tags ?? []).slice(0, 3).map((t) => (
-                <View key={t.id ?? t} style={styles.tag}>
-                  <Text style={styles.tagLabel}>{t.name ?? t}</Text>
+                <View key={t} style={styles.tag}>
+                  <Text style={styles.tagLabel}>{t}</Text>
                 </View>
               ))}
             </View>
@@ -226,8 +211,8 @@ export function FeedScreen({
 }) {
   const [selectedTopics, setSelectedTopics] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
-  const [articles, setArticles] = useState([]);
 
+  // Thema-chips zijn secundair: bij een fout verbergen we ze stil.
   useEffect(() => {
     let cancelled = false;
     fetchTags()
@@ -242,54 +227,35 @@ export function FeedScreen({
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetchArticles()
-      .then((list) => {
-        if (!cancelled) setArticles(list);
-      })
-      .catch(() => {
-        if (!cancelled) setArticles([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Artikellijst is de primaire content: spinner tijdens laden, retry bij fout.
+  const {
+    data: articlesData,
+    loading,
+    error,
+    reload,
+  } = useAsyncData(() => fetchArticles(), []);
+  const articles = useMemo(() => articlesData ?? [], [articlesData]);
 
   const topics = useMemo(() => {
-    const usable = allTags.filter(
-      (tag) => tag.category && tag.category !== "happy"
-    );
-    return orderUserTags(usable, myTags).map((tag) => ({
-      label: tag.name,
-      icon: CATEGORY_ICONS[tag.category] ?? "topicWorld",
-      category: tag.category,
-    }));
+    const usable = allTags.filter(isInterestTag);
+    return orderUserTags(usable, myTags).map((tag) => ({ label: tag.name }));
   }, [allTags, myTags]);
-
-  const activeCategories = useMemo(() => {
-    if (selectedTopics.size === 0) return null;
-    return new Set(
-      topics
-        .filter((topic) => selectedTopics.has(topic.label))
-        .map((topic) => topic.category)
-    );
-  }, [selectedTopics, topics]);
 
   const stories = useMemo(() => {
     const base = goodNewsOnly
       ? articles.filter((story) => story.goodNews === true)
       : articles;
+    // story.tags zijn tag-namen; selectedTopics bevat de geselecteerde namen.
     const byTopic =
-      activeCategories === null
+      selectedTopics.size === 0
         ? base
         : base.filter((story) =>
-            (story.tags ?? []).some((t) => activeCategories.has(t.category))
+            (story.tags ?? []).some((name) => selectedTopics.has(name))
           );
     return excludeId
       ? byTopic.filter((story) => story.id !== excludeId)
       : byTopic;
-  }, [articles, activeCategories, excludeId, goodNewsOnly]);
+  }, [articles, selectedTopics, excludeId, goodNewsOnly]);
 
   const toggleTopic = useCallback((label) => {
     setSelectedTopics((current) => {
@@ -348,7 +314,7 @@ export function FeedScreen({
             token={token}
           />
         ))}
-        {stories.length === 0 && renderEmpty()}
+        {!loading && !error && stories.length === 0 && renderEmpty()}
         {renderFooter()}
       </View>
     );
@@ -358,19 +324,21 @@ export function FeedScreen({
     <View style={styles.screen}>
       <AppHeader onProfile={onProfile} />
       {topicBar}
-      <FlatList
-        data={stories}
-        keyExtractor={(s) => String(s.id)}
-        renderItem={renderItem}
-        ListEmptyComponent={renderEmpty}
-        ListFooterComponent={renderFooter}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        initialNumToRender={4}
-        maxToRenderPerBatch={4}
-        windowSize={7}
-        removeClippedSubviews
-      />
+      <DataState loading={loading} error={error} onRetry={reload}>
+        <FlatList
+          data={stories}
+          keyExtractor={(s) => String(s.id)}
+          renderItem={renderItem}
+          ListEmptyComponent={renderEmpty}
+          ListFooterComponent={renderFooter}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          initialNumToRender={4}
+          maxToRenderPerBatch={4}
+          windowSize={7}
+          removeClippedSubviews
+        />
+      </DataState>
     </View>
   );
 }
@@ -546,6 +514,9 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   tag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     backgroundColor: "rgba(15,17,26,0.65)",
     paddingHorizontal: 10,
     paddingVertical: 5,

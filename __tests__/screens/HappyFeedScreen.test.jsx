@@ -3,6 +3,7 @@ import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import { HappyFeedScreen } from "../../src/screens/HappyFeedScreen";
 
 jest.mock("../../src/lib/tags", () => ({
+  isInterestTag: jest.requireActual("../../src/lib/tags").isInterestTag,
   fetchTags: jest.fn().mockResolvedValue([
     { id: 2, name: "Politiek", category: "politiek" },
     { id: 3, name: "Buitenland", category: "buitenland" },
@@ -25,7 +26,7 @@ jest.mock("../../src/lib/articles", () => ({
       views: "1k",
       readers: "1k",
       trending: false,
-      tags: [{ id: 6, name: "Natuur", category: "natuur" }],
+      tags: ["Natuur"],
       body: [],
       reactions: { smile: 8, meh: 2, frown: 1 },
     },
@@ -40,7 +41,7 @@ jest.mock("../../src/lib/articles", () => ({
       views: "500",
       readers: "500",
       trending: false,
-      tags: [{ id: 3, name: "Buitenland", category: "buitenland" }],
+      tags: ["Buitenland"],
       body: [],
       reactions: { smile: 5, meh: 1, frown: 0 },
     },
@@ -58,7 +59,7 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test("tap op thema filtert feed op tag-category", async () => {
+test("tap op thema filtert feed op tag-naam", async () => {
   const { getByText, queryByText, findByText, findByTestId } = render(
     <HappyFeedScreen {...defaultProps} />
   );

@@ -2,24 +2,15 @@ import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 
 import { AppHeader } from "../components/AppHeader";
+import { DataState } from "../components/DataState";
 import { IIcon } from "../components/Icons";
+import { useAsyncData } from "../hooks/useAsyncData";
 import { FeedCard } from "./FeedScreen";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { groupHappyStories } from "../lib/storyDate";
-import { fetchTags } from "../lib/tags";
+import { fetchTags, isInterestTag } from "../lib/tags";
 import { orderUserTags } from "../lib/orderUserTags";
 import { fetchHappyFeed } from "../lib/articles";
-
-const CATEGORY_ICONS = {
-  politiek: "topicPolitics",
-  buitenland: "topicWorld",
-  economie: "topicEconomy",
-  sport: "topicSport",
-  natuur: "topicNature",
-  innovatie: "topicInnovation",
-  kunst: "topicArt",
-  lokaal: "topicLocal",
-};
 
 const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
@@ -33,8 +24,8 @@ export function HappyFeedScreen({
 }) {
   const [selectedTopics, setSelectedTopics] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
-  const [stories, setStories] = useState([]);
 
+  // Thema-chips zijn secundair: bij een fout verbergen we ze stil.
   useEffect(() => {
     let cancelled = false;
     fetchTags()
@@ -49,52 +40,33 @@ export function HappyFeedScreen({
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetchHappyFeed()
-      .then((list) => {
-        if (!cancelled) setStories(list);
-      })
-      .catch(() => {
-        if (!cancelled) setStories([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Good-news feed is de primaire content: spinner tijdens laden, retry bij fout.
+  const {
+    data: storiesData,
+    loading,
+    error,
+    reload,
+  } = useAsyncData(() => fetchHappyFeed(), []);
+  const stories = useMemo(() => storiesData ?? [], [storiesData]);
 
   const happyTopics = useMemo(() => {
-    const usable = allTags.filter(
-      (tag) => tag.category && tag.category !== "happy"
-    );
-    return orderUserTags(usable, myTags).map((tag) => ({
-      label: tag.name,
-      icon: CATEGORY_ICONS[tag.category] ?? "topicWorld",
-      category: tag.category,
-    }));
+    const usable = allTags.filter(isInterestTag);
+    return orderUserTags(usable, myTags).map((tag) => ({ label: tag.name }));
   }, [allTags, myTags]);
 
-  const activeCategories = useMemo(() => {
-    if (selectedTopics.size === 0) return null;
-    return new Set(
-      happyTopics
-        .filter((topic) => selectedTopics.has(topic.label))
-        .map((topic) => topic.category)
-    );
-  }, [selectedTopics, happyTopics]);
-
   const sections = useMemo(() => {
+    // story.tags zijn tag-namen; selectedTopics bevat de geselecteerde namen.
     const filteredStories =
-      activeCategories === null
+      selectedTopics.size === 0
         ? stories
         : stories.filter((story) =>
-            (story.tags ?? []).some((t) => activeCategories.has(t.category))
+            (story.tags ?? []).some((name) => selectedTopics.has(name))
           );
 
     return groupHappyStories(filteredStories, {
-      threshold: activeCategories === null ? 3 : 1,
+      threshold: selectedTopics.size === 0 ? 3 : 1,
     });
-  }, [stories, activeCategories]);
+  }, [stories, selectedTopics]);
 
   const topSections = sections.filter((sec) => sec.key !== "earlier");
   const earlierSection = sections.find((sec) => sec.key === "earlier");
@@ -133,12 +105,6 @@ export function HappyFeedScreen({
                 { opacity: pressed ? 0.78 : 1 },
               ]}
             >
-              <IIcon
-                name={topic.icon}
-                size={16}
-                color={isSelected ? "#FFFFFF" : TOPIC_INK}
-                strokeWidth={2.3}
-              />
               <Text
                 numberOfLines={1}
                 style={[
@@ -163,62 +129,64 @@ export function HappyFeedScreen({
     <View style={styles.screen}>
       <AppHeader onProfile={onProfile} />
       {topicBar}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
-      >
-        {topSections.map((sec) => (
-          <View key={sec.key} style={styles.section}>
-            <Text style={styles.sectionLabel}>{sec.label}</Text>
-            {sec.stories.map((story, i) => (
-              <FeedCard
-                key={story.id}
-                story={story}
-                onOpen={onOpen}
-                variant="compact"
-                index={i}
-                onRequireAuth={onRequireAuth}
-              />
-            ))}
-          </View>
-        ))}
+      <DataState loading={loading} error={error} onRetry={reload}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scroll}
+        >
+          {topSections.map((sec) => (
+            <View key={sec.key} style={styles.section}>
+              <Text style={styles.sectionLabel}>{sec.label}</Text>
+              {sec.stories.map((story, i) => (
+                <FeedCard
+                  key={story.id}
+                  story={story}
+                  onOpen={onOpen}
+                  variant="compact"
+                  index={i}
+                  onRequireAuth={onRequireAuth}
+                />
+              ))}
+            </View>
+          ))}
 
-        {earlierSection && (
-          <View style={styles.section}>
-            {topSections.length > 0 && (
-              <Text style={styles.sectionLabel}>{earlierSection.label}</Text>
-            )}
-            {earlierSection.stories.map((story, i) => (
-              <FeedCard
-                key={story.id}
-                story={story}
-                onOpen={onOpen}
-                index={i}
-                onRequireAuth={onRequireAuth}
-              />
-            ))}
-          </View>
-        )}
+          {earlierSection && (
+            <View style={styles.section}>
+              {topSections.length > 0 && (
+                <Text style={styles.sectionLabel}>{earlierSection.label}</Text>
+              )}
+              {earlierSection.stories.map((story, i) => (
+                <FeedCard
+                  key={story.id}
+                  story={story}
+                  onOpen={onOpen}
+                  index={i}
+                  onRequireAuth={onRequireAuth}
+                />
+              ))}
+            </View>
+          )}
 
-        {sections.length === 0 && activeCategories !== null && (
-          <View style={styles.empty}>
-            <Text style={styles.emptyLabel}>
-              Geen leuk nieuws over {activeLabel}.{"\n"}Tik nogmaals om het
-              filter te wissen.
-            </Text>
-          </View>
-        )}
+          {sections.length === 0 && selectedTopics.size > 0 && (
+            <View style={styles.empty}>
+              <Text style={styles.emptyLabel}>
+                Geen leuk nieuws over {activeLabel}.{"\n"}Tik nogmaals om het
+                filter te wissen.
+              </Text>
+            </View>
+          )}
 
-        {sections.length === 0 && activeCategories === null && (
-          <View style={styles.empty}>
-            <Text style={styles.emptyLabel}>
-              Geen goed nieuws op dit moment.{"\n"}Kom later terug.
-            </Text>
-          </View>
-        )}
+          {sections.length === 0 && selectedTopics.size === 0 && (
+            <View style={styles.empty}>
+              <Text style={styles.emptyLabel}>
+                Geen goed nieuws op dit moment.{"\n"}Kom later terug.
+              </Text>
+            </View>
+          )}
 
-        <View style={{ height: 120 }} />
-      </ScrollView>
+          <View style={{ height: 120 }} />
+        </ScrollView>
+      </DataState>
     </View>
   );
 }

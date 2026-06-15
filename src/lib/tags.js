@@ -1,5 +1,11 @@
 import { API_BASE_URL } from "./auth/account";
 
+// Interesse-tags zijn echte onderwerpen, niet de good-news-markering. De
+// backend noemt die markering "flag" (eerder "happy"); beide sluiten we uit.
+const NON_INTEREST_CATEGORIES = new Set(["happy", "flag"]);
+export const isInterestTag = (tag) =>
+  Boolean(tag?.category) && !NON_INTEREST_CATEGORIES.has(tag.category);
+
 export async function fetchTags() {
   const response = await fetch(`${API_BASE_URL}/tags`, {
     method: "GET",

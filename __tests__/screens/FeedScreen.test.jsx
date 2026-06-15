@@ -15,7 +15,7 @@ jest.mock("../../src/lib/articles", () => ({
       views: "1k",
       readers: "1k",
       trending: false,
-      tags: [{ id: 6, name: "Natuur", category: "natuur" }],
+      tags: ["Natuur"],
       body: [],
       reactions: { smile: 10, meh: 5, frown: 2 },
     },
@@ -30,7 +30,7 @@ jest.mock("../../src/lib/articles", () => ({
       views: "2k",
       readers: "2k",
       trending: false,
-      tags: [{ id: 5, name: "Sport", category: "sport" }],
+      tags: ["Sport"],
       body: [],
       reactions: { smile: 3, meh: 8, frown: 1 },
     },
@@ -82,7 +82,7 @@ test("goodNewsOnly=true toont alleen goodNews stories", async () => {
   expect(queryByText("Slecht sportverhaal")).toBeNull();
 });
 
-test("topicfilter op category filtert articles", async () => {
+test("topicfilter op tag-naam filtert articles", async () => {
   const { getByText, queryByText, findAllByText } = render(
     <FeedScreen {...defaultProps} />
   );

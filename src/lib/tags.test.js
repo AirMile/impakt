@@ -1,4 +1,26 @@
-import { fetchMyTags, fetchTags, updateMyTags } from "./tags";
+import { fetchMyTags, fetchTags, isInterestTag, updateMyTags } from "./tags";
+
+describe("isInterestTag", () => {
+  test("true voor een gewone interesse-tag", () => {
+    expect(
+      isInterestTag({ id: 2, name: "Politiek", category: "politiek" })
+    ).toBe(true);
+  });
+
+  test("false voor de good-news-markering (happy of flag)", () => {
+    expect(
+      isInterestTag({ id: 9, name: "Goed nieuws", category: "happy" })
+    ).toBe(false);
+    expect(
+      isInterestTag({ id: 18, name: "Goed nieuws", category: "flag" })
+    ).toBe(false);
+  });
+
+  test("false voor een tag zonder category", () => {
+    expect(isInterestTag({ id: 1, name: "Zonder" })).toBe(false);
+    expect(isInterestTag(null)).toBe(false);
+  });
+});
 
 beforeEach(() => {
   global.fetch = jest.fn();

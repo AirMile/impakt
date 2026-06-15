@@ -3,6 +3,7 @@ import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import { SearchScreen } from "../../src/screens/SearchScreen";
 
 jest.mock("../../src/lib/tags", () => ({
+  isInterestTag: jest.requireActual("../../src/lib/tags").isInterestTag,
   fetchTags: jest.fn().mockResolvedValue([
     { id: 2, name: "Politiek", category: "politiek" },
     { id: 5, name: "Sport", category: "sport" },
@@ -23,7 +24,7 @@ jest.mock("../../src/lib/articles", () => ({
       readers: "3k",
       trending: false,
       goodNews: true,
-      tags: [{ id: 6, name: "Natuur", category: "natuur" }],
+      tags: ["Natuur"],
       body: [],
       reactions: { smile: 10, meh: 5, frown: 2 },
     },
@@ -38,7 +39,7 @@ jest.mock("../../src/lib/articles", () => ({
       readers: "1k",
       trending: false,
       goodNews: false,
-      tags: [{ id: 5, name: "Sport", category: "sport" }],
+      tags: ["Sport"],
       body: [],
       reactions: { smile: 3, meh: 8, frown: 1 },
     },

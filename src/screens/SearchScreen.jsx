@@ -12,25 +12,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MotiView } from "moti";
 
 import { IIcon } from "../components/Icons";
+import { DataState } from "../components/DataState";
 import { FeedCard } from "./FeedScreen";
+import { useAsyncData } from "../hooks/useAsyncData";
 import { colors, fonts } from "../theme/tokens";
 import { slideUpScreen } from "../theme/animations";
 import { searchStories } from "../lib/searchStories";
 import { topReadStories } from "../lib/topReadStories";
-import { fetchTags } from "../lib/tags";
+import { fetchTags, isInterestTag } from "../lib/tags";
 import { orderUserTags } from "../lib/orderUserTags";
 import { fetchArticles } from "../lib/articles";
-
-const CATEGORY_ICONS = {
-  politiek: "topicPolitics",
-  buitenland: "topicWorld",
-  economie: "topicEconomy",
-  sport: "topicSport",
-  natuur: "topicNature",
-  innovatie: "topicInnovation",
-  kunst: "topicArt",
-  lokaal: "topicLocal",
-};
 
 const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
@@ -47,8 +38,8 @@ export function SearchScreen({
   const [query, setQuery] = useState("");
   const [selectedTopics, setSelectedTopics] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
-  const [allArticles, setAllArticles] = useState([]);
 
+  // Thema-chips zijn secundair: bij een fout verbergen we ze stil.
   useEffect(() => {
     let cancelled = false;
     fetchTags()
@@ -63,29 +54,18 @@ export function SearchScreen({
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetchArticles()
-      .then((list) => {
-        if (!cancelled) setAllArticles(list);
-      })
-      .catch(() => {
-        if (!cancelled) setAllArticles([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Artikelen zijn de primaire content: spinner tijdens laden, retry bij fout.
+  const {
+    data: articlesData,
+    loading,
+    error,
+    reload,
+  } = useAsyncData(() => fetchArticles(), []);
+  const allArticles = useMemo(() => articlesData ?? [], [articlesData]);
 
   const TOPICS = useMemo(() => {
-    const usable = allTags.filter(
-      (tag) => tag.category && tag.category !== "happy"
-    );
-    return orderUserTags(usable, myTags).map((tag) => ({
-      label: tag.name,
-      icon: CATEGORY_ICONS[tag.category] ?? "topicWorld",
-      category: tag.category,
-    }));
+    const usable = allTags.filter(isInterestTag);
+    return orderUserTags(usable, myTags).map((tag) => ({ label: tag.name }));
   }, [allTags, myTags]);
 
   const mostReadStories = useMemo(
@@ -93,21 +73,13 @@ export function SearchScreen({
     [allArticles]
   );
 
-  const activeCategories = useMemo(() => {
-    if (selectedTopics.size === 0) return null;
-    return new Set(
-      TOPICS.filter((topic) => selectedTopics.has(topic.label)).map(
-        (topic) => topic.category
-      )
-    );
-  }, [selectedTopics, TOPICS]);
-
   const filteredStories = useMemo(() => {
-    if (activeCategories === null) return mostReadStories;
+    if (selectedTopics.size === 0) return mostReadStories;
+    // story.tags zijn tag-namen; selectedTopics bevat de geselecteerde namen.
     return mostReadStories.filter((story) =>
-      (story.tags ?? []).some((t) => activeCategories.has(t.category))
+      (story.tags ?? []).some((name) => selectedTopics.has(name))
     );
-  }, [activeCategories, mostReadStories]);
+  }, [selectedTopics, mostReadStories]);
 
   const q = query.trim().toLowerCase();
   // Volledige zoek doorzoekt alle articles (niet alleen top 4 most-read).
@@ -151,12 +123,6 @@ export function SearchScreen({
                 { opacity: pressed ? 0.78 : 1 },
               ]}
             >
-              <IIcon
-                name={topic.icon}
-                size={16}
-                color={isSelected ? "#FFFFFF" : TOPIC_INK}
-                strokeWidth={2.3}
-              />
               <Text
                 numberOfLines={1}
                 style={[
@@ -222,68 +188,71 @@ export function SearchScreen({
       </View>
 
       {topicBar}
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingBottom: insets.bottom + 24 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {!q ? (
-          <>
-            <View style={styles.resultsSection}>
-              <Text style={[styles.sectionLabel, { paddingHorizontal: 18 }]}>
-                {hasTopicFilter ? "Gefilterde verhalen" : "Meest gelezen"}
+      <DataState loading={loading} error={error} onRetry={reload}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: insets.bottom + 24 },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {!q ? (
+            <>
+              <View style={styles.resultsSection}>
+                <Text style={[styles.sectionLabel, { paddingHorizontal: 18 }]}>
+                  {hasTopicFilter ? "Gefilterde verhalen" : "Meest gelezen"}
+                </Text>
+                {filteredStories.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyText}>
+                      Geen meest gelezen verhalen binnen deze thema's.
+                    </Text>
+                  </View>
+                ) : (
+                  filteredStories.map((story) => (
+                    <FeedCard
+                      key={story.id}
+                      story={story}
+                      onOpen={openStory}
+                      variant="compact"
+                      onRequireAuth={onRequireAuth}
+                      token={token}
+                    />
+                  ))
+                )}
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={styles.resultsCount}>
+                {results.length}{" "}
+                {results.length === 1 ? "resultaat" : "resultaten"} voor "
+                {query}"
               </Text>
-              {filteredStories.length === 0 ? (
+              {results.length === 0 ? (
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyText}>
-                    Geen meest gelezen verhalen binnen deze thema's.
+                    Geen resultaten voor "{query}"
                   </Text>
                 </View>
               ) : (
-                filteredStories.map((story) => (
+                results.map((story) => (
                   <FeedCard
                     key={story.id}
                     story={story}
                     onOpen={openStory}
-                    variant="compact"
+                    variant="full"
                     onRequireAuth={onRequireAuth}
                     token={token}
                   />
                 ))
               )}
-            </View>
-          </>
-        ) : (
-          <>
-            <Text style={styles.resultsCount}>
-              {results.length}{" "}
-              {results.length === 1 ? "resultaat" : "resultaten"} voor "{query}"
-            </Text>
-            {results.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>
-                  Geen resultaten voor "{query}"
-                </Text>
-              </View>
-            ) : (
-              results.map((story) => (
-                <FeedCard
-                  key={story.id}
-                  story={story}
-                  onOpen={openStory}
-                  variant="full"
-                  onRequireAuth={onRequireAuth}
-                  token={token}
-                />
-              ))
-            )}
-          </>
-        )}
-      </ScrollView>
+            </>
+          )}
+        </ScrollView>
+      </DataState>
     </MotiView>
   );
 }
