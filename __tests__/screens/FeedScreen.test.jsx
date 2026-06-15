@@ -171,6 +171,60 @@ test("myTags-interesses staan voorgeselecteerd en filteren de feed bij openen", 
   expect(queryByText("Natuurverhaal")).toBeNull();
 });
 
+test("gedeelde selectie (controlled): prop filtert, klik meldt aan onToggleTopic", async () => {
+  const { fetchArticles } = require("../../src/lib/articles");
+  fetchArticles.mockResolvedValueOnce([
+    {
+      id: 21,
+      goodNews: false,
+      title: "Sportverhaal",
+      sub: "...",
+      img: "",
+      date: "1 juni 2026",
+      time: "10:00",
+      views: "1k",
+      readers: "1k",
+      trending: false,
+      tags: [{ id: 5, name: "Sport", category: "navigation" }],
+      body: [],
+      reactions: { smile: 0, meh: 0, frown: 0 },
+    },
+    {
+      id: 22,
+      goodNews: false,
+      title: "Natuurverhaal",
+      sub: "...",
+      img: "",
+      date: "1 juni 2026",
+      time: "11:00",
+      views: "1k",
+      readers: "1k",
+      trending: false,
+      tags: [{ id: 6, name: "Natuur", category: "topic" }],
+      body: [],
+      reactions: { smile: 0, meh: 0, frown: 0 },
+    },
+  ]);
+
+  const onToggleTopic = jest.fn();
+  const { findByText, queryByText, findAllByText } = render(
+    <FeedScreen
+      {...defaultProps}
+      selectedTopics={new Set(["Sport"])}
+      onToggleTopic={onToggleTopic}
+    />
+  );
+
+  // De doorgegeven (gedeelde) selectie bepaalt het filter.
+  await findByText("Sportverhaal");
+  expect(queryByText("Natuurverhaal")).toBeNull();
+
+  // Klikken meldt aan de parent i.p.v. lokale state te wijzigen.
+  const natuurNodes = await findAllByText("Natuur");
+  fireEvent.press(natuurNodes[0]);
+  expect(onToggleTopic).toHaveBeenCalledWith("Natuur");
+});
+
 test("excludeId verwijdert article uit lijst", async () => {
   const { findByText, queryByText } = render(
     <FeedScreen {...defaultProps} excludeId={1} />

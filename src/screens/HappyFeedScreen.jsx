@@ -55,19 +55,34 @@ export function HappyFeedScreen({
   onOpen,
   onProfile,
   myTags = EMPTY_TAGS,
+  selectedTopics: selectedTopicsProp,
+  onToggleTopic,
   onRequireAuth,
   token,
   savedIds,
   onSavedChange,
 }) {
-  const [selectedTopics, setSelectedTopics] = useState(new Set());
+  const [localSelected, setLocalSelected] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
 
-  // Onboarding/profiel-interesses staan voorgeselecteerd (en bovenaan via
-  // orderUserTags). Filteren blijft puur lokaal — geen server-sync.
+  // Selectie is gedeeld (controlled) als App.jsx 'm doorgeeft — zo blijven de
+  // chips consistent over feed/happy/zoek. Zonder prop valt het terug op lokale
+  // state. Interesses staan voorgeselecteerd (en bovenaan via orderUserTags);
+  // filteren blijft puur lokaal — geen server-sync.
+  const isControlled = selectedTopicsProp !== undefined;
+  const selectedTopics = isControlled ? selectedTopicsProp : localSelected;
   const myTagNamesKey = (myTags ?? []).map((tag) => tag.name).join("|");
   useEffect(() => {
-    setSelectedTopics(new Set((myTags ?? []).map((tag) => tag.name)));
+    if (isControlled) return undefined;
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) {
+        setLocalSelected(new Set((myTags ?? []).map((tag) => tag.name)));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myTagNamesKey]);
 
@@ -117,10 +132,16 @@ export function HappyFeedScreen({
   const earlierSection = sections.find((sec) => sec.key === "earlier");
 
   const toggleTopic = (label) => {
-    const next = new Set(selectedTopics);
-    if (next.has(label)) next.delete(label);
-    else next.add(label);
-    setSelectedTopics(next);
+    if (onToggleTopic) {
+      onToggleTopic(label);
+      return;
+    }
+    setLocalSelected((current) => {
+      const next = new Set(current);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
   };
 
   const activeLabel = [...selectedTopics].join(", ");

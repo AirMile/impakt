@@ -130,6 +130,7 @@ export default function App() {
   const [feedCat, setFeedCat] = useState("Voor jou");
   const [authInitialView, setAuthInitialView] = useState("welcome");
   const [authPromptVisible, setAuthPromptVisible] = useState(false);
+  const [selectedTopics, setSelectedTopics] = useState(new Set());
 
   const savedIds = useMemo(
     () => new Set(savedArticles.map((a) => a.id)),
@@ -139,6 +140,30 @@ export default function App() {
     () => new Set(savedMemes.map((m) => m.id)),
     [savedMemes]
   );
+
+  // Gedeelde thema-filter over feed/happy/zoek: één bron van waarheid, zodat een
+  // (de)selectie op één scherm meteen in de andere zichtbaar is. Start op de
+  // opgeslagen interesses; daarna puur client-side (geen server-sync).
+  const myTagNamesKey = myTags.map((tag) => tag.name).join("|");
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) setSelectedTopics(new Set(myTags.map((tag) => tag.name)));
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myTagNamesKey]);
+
+  const toggleTopic = useCallback((label) => {
+    setSelectedTopics((current) => {
+      const next = new Set(current);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!user?.token) {
@@ -389,6 +414,8 @@ export default function App() {
                 onCatChange={setFeedCat}
                 myTags={myTags}
                 onMyTagsChange={handleMyTagsChange}
+                selectedTopics={selectedTopics}
+                onToggleTopic={toggleTopic}
                 onRequireAuth={requireAuth}
                 token={user?.token}
                 savedIds={savedIds}
@@ -401,6 +428,8 @@ export default function App() {
                 onProfile={handleProfile}
                 myTags={myTags}
                 onMyTagsChange={handleMyTagsChange}
+                selectedTopics={selectedTopics}
+                onToggleTopic={toggleTopic}
                 onRequireAuth={requireAuth}
                 token={user?.token}
                 savedIds={savedIds}
@@ -452,6 +481,8 @@ export default function App() {
             }}
             myTags={myTags}
             onMyTagsChange={handleMyTagsChange}
+            selectedTopics={selectedTopics}
+            onToggleTopic={toggleTopic}
             onRequireAuth={requireAuth}
             token={user?.token}
             savedIds={savedIds}
