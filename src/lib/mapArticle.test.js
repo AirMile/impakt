@@ -136,6 +136,13 @@ test("mapArticle neemt reactie-counts over van de backend", () => {
   expect(article.reactions).toEqual({ smile: 5, meh: 2, frown: 1 });
 });
 
+test("mapArticle mapt my_reaction naar myReaction (null als afwezig)", () => {
+  expect(mapArticle({ ...SAMPLE_RAW, my_reaction: "frown" }).myReaction).toBe(
+    "frown"
+  );
+  expect(mapArticle(SAMPLE_RAW).myReaction).toBeNull();
+});
+
 test("mapArticle maakt relatieve article images volledig", () => {
   const article = mapArticle({
     ...SAMPLE_RAW,

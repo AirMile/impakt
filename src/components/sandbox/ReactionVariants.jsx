@@ -3,7 +3,7 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { MotiView } from "moti";
 import Svg, { Circle, Path } from "react-native-svg";
 import { IIcon } from "../Icons";
-import { REACTION_COLORS } from "../ReactionRail";
+import { REACTION_COLORS } from "../../lib/reactionMeta";
 import { colors, fonts } from "../../theme/tokens";
 
 const KEYS = ["smile", "meh", "frown"];

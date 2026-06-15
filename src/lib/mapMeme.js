@@ -30,6 +30,8 @@ export function mapMeme(raw) {
     bot: raw.caption ?? raw.bot ?? "",
     likes: Number.isFinite(raw.likes) ? raw.likes : 0,
     reactions: raw.reactions ?? { smile: 0, meh: 0, frown: 0 },
+    // De eigen reactie van de ingelogde gebruiker (null als niet gestemd / anoniem).
+    myReaction: raw.my_reaction ?? null,
     storyHeadline: article?.title ?? "",
     storyTeaser: article?.summary ?? "",
     storySource: "Impakt",

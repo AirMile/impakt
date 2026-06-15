@@ -119,6 +119,8 @@ export function mapArticle(raw) {
     goodNews,
     trending: false,
     reactions: raw.reactions ?? { smile: 0, meh: 0, frown: 0 },
+    // De eigen reactie van de ingelogde gebruiker (null als niet gestemd / anoniem).
+    myReaction: raw.my_reaction ?? null,
     poll: null,
     actions: null,
     sources: null,

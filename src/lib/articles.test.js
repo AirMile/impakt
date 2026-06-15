@@ -47,6 +47,29 @@ test("fetchArticles haalt mapped lijst op uit /articles", async () => {
   expect(articles[0].views).toBe("4.2k");
 });
 
+test("fetchArticles stuurt Authorization-header met token (voor my_reaction)", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ data: [{ ...RAW_ARTICLE, my_reaction: "smile" }] }),
+  });
+
+  const articles = await fetchArticles({ token: "tok123" });
+
+  expect(global.fetch).toHaveBeenCalledWith(
+    "http://145.24.237.97/api/articles",
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: "Bearer tok123",
+      },
+    }
+  );
+  // Token hoort niet als query-param mee te liften.
+  expect(global.fetch.mock.calls[0][0]).not.toContain("token");
+  expect(articles[0].myReaction).toBe("smile");
+});
+
 test("fetchArticles haalt alle gepagineerde article pagina's op", async () => {
   global.fetch
     .mockResolvedValueOnce({

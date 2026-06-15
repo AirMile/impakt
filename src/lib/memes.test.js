@@ -48,6 +48,27 @@ test("fetchMemes hangt storyId query-param aan", async () => {
   );
 });
 
+test("fetchMemes stuurt Authorization-header met token en mapt my_reaction", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ data: [{ ...RAW, my_reaction: "meh" }] }),
+  });
+
+  const memes = await fetchMemes(5, "tok123");
+
+  expect(global.fetch).toHaveBeenCalledWith(
+    "http://145.24.237.97/api/memes?storyId=5",
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: "Bearer tok123",
+      },
+    }
+  );
+  expect(memes[0].myReaction).toBe("meh");
+});
+
 test("fetchMemes gooit servermelding bij fout", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: false,

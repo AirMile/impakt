@@ -23,8 +23,9 @@ import { pressFx } from "../lib/pressFeedback";
 import { slideUpScreen } from "../theme/animations";
 import { shareStory } from "../lib/share";
 import { useSaveArticle } from "../hooks/useSaveArticle";
-import { submitArticleReaction } from "../lib/reactions";
+import { submitArticleReaction, removeArticleReaction } from "../lib/reactions";
 import { reactionPct } from "../lib/reactionPct";
+import { castVote, revertVote } from "../lib/reactionVote";
 import { fetchSources } from "../lib/sources";
 import { toast } from "../lib/toast";
 import { sumVotes, votePct } from "../lib/pollPct";
@@ -51,7 +52,7 @@ export function DetailScreen({
   onRequireAuth,
 }) {
   const insets = useSafeAreaInsets();
-  const [reaction, setReaction] = useState(null);
+  const [reaction, setReaction] = useState(story.myReaction ?? null);
   // Absolute counts uit GET /articles; na het stemmen optimistisch +1.
   const [counts, setCounts] = useState(
     story.reactions ?? { smile: 0, meh: 0, frown: 0 }
@@ -107,17 +108,22 @@ export function DetailScreen({
   const embeddedFeedActiveTab = isHappyContext ? "good" : "feed";
   const publishedMeta = [story.date, story.time].filter(Boolean).join(" - ");
 
-  // Optimistisch stemmen: zet reactie + count direct, draai terug bij serverfout.
+  // Optimistisch (her)stemmen: zet reactie + count direct, draai terug bij
+  // serverfout. Switchen verlaagt de oude stem en verhoogt de nieuwe.
   const react = async (key) => {
     if (!canInteract()) return;
     if (!token) return;
+    const prev = reaction;
+    if (prev === key) return;
     setReaction(key);
-    setCounts((c) => ({ ...c, [key]: (c[key] ?? 0) + 1 }));
+    setCounts((c) => castVote(c, prev, key));
     try {
+      // Switchen: verwijder eerst de oude stem, anders telt de backend beide.
+      if (prev != null) await removeArticleReaction(token, story.id);
       await submitArticleReaction(token, story.id, key);
     } catch (err) {
-      setReaction(null);
-      setCounts((c) => ({ ...c, [key]: Math.max(0, (c[key] ?? 1) - 1) }));
+      setReaction(prev);
+      setCounts((c) => revertVote(c, prev, key));
       toast.show(err.message || "Reactie opslaan mislukt.");
     }
   };

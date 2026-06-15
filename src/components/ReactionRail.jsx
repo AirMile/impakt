@@ -7,15 +7,17 @@ import Animated, {
 import { IIcon } from "./Icons";
 import { colors, fonts } from "../theme/tokens";
 import { pressFx } from "../lib/pressFeedback";
+import {
+  REACTIONS,
+  REACTION_EMOJI,
+  REACTION_LABELS,
+  REACTION_COLORS,
+} from "../lib/reactionMeta";
 
-export const REACTION_COLORS = {
-  smile: "#52BD70",
-  meh: "#F0B429",
-  frown: colors.red,
-};
+// Re-export voor bestaande imports (HumorScreen, sandbox) — bron is reactionMeta.
+export { REACTION_COLORS };
 
-const REACTION_EMOJI = { smile: "😊", meh: "😐", frown: "☹️" };
-const REACTION_KEYS = ["smile", "meh", "frown"];
+const REACTION_KEYS = REACTIONS.map((r) => r.key);
 
 function ReactionBtn({
   it,
@@ -83,9 +85,12 @@ export function ReactionRail({
   const voted = reaction !== null && reaction !== undefined;
 
   const items = [
-    { key: "smile", icon: "smile", label: "Blij", isReaction: true },
-    { key: "meh", icon: "meh", label: "Neutraal", isReaction: true },
-    { key: "frown", icon: "frown", label: "Verdrietig", isReaction: true },
+    ...REACTIONS.map((r) => ({
+      key: r.key,
+      icon: r.key,
+      label: REACTION_LABELS[r.key],
+      isReaction: true,
+    })),
     ...(onSave
       ? [{ key: "save", icon: "bookmark", label: "Bewaren", isReaction: false }]
       : []),
@@ -116,7 +121,9 @@ export function ReactionRail({
             voted={voted}
             reactions={reactions}
             onPress={() => {
-              if (isReactionKey && !voted) onReact?.(it.key);
+              // Ook na stemmen toegestaan — de parent switcht de reactie
+              // (of doet niets als je je huidige keuze opnieuw aantikt).
+              if (isReactionKey) onReact?.(it.key);
               if (it.key === "save") onSave?.();
               if (it.key === "share") onShare?.();
             }}

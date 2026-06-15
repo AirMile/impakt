@@ -1,10 +1,15 @@
 import { API_BASE_URL } from "./auth/account";
 import { mapArticle } from "./mapArticle";
 
-async function fetchJSON(url) {
+async function fetchJSON(url, token) {
   const response = await fetch(url, {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers: {
+      Accept: "application/json",
+      // Met token geeft de backend `my_reaction` per artikel terug, zodat een
+      // eerdere stem na een refresh weer zichtbaar is.
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   });
   const data = await response.json().catch(() => null);
   if (!response.ok) {
@@ -57,11 +62,12 @@ function buildArticleListUrl(options = {}) {
 }
 
 export async function fetchArticles(options = {}) {
+  const { token, ...query } = options;
   const articles = [];
-  let nextUrl = buildArticleListUrl(options);
+  let nextUrl = buildArticleListUrl(query);
 
   while (nextUrl) {
-    const data = await fetchJSON(nextUrl);
+    const data = await fetchJSON(nextUrl, token);
     articles.push(...unwrapList(data));
     nextUrl = getNextPageUrl(data);
   }
@@ -69,18 +75,19 @@ export async function fetchArticles(options = {}) {
   return uniqueById(articles).map(mapArticle).filter(Boolean);
 }
 
-export async function fetchArticle(id) {
+export async function fetchArticle(id, token) {
   if (id == null) throw new Error("Artikel-id ontbreekt.");
-  const data = await fetchJSON(`${API_BASE_URL}/articles/${id}`);
+  const data = await fetchJSON(`${API_BASE_URL}/articles/${id}`, token);
   return mapArticle(unwrapItem(data));
 }
 
-export async function fetchHappyFeed() {
+export async function fetchHappyFeed(options = {}) {
+  const { token } = options;
   const articles = [];
   let nextUrl = buildArticleListUrl({ sort: "views" });
 
   while (nextUrl) {
-    const data = await fetchJSON(nextUrl);
+    const data = await fetchJSON(nextUrl, token);
     articles.push(...unwrapList(data));
     nextUrl = getNextPageUrl(data);
   }

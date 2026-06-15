@@ -29,13 +29,13 @@ test("roept onReact aan met juiste key bij drukken", () => {
   expect(onReact).toHaveBeenCalledWith("smile");
 });
 
-test("roept onReact NIET aan wanneer al gestemd (voted=true)", () => {
+test("roept onReact aan met nieuwe key bij switchen na stemmen", () => {
   const onReact = jest.fn();
   const { getByLabelText } = render(
     <ReactionRail {...defaultProps} reaction="smile" onReact={onReact} />
   );
-  fireEvent.press(getByLabelText("Blij"));
-  expect(onReact).not.toHaveBeenCalled();
+  fireEvent.press(getByLabelText("Verdrietig"));
+  expect(onReact).toHaveBeenCalledWith("frown");
 });
 
 test("toont percentages van alle reacties na het stemmen", () => {
