@@ -3,6 +3,8 @@ import {
   submitMemeReaction,
   removeArticleReaction,
   removeMemeReaction,
+  fetchArticleMyReaction,
+  fetchMemeMyReaction,
 } from "./reactions";
 
 beforeEach(() => {
@@ -134,4 +136,44 @@ test("removeMemeReaction DELETE naar /memes/{id}/reaction met token", async () =
       },
     }
   );
+});
+
+test("fetchArticleMyReaction GET naar /articles/{id}/my-reaction en geeft reactie-key", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ my_reaction: { reaction: "frown", user_id: 33 } }),
+  });
+
+  const mine = await fetchArticleMyReaction("tok123", 24);
+
+  expect(global.fetch).toHaveBeenCalledWith(
+    "http://145.24.237.97/api/articles/24/my-reaction",
+    {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: "Bearer tok123",
+      },
+    }
+  );
+  expect(mine).toBe("frown");
+});
+
+test("fetchMemeMyReaction geeft null als er nog niet gestemd is", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ my_reaction: null }),
+  });
+
+  await expect(fetchMemeMyReaction("tok123", "m1")).resolves.toBeNull();
+});
+
+test("fetchArticleMyReaction zonder token doet geen call en geeft null", async () => {
+  await expect(fetchArticleMyReaction(null, 24)).resolves.toBeNull();
+  expect(global.fetch).not.toHaveBeenCalled();
+});
+
+test("fetchArticleMyReaction slikt serverfouten en geeft null", async () => {
+  global.fetch.mockResolvedValueOnce({ ok: false, json: async () => ({}) });
+  await expect(fetchArticleMyReaction("tok123", 24)).resolves.toBeNull();
 });

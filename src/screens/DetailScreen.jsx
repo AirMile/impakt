@@ -23,7 +23,11 @@ import { pressFx } from "../lib/pressFeedback";
 import { slideUpScreen } from "../theme/animations";
 import { shareStory } from "../lib/share";
 import { useSaveArticle } from "../hooks/useSaveArticle";
-import { submitArticleReaction, removeArticleReaction } from "../lib/reactions";
+import {
+  submitArticleReaction,
+  removeArticleReaction,
+  fetchArticleMyReaction,
+} from "../lib/reactions";
 import { reactionPct } from "../lib/reactionPct";
 import { castVote, revertVote } from "../lib/reactionVote";
 import { fetchSources } from "../lib/sources";
@@ -57,6 +61,19 @@ export function DetailScreen({
   const [counts, setCounts] = useState(
     story.reactions ?? { smile: 0, meh: 0, frown: 0 }
   );
+
+  // Haal de eerdere stem op (aparte backend-route) zodat die na een reload weer
+  // zichtbaar is. Overschrijft een lokale stem nooit (cur ?? mine).
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    fetchArticleMyReaction(token, story.id).then((mine) => {
+      if (!cancelled && mine) setReaction((cur) => cur ?? mine);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, story.id]);
   const { saved, toggleSaved } = useSaveArticle({
     story,
     token,

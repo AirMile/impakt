@@ -56,6 +56,41 @@ async function deleteReaction(token, path) {
   return data;
 }
 
+// De backend levert de eigen reactie niet in de lijst-respons, maar via aparte
+// routes: GET /articles/:id/my-reaction en /memes/:id/my-reaction. Respons:
+// { my_reaction: null } of { my_reaction: { reaction: "smile", ... } }.
+// We geven alleen de reactie-key terug (of null) en slikken fouten — een mislukte
+// my-reaction-call mag de feed nooit breken.
+async function fetchMyReaction(token, path) {
+  if (!token) return null;
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) return null;
+    const data = await response.json().catch(() => null);
+    const mine = data?.my_reaction;
+    if (typeof mine === "string") return mine;
+    return mine?.reaction ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchArticleMyReaction(token, articleId) {
+  if (articleId == null) return null;
+  return fetchMyReaction(token, `/articles/${articleId}/my-reaction`);
+}
+
+export async function fetchMemeMyReaction(token, memeId) {
+  if (memeId == null) return null;
+  return fetchMyReaction(token, `/memes/${memeId}/my-reaction`);
+}
+
 export async function submitArticleReaction(token, articleId, reaction) {
   if (articleId == null) throw new Error("Artikel-id ontbreekt.");
   return postReaction(token, `/articles/${articleId}/reaction`, reaction);

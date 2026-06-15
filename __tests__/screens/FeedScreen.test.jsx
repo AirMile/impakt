@@ -42,6 +42,7 @@ jest.mock("../../src/lib/share", () => ({ shareStory: jest.fn() }));
 jest.mock("../../src/lib/reactions", () => ({
   submitArticleReaction: jest.fn(),
   removeArticleReaction: jest.fn(),
+  fetchArticleMyReaction: jest.fn().mockResolvedValue(null),
 }));
 
 jest.mock("../../src/lib/saves", () => ({
@@ -407,10 +408,12 @@ test("switchen na stemmen verplaatst de stem en POST't de nieuwe reactie", async
   expect(getAllByText("0%")).toHaveLength(2);
 });
 
-test("toont de bewaarde stem (myReaction) meteen na een refresh", async () => {
+test("toont de bewaarde stem na een refresh (via my-reaction route)", async () => {
   const { fetchArticles } = require("../../src/lib/articles");
-  // Backend geeft een eerdere stem terug via myReaction → meteen percentages,
-  // geen smileys meer.
+  const { fetchArticleMyReaction } = require("../../src/lib/reactions");
+  // De backend levert de eerdere stem via de aparte my-reaction-route, niet in
+  // de lijst → na het ophalen springt de rail naar percentages.
+  fetchArticleMyReaction.mockResolvedValue("smile");
   fetchArticles.mockResolvedValueOnce([
     {
       id: 9,
@@ -426,7 +429,6 @@ test("toont de bewaarde stem (myReaction) meteen na een refresh", async () => {
       tags: [],
       body: [],
       reactions: { smile: 7, meh: 2, frown: 1 },
-      myReaction: "smile",
     },
   ]);
 
@@ -435,9 +437,10 @@ test("toont de bewaarde stem (myReaction) meteen na een refresh", async () => {
   );
   await findByText("Vers verhaal");
 
-  // reactionPct({7,2,1}) = 70/20/10 — direct zichtbaar zonder te drukken.
-  expect(getByText("70%")).toBeTruthy();
+  // reactionPct({7,2,1}) = 70/20/10, zichtbaar zodra de my-reaction-call terug is.
+  await waitFor(() => expect(getByText("70%")).toBeTruthy());
   expect(getByText("20%")).toBeTruthy();
   expect(getByText("10%")).toBeTruthy();
   expect(getAllByText(/%$/)).toHaveLength(3);
+  expect(fetchArticleMyReaction).toHaveBeenCalledWith("tok123", 9);
 });

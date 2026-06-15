@@ -26,7 +26,11 @@ import { fetchTags } from "../lib/tags";
 import { orderUserTags } from "../lib/orderUserTags";
 import { fetchArticles } from "../lib/articles";
 import { useSaveArticle } from "../hooks/useSaveArticle";
-import { submitArticleReaction, removeArticleReaction } from "../lib/reactions";
+import {
+  submitArticleReaction,
+  removeArticleReaction,
+  fetchArticleMyReaction,
+} from "../lib/reactions";
 import { reactionPct } from "../lib/reactionPct";
 import { castVote, revertVote } from "../lib/reactionVote";
 import { toast } from "../lib/toast";
@@ -160,6 +164,21 @@ export const FeedCard = React.memo(function FeedCard({
   const [counts, setCounts] = useState(
     story.reactions ?? { smile: 0, meh: 0, frown: 0 }
   );
+
+  // Haal de eerdere stem op (aparte backend-route) zodat die na een reload weer
+  // zichtbaar is. Overschrijft een lokale (optimistische) stem nooit: setReaction
+  // valt terug op de huidige waarde als die al gezet is.
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    fetchArticleMyReaction(token, story.id).then((mine) => {
+      if (!cancelled && mine) setReaction((cur) => cur ?? mine);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, story.id]);
+
   const isCompact = variant === "compact";
   const aspectH = isCompact ? CARD_W * (3.4 / 4) : CARD_W * (4.3 / 4);
   const canInteract = () => onRequireAuth?.() !== false;
