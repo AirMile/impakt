@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -121,7 +121,7 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
               veryCompact && styles.topicGridVeryCompact,
             ]}
           >
-            {TOPIC_ROWS.map((row, rowIndex) => (
+            {TOPIC_ROWS.map((row) => (
               <View key={row.join("-")} style={styles.topicRow}>
                 {row.map((id) => {
                   const topic = topicsById[id];

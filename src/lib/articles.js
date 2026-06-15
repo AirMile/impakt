@@ -46,13 +46,13 @@ function uniqueById(items) {
 }
 
 function buildArticleListUrl(options = {}) {
-  const params = new URLSearchParams();
-  Object.entries(options).forEach(([key, value]) => {
-    if (value == null || value === "") return;
-    params.set(key, String(value));
-  });
-
-  const qs = params.toString();
+  const qs = Object.entries(options)
+    .filter(([, value]) => value != null && value !== "")
+    .map(
+      ([key, value]) =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`
+    )
+    .join("&");
   return `${API_BASE_URL}/articles${qs ? `?${qs}` : ""}`;
 }
 

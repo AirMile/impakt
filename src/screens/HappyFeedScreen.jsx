@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -72,7 +72,13 @@ export function HappyFeedScreen({
   const myTagNamesKey = myTagNames.join("\u0001");
 
   useEffect(() => {
-    setSelectedTopics(new Set(myTagNames));
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) setSelectedTopics(new Set(myTagNames));
+    });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myTagNamesKey]);
 

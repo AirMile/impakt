@@ -143,7 +143,6 @@ export const FeedCard = React.memo(function FeedCard({
   story,
   onOpen,
   variant = "full",
-  index = 0,
   onRequireAuth,
 }) {
   const [reaction, setReaction] = useState(null);
@@ -253,7 +252,13 @@ export function FeedScreen({
   const myTagNamesKey = myTagNames.join("\u0001");
 
   useEffect(() => {
-    setSelectedTopics(new Set(myTagNames));
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) setSelectedTopics(new Set(myTagNames));
+    });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myTagNamesKey]);
 
