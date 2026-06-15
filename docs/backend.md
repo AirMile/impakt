@@ -388,6 +388,49 @@ Endpoints die geen login vereisen: `/feed`, `/stories/:id`, `/memes`, `/categori
 
 ---
 
+## Web-hosting (Vercel)
+
+De web-build (`react-native-web`) kan gratis als deelbare HTTPS-demo live via
+Vercel. Eén horde: de Vercel-URL is `https://…`, maar de backend draait op
+`http://145.24.237.97/api` (geen HTTPS). Een https-pagina mag geen http-API
+aanroepen ("mixed content"). Oplossing: een **same-origin proxy** via een
+`vercel.json`-rewrite — geen code, Vercel proxyt `/api/*` server-side naar de
+backend.
+
+**Hoe het werkt**
+
+- `vercel.json` → `rewrites`: `/api/:path*` wordt server-side doorgestuurd naar
+  `http://145.24.237.97/api/:path*` (server→server http is toegestaan). De
+  browser ziet alleen same-origin `https://<app>/api/…`, dus geen mixed content.
+  Query-strings worden automatisch meegestuurd.
+- `.env.production` zet `EXPO_PUBLIC_API_BASE_URL=/api` (relatief). `expo export`
+  draait in production-mode en geeft `.env.production` voorrang op `.env`, zodat
+  de app via de proxy praat i.p.v. het harde IP. Lokale dev (`npm run web` /
+  native) gebruikt `.env` en blijft het IP gebruiken.
+- `vercel.json` zet `buildCommand` (`npm run export:web`) en `outputDirectory`
+  (`dist`) vast, zodat Vercel de Expo-web-export bouwt zonder dashboardconfig.
+- `npm run export:web` draait met `--clear`: Metro cachet de ingebakken
+  `EXPO_PUBLIC_*`-waarde, dus zonder cache-clear zou een eerdere `npm run web`
+  (IP) het verkeerde adres in de bundle bakken.
+
+**Deploy-stappen**
+
+1. Push de repo naar GitHub.
+2. Vercel dashboard → Add New → Project → importeer de repo. `vercel.json` vult
+   build-command en output-dir automatisch in — niets handmatig instellen.
+3. Deploy → resultaat: `https://impakt-rn.vercel.app`.
+
+**Verificatie:** open de URL, check in DevTools → Network dat calls naar
+`https://<domein>/api/…` 200 geven, zonder mixed-content- of CORS-fout.
+
+> **Backend-adres wijzigen?** Het IP staat in `vercel.json`. Wil je het niet
+> hardcoden, vervang de rewrite dan door een Edge-function in `api/[...path].js`
+> die `process.env.API_ORIGIN` leest en met `fetch` proxyt — dezelfde aanpak,
+> maar dan instelbaar via een Vercel-env-var. Voor een vaste demo-backend is de
+> rewrite simpeler.
+
+---
+
 ## Vragen?
 
 Stuur een berichtje in het team-kanaal of maak een issue aan in de repo.

@@ -11,18 +11,16 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { BebasNeue_400Regular } from "@expo-google-fonts/bebas-neue";
-import {
-  Poppins_400Regular,
-  Poppins_500Medium,
-  Poppins_600SemiBold,
-  Poppins_700Bold,
-} from "@expo-google-fonts/poppins";
-import {
-  Geist_400Regular,
-  Geist_500Medium,
-  Geist_600SemiBold,
-} from "@expo-google-fonts/geist";
+// Per-gewicht imports (subpath) i.p.v. de package-root: anders re-exporteert de
+// root álle gewichten + italics en bundelt Metro elke .ttf mee (37 i.p.v. 8).
+import { BebasNeue_400Regular } from "@expo-google-fonts/bebas-neue/400Regular";
+import { Poppins_400Regular } from "@expo-google-fonts/poppins/400Regular";
+import { Poppins_500Medium } from "@expo-google-fonts/poppins/500Medium";
+import { Poppins_600SemiBold } from "@expo-google-fonts/poppins/600SemiBold";
+import { Poppins_700Bold } from "@expo-google-fonts/poppins/700Bold";
+import { Geist_400Regular } from "@expo-google-fonts/geist/400Regular";
+import { Geist_500Medium } from "@expo-google-fonts/geist/500Medium";
+import { Geist_600SemiBold } from "@expo-google-fonts/geist/600SemiBold";
 
 import { AnimatePresence } from "moti";
 import { colors } from "./src/theme/tokens";
