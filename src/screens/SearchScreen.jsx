@@ -62,7 +62,7 @@ function tagsForSelectedTopics(allTags, selectedTopics) {
 const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
 const SELECTED_BG = "#10141C";
-const SELECTED_TOPIC_BG = "#74CFDF";
+const SELECTED_TOPIC_BG = "#ADE8F4";
 const EMPTY_TAGS = [];
 
 export function SearchScreen({

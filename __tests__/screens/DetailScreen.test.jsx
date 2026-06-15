@@ -11,7 +11,7 @@ jest.mock("../../src/components/BottomNav", () => ({
 }));
 
 jest.mock("../../src/screens/FeedScreen", () => ({
-  FeedScreen: ({ activeTab, goodNewsOnly }) => {
+  FeedScreen: ({ activeTab, goodNewsOnly, myTags }) => {
     const React = require("react");
     const { Text } = require("react-native");
     return React.createElement(
@@ -22,6 +22,11 @@ jest.mock("../../src/screens/FeedScreen", () => ({
         Text,
         { testID: "embedded-feed-good-news" },
         String(Boolean(goodNewsOnly))
+      ),
+      React.createElement(
+        Text,
+        { testID: "embedded-feed-tag-count" },
+        String(myTags?.length ?? 0)
       )
     );
   },
@@ -103,6 +108,7 @@ test("detail vanuit Happy Feed houdt Happy Feed actief en toont alleen happy art
       onProfile={jest.fn()}
       onClose={jest.fn()}
       onSwapStory={jest.fn()}
+      myTags={[{ id: 6, name: "Natuur", category: "topic" }]}
       onRequireAuth={jest.fn()}
     />
   );
@@ -112,6 +118,7 @@ test("detail vanuit Happy Feed houdt Happy Feed actief en toont alleen happy art
     expect(getByTestId("embedded-feed-active").props.children).toBe("good")
   );
   expect(getByTestId("embedded-feed-good-news").props.children).toBe("true");
+  expect(getByTestId("embedded-feed-tag-count").props.children).toBe("1");
 });
 
 test("meme-card opent de exacte bijbehorende meme, niet alleen het artikel", async () => {

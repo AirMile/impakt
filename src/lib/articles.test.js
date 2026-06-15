@@ -75,6 +75,29 @@ test("fetchArticles haalt alle gepagineerde article pagina's op", async () => {
   expect(articles.map((article) => article.id)).toEqual([1, 2]);
 });
 
+test("fetchArticles verwijdert dubbele article ids uit gepagineerde responses", async () => {
+  global.fetch
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [RAW_ARTICLE],
+        links: { next: "http://145.24.237.97/api/articles?page=2" },
+      }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [{ ...RAW_ARTICLE, title: "Dubbel" }],
+        links: { next: null },
+      }),
+    });
+
+  const articles = await fetchArticles();
+
+  expect(articles).toHaveLength(1);
+  expect(articles[0].title).toBe("Klimaat");
+});
+
 test("fetchArticles ondersteunt query opties zoals sort=views", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: true,
@@ -145,6 +168,18 @@ test("fetchHappyFeed haalt goodNews artikelen op uit /articles gesorteerd op vie
   expect(happy).toHaveLength(1);
   expect(happy[0].id).toBe(9);
   expect(happy[0].goodNews).toBe(true);
+});
+
+test("fetchHappyFeed verwijdert dubbele happy article ids", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => [RAW_HAPPY, { ...RAW_HAPPY, title: "Dubbel happy" }],
+  });
+
+  const happy = await fetchHappyFeed();
+
+  expect(happy).toHaveLength(1);
+  expect(happy[0].title).toBe("Vrolijk verhaal");
 });
 
 test("fetchHappyFeed accepteert raw goodNews uit de article index", async () => {

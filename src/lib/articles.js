@@ -33,6 +33,18 @@ function unwrapItem(data) {
   return data;
 }
 
+function uniqueById(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const id = item?.id;
+    if (id == null) return true;
+    const key = String(id);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function buildArticleListUrl(options = {}) {
   const params = new URLSearchParams();
   Object.entries(options).forEach(([key, value]) => {
@@ -54,7 +66,7 @@ export async function fetchArticles(options = {}) {
     nextUrl = getNextPageUrl(data);
   }
 
-  return articles.map(mapArticle).filter(Boolean);
+  return uniqueById(articles).map(mapArticle).filter(Boolean);
 }
 
 export async function fetchArticle(id) {
@@ -73,7 +85,7 @@ export async function fetchHappyFeed() {
     nextUrl = getNextPageUrl(data);
   }
   // Happy Feed gebruikt de artikelindex op views en filtert daarna op goodNews.
-  return articles
+  return uniqueById(articles)
     .map(mapArticle)
     .filter(Boolean)
     .filter((article) => article.goodNews === true);

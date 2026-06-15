@@ -68,7 +68,7 @@ function tagsForSelectedTopics(allTags, selectedTopics) {
 const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
 const SELECTED_BG = "#10141C";
-const SELECTED_TOPIC_BG = "#74CFDF";
+const SELECTED_TOPIC_BG = "#ADE8F4";
 const EMPTY_TAGS = [];
 
 function TopicChips({ topics, selectedTopics, onToggle }) {
@@ -343,7 +343,7 @@ export function FeedScreen({
     [onOpen, onRequireAuth]
   );
 
-  const topicBar = !goodNewsOnly && topics.length > 0 && (
+  const topicBar = topics.length > 0 && (
     <TopicChips
       topics={topics}
       selectedTopics={selectedTopics}

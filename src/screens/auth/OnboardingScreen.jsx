@@ -35,7 +35,7 @@ const TOPIC_ROWS = [
 ];
 
 const SELECTED_BG = "#10141C";
-const SELECTED_TOPIC_BG = "#74CFDF";
+const SELECTED_TOPIC_BG = "#ADE8F4";
 const UNSELECTED_BG = "#DDF5F8";
 const INK = "#10111A";
 

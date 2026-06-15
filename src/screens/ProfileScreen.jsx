@@ -35,7 +35,7 @@ const CATEGORY_ICONS = {
 const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
 const SELECTED_BG = "#10141C";
-const SELECTED_TOPIC_BG = "#74CFDF";
+const SELECTED_TOPIC_BG = "#ADE8F4";
 
 function topicIcon(tagName) {
   return CATEGORY_ICONS[String(tagName).trim().toLowerCase()] ?? "topicWorld";

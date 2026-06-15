@@ -183,7 +183,7 @@ export default function App() {
         fetchArticle(Number(parsed.id))
           .then((s) => {
             if (s) {
-              setOpenStorySource("feed");
+              setOpenStorySource(s.goodNews ? "good" : "feed");
               setOpenStory(s);
             }
           })
@@ -219,7 +219,7 @@ export default function App() {
     fetchArticle(id)
       .then((s) => {
         if (s) {
-          setOpenStorySource("humor");
+          setOpenStorySource(s.goodNews ? "good" : "feed");
           setOpenStory(s);
         }
       })
@@ -416,6 +416,8 @@ export default function App() {
               onProfile={handleProfile}
               onSearch={handleSearch}
               activeTab={tab}
+              myTags={myTags}
+              onMyTagsChange={handleMyTagsChange}
               sourceTab={openStorySource}
               onRequireAuth={requireAuth}
               token={user?.token}

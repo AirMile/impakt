@@ -39,6 +39,8 @@ export function DetailScreen({
   onNav,
   onProfile,
   onSearch,
+  myTags = [],
+  onMyTagsChange,
   sourceTab = "feed",
   token,
   onRequireAuth,
@@ -432,6 +434,8 @@ export function DetailScreen({
               onSearch={onSearch}
               onProfile={onProfile}
               activeTab={embeddedFeedActiveTab}
+              myTags={myTags}
+              onMyTagsChange={onMyTagsChange}
               onRequireAuth={onRequireAuth}
             />
           )}
