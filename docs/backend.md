@@ -281,13 +281,38 @@ Deze endpoints zijn niet nodig voor de eerste sprint, maar wel voor een volledig
 
 ### Reacties op verhalen
 
-#### `POST /stories/:id/reactions`
+> **Let op — afwijking van de live API (geverifieerd juni 2026):** de app gebruikt
+> `POST /articles/:id/reaction` (enkelvoud) met body `{ "reaction": "smile" }`, en
+> `DELETE /articles/:id/reaction` om een stem te verwijderen. De `/stories/...`-routes
+> hieronder bestaan niet op de huidige backend (404).
 
-Geef een reactie (smile, meh of frown) op een artikel.
+#### `POST /articles/:id/reaction` / `DELETE /articles/:id/reaction`
 
-**Request body:** `{ "type": "smile" }` — type is `smile`, `meh` of `frown`.
+Geef of verwijder een reactie (smile, meh of frown) op een artikel. Memes gebruiken
+`POST|DELETE /memes/:id/reaction`. Geverifieerd werkend (HTTP 200, count gaat op/neer).
 
-**Response:** bijgewerkt `reactions`-object + `my_reaction`.
+**Request body (POST):** `{ "reaction": "smile" }` — `smile`, `meh` of `frown`.
+
+#### ⚠️ Nog te doen: `my_reaction` in de GET-responses
+
+**Probleem:** de stem wórdt opgeslagen, maar `GET /articles`, `GET /articles/:id` en
+`GET /memes` geven (ook mét geldige Bearer-token) géén `my_reaction` terug. Daardoor
+kan de app na een reload niet tonen welke reactie de gebruiker gaf — je ziet weer de
+smileys i.p.v. je eigen stem.
+
+**Backend-fix:** voeg per item `my_reaction` toe in de API Resource (de reactie van de
+ingelogde user, of `null`). De app leest dit veld al (`mapArticle`/`mapMeme` →
+`myReaction`) en stuurt de token mee bij het ophalen.
+
+```php
+// ArticleResource.php (pas relatie-/kolomnaam aan op je schema)
+'my_reaction' => $request->user()
+    ? optional(
+        $this->reactions()->where('user_id', $request->user()->id)->first()
+      )->reaction          // of ->type, afhankelijk van je kolomnaam
+    : null,
+// idem in MemeResource.php
+```
 
 ---
 
