@@ -38,10 +38,11 @@ import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { HappyFeedScreen } from "./src/screens/HappyFeedScreen";
 import { SavedScreen } from "./src/screens/SavedScreen";
 import { SandboxReactionsScreen } from "./src/screens/SandboxReactionsScreen";
-import { fetchMyTags } from "./src/lib/tags";
+import { fetchMyTags, updateMyTags } from "./src/lib/tags";
 import { fetchArticle } from "./src/lib/articles";
 import { fetchMemes } from "./src/lib/memes";
 import { fetchSavedArticles, fetchSavedMemes } from "./src/lib/saves";
+import { toast } from "./src/lib/toast";
 
 const DEV_FORCE_AUTH = __DEV__;
 const DEV_SANDBOX = false; // false | "reactions"
@@ -118,11 +119,13 @@ export default function App() {
   const [myTags, setMyTags] = useState([]);
   const [memes, setMemes] = useState([]);
   const [openStory, setOpenStory] = useState(null);
+  const [openStorySource, setOpenStorySource] = useState("feed");
   const [showProfile, setShowProfile] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [savedArticles, setSavedArticles] = useState([]);
   const [savedMemes, setSavedMemes] = useState([]);
+  const [pendingMemeId, setPendingMemeId] = useState(null);
   const [pendingMemeStoryId, setPendingMemeStoryId] = useState(null);
   const [feedCat, setFeedCat] = useState("Voor jou");
   const [authInitialView, setAuthInitialView] = useState("welcome");
@@ -214,7 +217,10 @@ export default function App() {
       if (parsed.kind === "story") {
         fetchArticle(Number(parsed.id))
           .then((s) => {
-            if (s) setOpenStory(s);
+            if (s) {
+              setOpenStorySource(s.goodNews ? "good" : "feed");
+              setOpenStory(s);
+            }
           })
           .catch(() => {});
       } else if (parsed.kind === "meme") {
@@ -222,6 +228,7 @@ export default function App() {
         if (meme) {
           setOpenStory(null);
           setTab("humor");
+          setPendingMemeId(meme.id);
           setPendingMemeStoryId(meme.storyId);
         }
       }
@@ -246,14 +253,34 @@ export default function App() {
   const openStoryById = useCallback((id) => {
     fetchArticle(id)
       .then((s) => {
-        if (s) setOpenStory(s);
+        if (s) {
+          setOpenStorySource(s.goodNews ? "good" : "feed");
+          setOpenStory(s);
+        }
       })
       .catch(() => {});
   }, []);
 
-  const openMemeForStory = useCallback((storyId) => {
+  const openStoryFromList = useCallback((story, source) => {
+    if (!story) return;
+    setOpenStorySource(source);
+    setOpenStory(story);
+
+    if (story.id == null) return;
+    fetchArticle(story.id)
+      .then((fresh) => {
+        if (!fresh) return;
+        setOpenStory((current) =>
+          String(current?.id) === String(story.id) ? fresh : current
+        );
+      })
+      .catch(() => {});
+  }, []);
+
+  const openMemeForStory = useCallback((memeId, storyId) => {
     setOpenStory(null);
     setTab("humor");
+    setPendingMemeId(memeId ?? null);
     setPendingMemeStoryId(storyId);
   }, []);
 
@@ -292,6 +319,26 @@ export default function App() {
     });
   }, []);
 
+  const handleMyTagsChange = useCallback(
+    (nextTags) => {
+      const previous = myTags;
+      setMyTags(nextTags);
+
+      if (!user?.token) return;
+
+      updateMyTags(
+        user.token,
+        nextTags.map((tag) => tag.id)
+      )
+        .then((updated) => setMyTags(updated))
+        .catch((err) => {
+          setMyTags(previous);
+          toast.show(err.message || "Tags bijwerken mislukt.");
+        });
+    },
+    [myTags, user?.token]
+  );
+
   const commonProps = useMemo(
     () => ({
       onNav: navTab,
@@ -321,8 +368,9 @@ export default function App() {
         {!inApp && (
           <AuthScreen
             initialView={authInitialView}
-            onComplete={(u) => {
+            onComplete={(u, _topics, syncedTags = []) => {
               setUser(u);
+              setMyTags(syncedTags);
               setAuthInitialView("welcome");
               setPhase("app");
             }}
@@ -336,10 +384,11 @@ export default function App() {
             <View style={[styles.tab, tab !== "feed" && styles.hidden]}>
               <FeedScreen
                 {...commonProps}
-                onOpen={setOpenStory}
+                onOpen={(story) => openStoryFromList(story, "feed")}
                 cat={feedCat}
                 onCatChange={setFeedCat}
                 myTags={myTags}
+                onMyTagsChange={handleMyTagsChange}
                 onRequireAuth={requireAuth}
                 token={user?.token}
                 savedIds={savedIds}
@@ -348,9 +397,10 @@ export default function App() {
             </View>
             <View style={[styles.tab, tab !== "good" && styles.hidden]}>
               <HappyFeedScreen
-                onOpen={setOpenStory}
+                onOpen={(story) => openStoryFromList(story, "good")}
                 onProfile={handleProfile}
                 myTags={myTags}
+                onMyTagsChange={handleMyTagsChange}
                 onRequireAuth={requireAuth}
                 token={user?.token}
                 savedIds={savedIds}
@@ -359,8 +409,12 @@ export default function App() {
             </View>
             <View style={[styles.tab, tab !== "humor" && styles.hidden]}>
               <HumorScreen
+                initialMemeId={pendingMemeId}
                 initialStoryId={pendingMemeStoryId}
-                onInitialStoryConsumed={() => setPendingMemeStoryId(null)}
+                onInitialStoryConsumed={() => {
+                  setPendingMemeId(null);
+                  setPendingMemeStoryId(null);
+                }}
                 onOpenStory={openStoryById}
                 memes={memes}
                 onRequireAuth={requireAuth}
@@ -394,9 +448,10 @@ export default function App() {
             onClose={() => setShowSearch(false)}
             onOpenStory={(s) => {
               setShowSearch(false);
-              setOpenStory(s);
+              openStoryFromList(s, tab);
             }}
             myTags={myTags}
+            onMyTagsChange={handleMyTagsChange}
             onRequireAuth={requireAuth}
             token={user?.token}
             savedIds={savedIds}
@@ -430,7 +485,7 @@ export default function App() {
               memes={memes}
               onClose={() => setOpenStory(null)}
               onOpenMeme={openMemeForStory}
-              onSwapStory={setOpenStory}
+              onSwapStory={(story) => openStoryFromList(story, openStorySource)}
               tab={tab}
               feedCat={feedCat}
               onCatChange={setFeedCat}
@@ -438,6 +493,9 @@ export default function App() {
               onProfile={handleProfile}
               onSearch={handleSearch}
               activeTab={tab}
+              myTags={myTags}
+              onMyTagsChange={handleMyTagsChange}
+              sourceTab={openStorySource}
               onRequireAuth={requireAuth}
               token={user?.token}
               savedIds={savedIds}

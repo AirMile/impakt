@@ -45,14 +45,18 @@ jest.mock("../src/storage/prefs", () => ({
 
 // Screen-mocks: routing-logica testen zonder render-complexiteit van screens
 jest.mock("../src/screens/HumorScreen", () => ({
-  HumorScreen: ({ initialStoryId, onInitialStoryConsumed }) => {
+  HumorScreen: ({ initialMemeId, initialStoryId, onInitialStoryConsumed }) => {
     const React = require("react");
     const { Text } = require("react-native");
     React.useEffect(() => {
       if (initialStoryId != null) onInitialStoryConsumed?.();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-    return React.createElement(Text, { testID: "humor-screen" }, "Humor");
+    return React.createElement(
+      Text,
+      { testID: "humor-screen" },
+      `${initialMemeId ?? ""}:${initialStoryId ?? ""}`
+    );
   },
 }));
 
@@ -89,6 +93,7 @@ test("deep-link impakt://meme/m1 zet tab op humor en toont HumorScreen", async (
   Linking.getInitialURL.mockResolvedValue("impakt://meme/m1");
   const { getByTestId } = render(<App />);
   await waitFor(() => expect(getByTestId("humor-screen")).toBeTruthy());
+  expect(getByTestId("humor-screen").props.children).toBe("m1:102");
 });
 
 test("zonder deep-link URL wordt AuthScreen getoond (phase=welcome)", async () => {

@@ -4,6 +4,7 @@ import { colors, fonts } from "../theme/tokens";
 
 const impaktLogo = require("../../assets/impakt-logo.webp");
 const LOGO_ASPECT_RATIO = 230 / 74;
+const LOGO_SOURCE_ASPECT_RATIO = 1071 / 444;
 
 export function ImpaktLogo({
   size = 28,
@@ -12,10 +13,44 @@ export function ImpaktLogo({
   width,
   height,
   style,
+  inverted = false,
 }) {
-  if (dark && dotColor === colors.red) {
+  if (inverted || (dark && dotColor === colors.red)) {
     const imageHeight = height ?? Math.round(size * 1.35);
-    const imageWidth = width ?? Math.round(imageHeight * LOGO_ASPECT_RATIO);
+    const imageWidth =
+      width ??
+      Math.round(
+        imageHeight * (inverted ? LOGO_SOURCE_ASPECT_RATIO : LOGO_ASPECT_RATIO)
+      );
+
+    if (inverted) {
+      const dotSize = Math.round(imageHeight * (69 / 444));
+
+      return (
+        <View style={[{ width: imageWidth, height: imageHeight }, style]}>
+          <Image
+            source={impaktLogo}
+            style={{
+              width: imageWidth,
+              height: imageHeight,
+              tintColor: colors.cream,
+            }}
+            resizeMode="contain"
+          />
+          <View
+            style={{
+              position: "absolute",
+              left: 0,
+              bottom: 0,
+              width: dotSize,
+              height: dotSize,
+              borderRadius: dotSize / 2,
+              backgroundColor: dotColor,
+            }}
+          />
+        </View>
+      );
+    }
 
     return (
       <Image

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -15,9 +15,27 @@ import { IIcon } from "../../components/Icons";
 import { ImpaktLogo } from "../../components/ImpaktLogo";
 import { colors, fonts } from "../../theme/tokens";
 import { toggleInSet } from "../../lib/toggleInSet";
-import { fetchTags, isInterestTag } from "../../lib/tags";
+
+const TOPICS = [
+  { id: "politiek", label: "Politiek", icon: "topicPolitics" },
+  { id: "buitenland", label: "Buitenland", icon: "topicWorld" },
+  { id: "economie", label: "Economie", icon: "topicEconomy" },
+  { id: "sport", label: "Sport", icon: "topicSport" },
+  { id: "natuur", label: "Natuur", icon: "topicNature" },
+  { id: "innovatie", label: "Innovatie", icon: "topicInnovation" },
+  { id: "kunst", label: "Kunst", icon: "topicArt" },
+  { id: "lokaal", label: "Lokaal", icon: "topicLocal" },
+];
+
+const TOPIC_ROWS = [
+  ["politiek", "buitenland"],
+  ["economie", "sport"],
+  ["natuur", "innovatie"],
+  ["kunst", "lokaal"],
+];
 
 const SELECTED_BG = "#10141C";
+const SELECTED_TOPIC_BG = "#ADE8F4";
 const UNSELECTED_BG = "#DDF5F8";
 const INK = "#10111A";
 
@@ -25,24 +43,15 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const [selected, setSelected] = useState(new Set(initial));
-  const [tags, setTags] = useState([]);
 
   const compact = height < 760;
   const veryCompact = height < 700;
 
-  // Thema's komen uit het /tags-endpoint; "happy" valt buiten de interesse-keuze.
-  useEffect(() => {
-    let cancelled = false;
-    fetchTags()
-      .then((all) => {
-        if (!cancelled) setTags(all.filter(isInterestTag));
-      })
-      .catch(() => {
-        if (!cancelled) setTags([]);
-      });
-    return () => {
-      cancelled = true;
-    };
+  const topicsById = useMemo(() => {
+    return TOPICS.reduce((acc, topic) => {
+      acc[topic.id] = topic;
+      return acc;
+    }, {});
   }, []);
 
   const toggle = (id) => {
@@ -112,45 +121,62 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
               veryCompact && styles.topicGridVeryCompact,
             ]}
           >
-            {tags.map((topic) => {
-              const isSelected = selected.has(topic.id);
+            {TOPIC_ROWS.map((row) => (
+              <View key={row.join("-")} style={styles.topicRow}>
+                {row.map((id) => {
+                  const topic = topicsById[id];
+                  const isSelected = selected.has(topic.id);
 
-              return (
-                <Pressable
-                  key={topic.id}
-                  onPress={() => toggle(topic.id)}
-                  style={({ pressed }) => [
-                    styles.topicButton,
-                    compact && styles.topicButtonCompact,
-                    veryCompact && styles.topicButtonVeryCompact,
-                    isSelected
-                      ? styles.topicButtonSelected
-                      : styles.topicButtonIdle,
-                    { opacity: pressed ? 0.78 : 1 },
-                  ]}
-                >
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      styles.topicLabel,
-                      compact && styles.topicLabelCompact,
-                      { color: isSelected ? "#FFFFFF" : INK },
-                    ]}
-                  >
-                    {topic.name}
-                  </Text>
+                  return (
+                    <View key={topic.id} style={styles.topicSlot}>
+                      <Pressable
+                        onPress={() => toggle(topic.id)}
+                        style={({ pressed }) => [
+                          styles.topicButton,
+                          compact && styles.topicButtonCompact,
+                          veryCompact && styles.topicButtonVeryCompact,
+                          isSelected
+                            ? styles.topicButtonSelected
+                            : styles.topicButtonIdle,
+                          {
+                            opacity: pressed ? 0.78 : 1,
+                          },
+                        ]}
+                      >
+                        <IIcon
+                          name={topic.icon}
+                          size={veryCompact ? 19 : compact ? 20 : 22}
+                          color={isSelected ? SELECTED_BG : INK}
+                          strokeWidth={2.45}
+                        />
 
-                  {isSelected && (
-                    <IIcon
-                      name="check"
-                      size={veryCompact ? 20 : 22}
-                      color="#FFFFFF"
-                      strokeWidth={3}
-                    />
-                  )}
-                </Pressable>
-              );
-            })}
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.topicLabel,
+                            compact && styles.topicLabelCompact,
+                            {
+                              color: isSelected ? SELECTED_BG : INK,
+                            },
+                          ]}
+                        >
+                          {topic.label}
+                        </Text>
+
+                        {isSelected && (
+                          <IIcon
+                            name="check"
+                            size={veryCompact ? 20 : 22}
+                            color={SELECTED_BG}
+                            strokeWidth={3}
+                          />
+                        )}
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
           </View>
 
           <View style={styles.helperBlock}>
@@ -291,31 +317,44 @@ const styles = StyleSheet.create({
 
   topicGrid: {
     width: "100%",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    rowGap: 14,
+    gap: 16,
   },
 
   topicGridCompact: {
-    rowGap: 12,
+    gap: 12,
   },
 
   topicGridVeryCompact: {
-    rowGap: 10,
+    gap: 10,
+  },
+
+  topicRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+
+  topicSlot: {
+    flex: 1,
+    minWidth: 0,
   },
 
   topicButton: {
-    width: "48%",
     height: 58,
     borderRadius: 999,
     paddingHorizontal: 17,
+    borderWidth: 1.5,
     flexDirection: "row",
     alignItems: "center",
     gap: 11,
-    // boxShadow i.p.v. losse shadow*-props: cross-platform (RN 0.76+) en geen
-    // react-native-web deprecation-warning.
-    boxShadow: "0px 3px 8px rgba(16,20,28,0.10)",
+
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 7 },
+    shadowRadius: 13,
+    shadowOpacity: 0.13,
+    elevation: 5,
   },
 
   topicButtonCompact: {
@@ -331,12 +370,15 @@ const styles = StyleSheet.create({
   },
 
   topicButtonSelected: {
-    backgroundColor: SELECTED_BG,
-    boxShadow: "0px 4px 12px rgba(16,20,28,0.20)",
+    backgroundColor: SELECTED_TOPIC_BG,
+    borderColor: SELECTED_BG,
+    shadowOpacity: 0.22,
+    elevation: 7,
   },
 
   topicButtonIdle: {
     backgroundColor: UNSELECTED_BG,
+    borderColor: "rgba(15,17,26,0.04)",
   },
 
   topicLabel: {

@@ -42,6 +42,9 @@ export function DetailScreen({
   onNav,
   onProfile,
   onSearch,
+  myTags = [],
+  onMyTagsChange,
+  sourceTab = "feed",
   token,
   savedIds,
   onSavedChange,
@@ -100,7 +103,9 @@ export function DetailScreen({
   const relatedMemes = getRelatedMemes(memes, story.id);
   const firstMeme = relatedMemes[0];
   const canInteract = () => onRequireAuth?.() !== false;
-  const embeddedFeedActiveTab = "feed";
+  const isHappyContext = sourceTab === "good";
+  const embeddedFeedActiveTab = isHappyContext ? "good" : "feed";
+  const publishedMeta = [story.date, story.time].filter(Boolean).join(" - ");
 
   // Optimistisch stemmen: zet reactie + count direct, draai terug bij serverfout.
   const react = async (key) => {
@@ -181,7 +186,7 @@ export function DetailScreen({
           </Pressable>
         </MotiView>
 
-        {/* Feed header: spacer + logo + profile — absolute overlay */}
+        {/* Feed header: spacer + logo + profile, absolute overlay */}
         <MotiView
           animate={{ opacity: inFeed ? 1 : 0 }}
           transition={{ type: "timing", duration: 250 }}
@@ -236,9 +241,25 @@ export function DetailScreen({
         <View style={styles.body}>
           <Text style={styles.title}>{story.title}</Text>
 
-          <Text style={styles.meta}>
-            12 min geleden · 4 min leestijd · {story.views} lezers
-          </Text>
+          <View style={styles.metaRow}>
+            {publishedMeta ? (
+              <Text style={styles.metaText}>{publishedMeta}</Text>
+            ) : null}
+            {publishedMeta && story.views ? (
+              <Text style={styles.metaDot}>{"\u00B7"}</Text>
+            ) : null}
+            {story.views ? (
+              <View style={styles.viewsMeta}>
+                <Text style={styles.metaText}>{story.views}</Text>
+                <IIcon
+                  name="eye"
+                  size={14}
+                  color={surfaces.muted}
+                  strokeWidth={2}
+                />
+              </View>
+            ) : null}
+          </View>
 
           <Text style={styles.sub}>{story.sub}</Text>
 
@@ -333,8 +354,12 @@ export function DetailScreen({
           {/* Meme-card */}
           {firstMeme && (
             <Pressable
-              onPress={() => onOpenMeme?.(story.id)}
-              style={styles.memeCard}
+              onPress={() => onOpenMeme?.(firstMeme.id, story.id)}
+              unstable_pressDelay={0}
+              style={({ pressed }) => [
+                styles.memeCard,
+                pressFx({ scale: 0.98 })({ pressed }),
+              ]}
             >
               <Image
                 source={{ uri: firstMeme.img }}
@@ -417,7 +442,7 @@ export function DetailScreen({
           <View style={styles.thinDivider} />
         </View>
 
-        {/* Embedded feed — onLayout geeft Y-positie voor inFeed-detectie */}
+        {/* Embedded feed: onLayout geeft Y-positie voor inFeed-detectie */}
         <View onLayout={onFeedSectionLayout} style={styles.relatedPlaceholder}>
           {showRelated && (
             <FeedScreen
@@ -425,6 +450,7 @@ export function DetailScreen({
               cat={feedCat}
               onCatChange={onCatChange}
               excludeId={story.id}
+              goodNewsOnly={isHappyContext}
               onOpen={(s) => {
                 onSwapStory?.(s);
               }}
@@ -432,6 +458,8 @@ export function DetailScreen({
               onSearch={onSearch}
               onProfile={onProfile}
               activeTab={embeddedFeedActiveTab}
+              myTags={myTags}
+              onMyTagsChange={onMyTagsChange}
               onRequireAuth={onRequireAuth}
               token={token}
               savedIds={savedIds}
@@ -459,7 +487,7 @@ export function DetailScreen({
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
+// Styles
 
 const styles = StyleSheet.create({
   screen: {
@@ -534,11 +562,26 @@ const styles = StyleSheet.create({
     color: colors.ink,
     marginBottom: 10,
   },
-  meta: {
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginBottom: 18,
+  },
+  metaText: {
     fontFamily: fonts.body,
     fontSize: 12.5,
     color: surfaces.muted,
-    marginBottom: 18,
+  },
+  metaDot: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: surfaces.textFaint,
+  },
+  viewsMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   sub: {
     fontFamily: fonts.body,

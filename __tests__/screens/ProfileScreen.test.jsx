@@ -411,6 +411,27 @@ test("tag verwijderen meldt nieuwe lijst aan onMyTagsChange", async () => {
   ]);
 });
 
+test("laatste tag verwijderen stuurt lege taglijst naar updateMyTags", async () => {
+  const { updateMyTags } = require("../../src/lib/tags");
+  updateMyTags.mockResolvedValueOnce([]);
+  const onMyTagsChange = jest.fn();
+  const { getByLabelText } = render(
+    <ProfileScreen
+      {...defaultProps}
+      user={{ username: "m", email: "m@m.nl", token: "abc" }}
+      myTags={[{ id: 5, name: "Sport", category: "navigation" }]}
+      onMyTagsChange={onMyTagsChange}
+    />
+  );
+
+  fireEvent.press(getByLabelText("Verwijder Sport"));
+
+  expect(onMyTagsChange).toHaveBeenCalledWith([]);
+  await waitFor(() => {
+    expect(updateMyTags).toHaveBeenCalledWith("abc", []);
+  });
+});
+
 test("rollback bij gefaalde updateMyTags herstelt vorige lijst", async () => {
   const { updateMyTags } = require("../../src/lib/tags");
   updateMyTags.mockRejectedValueOnce(new Error("Tags bijwerken mislukt"));

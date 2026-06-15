@@ -8,13 +8,11 @@ import {
   StyleSheet,
   Dimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AppHeader } from "../components/AppHeader";
 import { IIcon } from "../components/Icons";
 import { HeroOverlay } from "../components/HeroOverlay";
 import { REACTION_COLORS } from "../components/ReactionRail";
-import { ImpaktLogo } from "../components/ImpaktLogo";
 import { colors, fonts } from "../theme/tokens";
 import { shareMeme } from "../lib/share";
 import { saveMeme, unsaveMeme } from "../lib/saves";
@@ -166,8 +164,8 @@ const MemeCard = React.memo(function MemeCard({
     <View style={styles.card}>
       <Image
         source={{ uri: meme.img }}
-        style={StyleSheet.absoluteFillObject}
-        resizeMode="cover"
+        style={styles.memeImage}
+        resizeMode="contain"
       />
 
       <HeroOverlay variant="meme" />
@@ -267,6 +265,7 @@ const MemeCard = React.memo(function MemeCard({
 });
 
 export function HumorScreen({
+  initialMemeId,
   initialStoryId,
   onInitialStoryConsumed,
   onOpenStory,
@@ -276,22 +275,25 @@ export function HumorScreen({
   savedMemeIds,
   onSavedMemesChange,
 }) {
-  const insets = useSafeAreaInsets();
   const listRef = useRef(null);
 
-  // Scroll naar de juiste meme wanneer App.jsx een initialStoryId doorgeeft
+  // Scroll naar de juiste meme wanneer App.jsx een initialMemeId/storyId doorgeeft
   // (deeplink uit `impakt://meme/<id>` of "bekijk memes"-tap in DetailScreen).
   // Effect-based zodat het ook werkt als memes pas ná mount binnenkomen.
   useEffect(() => {
-    if (initialStoryId == null) return;
+    if (initialMemeId == null && initialStoryId == null) return;
     if (memes.length === 0) return;
-    const idx = memes.findIndex((m) => m.storyId === initialStoryId);
+    const idx = memes.findIndex((m) =>
+      initialMemeId != null
+        ? String(m.id) === String(initialMemeId)
+        : m.storyId === initialStoryId
+    );
     if (idx > 0 && listRef.current) {
       listRef.current.scrollToIndex({ index: idx, animated: false });
     }
     onInitialStoryConsumed?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [memes.length, initialStoryId]);
+  }, [memes.length, initialMemeId, initialStoryId]);
 
   const renderItem = useCallback(
     ({ item, index }) => (
@@ -343,19 +345,8 @@ export function HumorScreen({
         />
       )}
 
-      <View
-        style={[styles.headerOverlay, { height: insets.top + 80 }]}
-        pointerEvents="none"
-      >
-        <LinearGradient
-          colors={["rgba(15,17,26,0.65)", "transparent"]}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <View style={[styles.headerRow, { paddingTop: insets.top + 10 }]}>
-          <View style={{ width: 34 }} />
-          <ImpaktLogo size={26} dark={false} dotColor={colors.cream} />
-          <View style={{ width: 34 }} />
-        </View>
+      <View style={styles.headerOverlay}>
+        <AppHeader dark showProfile={false} />
       </View>
     </View>
   );
@@ -384,6 +375,10 @@ const styles = StyleSheet.create({
     width: "100%",
     backgroundColor: colors.ink,
     overflow: "hidden",
+  },
+  memeImage: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.ink,
   },
 
   caption: {
@@ -534,12 +529,5 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingBottom: 14,
   },
 });

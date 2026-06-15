@@ -6,12 +6,12 @@ const OVERLAYS = {
   // Feed card: donker boven + onderaan, licht midden
   card: {
     colors: [
-      "rgba(15,17,26,0.55)",
+      "rgba(15,17,26,0.72)",
+      "rgba(15,17,26,0.22)",
       "rgba(15,17,26,0.10)",
-      "rgba(15,17,26,0.05)",
-      "rgba(15,17,26,0.85)",
+      "rgba(15,17,26,0.90)",
     ],
-    locations: [0, 0.3, 0.55, 1],
+    locations: [0, 0.34, 0.58, 1],
   },
   // Meme (humor-feed): zware vignette aan alle kanten
   meme: {

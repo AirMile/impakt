@@ -47,6 +47,71 @@ test("fetchArticles haalt mapped lijst op uit /articles", async () => {
   expect(articles[0].views).toBe("4.2k");
 });
 
+test("fetchArticles haalt alle gepagineerde article pagina's op", async () => {
+  global.fetch
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [RAW_ARTICLE],
+        links: { next: "http://145.24.237.97/api/articles?page=2" },
+      }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [{ ...RAW_ARTICLE, id: 2, title: "Tweede" }],
+        links: { next: null },
+      }),
+    });
+
+  const articles = await fetchArticles();
+
+  expect(global.fetch).toHaveBeenCalledTimes(2);
+  expect(global.fetch).toHaveBeenNthCalledWith(
+    2,
+    "http://145.24.237.97/api/articles?page=2",
+    { method: "GET", headers: { Accept: "application/json" } }
+  );
+  expect(articles.map((article) => article.id)).toEqual([1, 2]);
+});
+
+test("fetchArticles verwijdert dubbele article ids uit gepagineerde responses", async () => {
+  global.fetch
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [RAW_ARTICLE],
+        links: { next: "http://145.24.237.97/api/articles?page=2" },
+      }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [{ ...RAW_ARTICLE, title: "Dubbel" }],
+        links: { next: null },
+      }),
+    });
+
+  const articles = await fetchArticles();
+
+  expect(articles).toHaveLength(1);
+  expect(articles[0].title).toBe("Klimaat");
+});
+
+test("fetchArticles ondersteunt query opties zoals sort=views", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ data: [RAW_ARTICLE] }),
+  });
+
+  await fetchArticles({ sort: "views" });
+
+  expect(global.fetch).toHaveBeenCalledWith(
+    "http://145.24.237.97/api/articles?sort=views",
+    { method: "GET", headers: { Accept: "application/json" } }
+  );
+});
+
 test("fetchArticles gooit servermelding bij fout", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: false,
@@ -71,21 +136,33 @@ test("fetchArticle haalt één artikel op via id", async () => {
   expect(article.id).toBe(1);
 });
 
+test("fetchArticle accepteert een data-wrapper voor detail response", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ data: RAW_ARTICLE }),
+  });
+
+  const article = await fetchArticle(1);
+
+  expect(article.id).toBe(1);
+  expect(article.title).toBe("Klimaat");
+});
+
 test("fetchArticle vereist een id", async () => {
   await expect(fetchArticle()).rejects.toThrow("Artikel-id ontbreekt.");
   expect(global.fetch).not.toHaveBeenCalled();
 });
 
-test("fetchHappyFeed haalt mapped lijst op uit /happy-feed", async () => {
+test("fetchHappyFeed haalt goodNews artikelen op uit /articles gesorteerd op views", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: true,
-    json: async () => [RAW_HAPPY],
+    json: async () => [RAW_ARTICLE, RAW_HAPPY],
   });
 
   const happy = await fetchHappyFeed();
 
   expect(global.fetch).toHaveBeenCalledWith(
-    "http://145.24.237.97/api/happy-feed",
+    "http://145.24.237.97/api/articles?sort=views",
     { method: "GET", headers: { Accept: "application/json" } }
   );
   expect(happy).toHaveLength(1);
@@ -93,12 +170,22 @@ test("fetchHappyFeed haalt mapped lijst op uit /happy-feed", async () => {
   expect(happy[0].goodNews).toBe(true);
 });
 
-test("fetchHappyFeed forceert goodNews ook zonder happy-tag in response", async () => {
-  // Backend stript de happy-tag uit de /happy-feed response; toch is alles
-  // hier per definitie goed nieuws.
+test("fetchHappyFeed verwijdert dubbele happy article ids", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: true,
-    json: async () => [RAW_ARTICLE],
+    json: async () => [RAW_HAPPY, { ...RAW_HAPPY, title: "Dubbel happy" }],
+  });
+
+  const happy = await fetchHappyFeed();
+
+  expect(happy).toHaveLength(1);
+  expect(happy[0].title).toBe("Vrolijk verhaal");
+});
+
+test("fetchHappyFeed accepteert raw goodNews uit de article index", async () => {
+  global.fetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => [{ ...RAW_ARTICLE, goodNews: true }],
   });
 
   const happy = await fetchHappyFeed();

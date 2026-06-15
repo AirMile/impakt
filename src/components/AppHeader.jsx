@@ -9,6 +9,7 @@ export function AppHeader({
   onProfile,
   onBack,
   showBack = false,
+  showProfile = true,
   dark = false,
 }) {
   const insets = useSafeAreaInsets();
@@ -40,23 +41,27 @@ export function AppHeader({
           <View style={styles.iconBtn} />
         )}
 
-        <ImpaktLogo size={26} dark={!dark} />
+        <ImpaktLogo size={26} dark={!dark} inverted={dark} />
 
-        <Pressable
-          onPress={onProfile}
-          accessibilityLabel="Profiel"
-          style={[
-            styles.avatarBtn,
-            {
-              backgroundColor: dark
-                ? "rgba(239,235,230,0.12)"
-                : colors.creamWarm,
-              borderColor: dark ? "rgba(239,235,230,0.12)" : surfaces.line,
-            },
-          ]}
-        >
-          <IIcon name="user" size={18} color={fg} strokeWidth={2} />
-        </Pressable>
+        {showProfile ? (
+          <Pressable
+            onPress={onProfile}
+            accessibilityLabel="Profiel"
+            style={[
+              styles.avatarBtn,
+              {
+                backgroundColor: dark
+                  ? "rgba(239,235,230,0.12)"
+                  : colors.creamWarm,
+                borderColor: dark ? "rgba(239,235,230,0.12)" : surfaces.line,
+              },
+            ]}
+          >
+            <IIcon name="user" size={18} color={fg} strokeWidth={2} />
+          </Pressable>
+        ) : (
+          <View style={styles.avatarSlot} />
+        )}
       </View>
     </View>
   );
@@ -87,5 +92,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  avatarSlot: {
+    width: 36,
+    height: 36,
   },
 });

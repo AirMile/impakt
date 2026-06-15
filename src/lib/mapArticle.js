@@ -4,16 +4,7 @@ import { API_BASE_URL } from "./config";
 // relatief storage-pad (/happy-feed → `image_url` = "articles/xxx.jpg"). We
 // strippen `/api` van de base-URL en normaliseren naar een absolute URL, zodat
 // <Image> 'm in beide feeds kan laden.
-const ASSET_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
-
-function resolveImageUrl(raw) {
-  const value = raw.image_url ?? raw.img ?? "";
-  if (!value) return "";
-  if (/^https?:\/\//.test(value)) return value;
-  const path = value.replace(/^\/+/, "");
-  const withStorage = path.startsWith("storage/") ? path : `storage/${path}`;
-  return `${ASSET_BASE_URL}/${withStorage}`;
-}
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 
 const NL_MONTHS = [
   "januari",
@@ -29,6 +20,16 @@ const NL_MONTHS = [
   "november",
   "december",
 ];
+
+function resolveArticleImageUrl(imageUrl) {
+  if (!imageUrl) return "";
+  const value = String(imageUrl);
+  if (/^(https?:)?\/\//i.test(value) || /^data:/i.test(value)) return value;
+
+  const path = value.replace(/^\/+/, "");
+  if (path.startsWith("storage/")) return `${API_ORIGIN}/${path}`;
+  return `${API_ORIGIN}/storage/${path}`;
+}
 
 function formatNLDate(iso) {
   if (!iso) return "";
@@ -57,41 +58,62 @@ function formatViews(n) {
 
 function paragraphsFromContent(content) {
   if (!content) return [];
-  if (Array.isArray(content)) return content.filter(Boolean);
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => (typeof item === "string" ? item : item?.value))
+      .filter(Boolean);
+  }
   return String(content)
     .split(/\n{2,}/)
     .map((p) => p.trim())
     .filter(Boolean);
 }
 
-// De backend levert article-tags als losse namen ("Lokaal"); ouder/mock-data
-// soms als object. Normaliseer beide naar de tag-naam (string).
-function tagName(tag) {
-  if (typeof tag === "string") return tag;
-  if (tag && typeof tag === "object") return tag.name ?? null;
-  return null;
+// De backend levert article-tags soms als losse namen ("Lokaal"), soms als
+// object met id/name/category. Normaliseer beide naar een object, zodat de
+// feed op naam kan filteren én de tag-styling de categorie kan gebruiken.
+function cleanTag(tag) {
+  if (typeof tag === "string") return { id: tag, name: tag, category: null };
+  if (!tag || typeof tag !== "object") return null;
+  return { id: tag.id, name: tag.name, category: tag.category };
+}
+
+// De good-news-markering komt als tag binnen: naam "Goed nieuws"/"happy" of
+// categorie "happy". Nu tags objecten zijn (met category) kunnen we 'm weer
+// afleiden, naast de expliciete backend-flag.
+function isGoodNewsTag(tag) {
+  const name = String(tag?.name ?? "")
+    .trim()
+    .toLowerCase();
+  const category = String(tag?.category ?? "")
+    .trim()
+    .toLowerCase();
+  return name === "goed nieuws" || name === "happy" || category === "happy";
 }
 
 export function mapArticle(raw) {
   if (!raw || typeof raw !== "object") return null;
 
   const rawTags = Array.isArray(raw.tags)
-    ? raw.tags.map(tagName).filter(Boolean)
+    ? raw.tags.map(cleanTag).filter(Boolean)
     : [];
-  // goodNews komt expliciet van de backend; de tag-categorie is niet langer
-  // beschikbaar (tags zijn nu enkel namen).
-  const goodNews = Boolean(raw.goodNews);
+  // goodNews komt van de expliciete backend-flag óf wordt afgeleid uit een
+  // good-news-tag (nu category weer beschikbaar is via het tag-object-model).
+  const goodNews = raw.goodNews === true || rawTags.some(isGoodNewsTag);
 
   return {
     id: raw.id,
     title: raw.title ?? "",
     sub: raw.summary ?? raw.sub ?? "",
-    img: resolveImageUrl(raw),
-    body: paragraphsFromContent(raw.content ?? raw.body),
-    date: formatNLDate(raw.published_at),
-    time: formatTime(raw.published_at),
-    views: formatViews(raw.views_count ?? 0),
-    readers: formatViews(raw.views_count ?? 0),
+    img:
+      raw.image_url != null
+        ? resolveArticleImageUrl(raw.image_url)
+        : resolveArticleImageUrl(raw.img),
+    body: paragraphsFromContent(raw.content ?? raw.body ?? raw.body_paragraphs),
+    date: formatNLDate(raw.published_at) || raw.date || "",
+    time: formatTime(raw.published_at) || raw.time || "",
+    views: formatViews(raw.views_count ?? raw.views ?? 0),
+    readers: formatViews(raw.views_count ?? raw.views ?? 0),
     tone: raw.tone ?? "",
     tags: rawTags,
     goodNews,
@@ -110,5 +132,5 @@ export {
   formatTime,
   formatViews,
   paragraphsFromContent,
-  resolveImageUrl,
+  resolveArticleImageUrl,
 };

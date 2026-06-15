@@ -5,11 +5,12 @@ import { HappyFeedScreen } from "../../src/screens/HappyFeedScreen";
 jest.mock("../../src/lib/tags", () => ({
   isInterestTag: jest.requireActual("../../src/lib/tags").isInterestTag,
   fetchTags: jest.fn().mockResolvedValue([
-    { id: 2, name: "Politiek", category: "politiek" },
-    { id: 3, name: "Buitenland", category: "buitenland" },
-    { id: 5, name: "Sport", category: "sport" },
-    { id: 6, name: "Natuur", category: "natuur" },
-    { id: 8, name: "Kunst", category: "kunst" },
+    { id: 18, name: "Goed nieuws", category: "flag" },
+    { id: 2, name: "Politiek", category: "navigation" },
+    { id: 3, name: "Buitenland", category: "topic" },
+    { id: 5, name: "Sport", category: "navigation" },
+    { id: 6, name: "Natuur", category: "topic" },
+    { id: 8, name: "Kunst", category: "topic" },
   ]),
 }));
 
@@ -26,7 +27,7 @@ jest.mock("../../src/lib/articles", () => ({
       views: "1k",
       readers: "1k",
       trending: false,
-      tags: ["Natuur"],
+      tags: [{ id: 6, name: "Natuur", category: "topic" }],
       body: [],
       reactions: { smile: 8, meh: 2, frown: 1 },
     },
@@ -41,7 +42,7 @@ jest.mock("../../src/lib/articles", () => ({
       views: "500",
       readers: "500",
       trending: false,
-      tags: ["Buitenland"],
+      tags: [{ id: 3, name: "Buitenland", category: "topic" }],
       body: [],
       reactions: { smile: 5, meh: 1, frown: 0 },
     },
@@ -122,7 +123,7 @@ test("myTags prop rendert eigen interesses bovenaan", async () => {
   const { findByTestId } = render(
     <HappyFeedScreen
       {...defaultProps}
-      myTags={[{ id: 6, name: "Natuur", category: "natuur" }]}
+      myTags={[{ id: 6, name: "Natuur", category: "topic" }]}
     />
   );
 

@@ -4,7 +4,7 @@ import {
   formatViews,
   mapArticle,
   paragraphsFromContent,
-  resolveImageUrl,
+  resolveArticleImageUrl,
 } from "./mapArticle";
 
 const SAMPLE_RAW = {
@@ -62,6 +62,13 @@ test("paragraphsFromContent accepteert ook bestaande array", () => {
   expect(paragraphsFromContent(["a", "b"])).toEqual(["a", "b"]);
 });
 
+test("paragraphsFromContent accepteert body_paragraph objecten uit happy-feed", () => {
+  expect(paragraphsFromContent([{ value: "a" }, { value: "b" }])).toEqual([
+    "a",
+    "b",
+  ]);
+});
+
 test("paragraphsFromContent geeft lege array bij null/undefined", () => {
   expect(paragraphsFromContent(null)).toEqual([]);
   expect(paragraphsFromContent("")).toEqual([]);
@@ -76,34 +83,40 @@ test("mapArticle bevat de hoofdvelden uit een live backend article", () => {
   expect(article.body).toHaveLength(2);
   expect(article.views).toBe("34.2k");
   expect(article.tone).toBe("light");
-  expect(article.tags).toEqual(["Politiek", "Natuur"]);
+  expect(article.tags).toEqual([
+    { id: 2, name: "Politiek", category: "politiek" },
+    { id: 6, name: "Natuur", category: "natuur" },
+  ]);
   expect(article.callToAction).toEqual({ id: 1, title: "Help" });
   expect(article.memes).toHaveLength(1);
 });
 
-test("resolveImageUrl laat absolute URLs ongemoeid", () => {
-  expect(resolveImageUrl({ img: "http://host/storage/a.jpg" })).toBe(
+test("resolveArticleImageUrl laat absolute en data-URLs ongemoeid", () => {
+  expect(resolveArticleImageUrl("http://host/storage/a.jpg")).toBe(
     "http://host/storage/a.jpg"
   );
-  expect(resolveImageUrl({ image_url: "https://images.unsplash.com/x" })).toBe(
+  expect(resolveArticleImageUrl("https://images.unsplash.com/x")).toBe(
     "https://images.unsplash.com/x"
+  );
+  expect(resolveArticleImageUrl("data:image/png;base64,AAAA")).toBe(
+    "data:image/png;base64,AAAA"
   );
 });
 
-test("resolveImageUrl prefixt relatieve happy-feed paden met host + /storage/", () => {
+test("resolveArticleImageUrl prefixt relatieve happy-feed paden met host + /storage/", () => {
   // /happy-feed levert image_url als "articles/xxx.jpg" zonder host of /storage/.
-  expect(resolveImageUrl({ image_url: "articles/abc.jpg" })).toBe(
+  expect(resolveArticleImageUrl("articles/abc.jpg")).toBe(
     "http://145.24.237.97/storage/articles/abc.jpg"
   );
   // Pad dat al met storage/ begint krijgt geen dubbele prefix.
-  expect(resolveImageUrl({ image_url: "/storage/articles/abc.jpg" })).toBe(
+  expect(resolveArticleImageUrl("/storage/articles/abc.jpg")).toBe(
     "http://145.24.237.97/storage/articles/abc.jpg"
   );
 });
 
-test("resolveImageUrl geeft lege string bij ontbrekend beeld", () => {
-  expect(resolveImageUrl({})).toBe("");
-  expect(resolveImageUrl({ image_url: "" })).toBe("");
+test("resolveArticleImageUrl geeft lege string bij ontbrekend beeld", () => {
+  expect(resolveArticleImageUrl("")).toBe("");
+  expect(resolveArticleImageUrl(null)).toBe("");
 });
 
 test("mapArticle stubt ontbrekende velden", () => {
@@ -123,20 +136,65 @@ test("mapArticle neemt reactie-counts over van de backend", () => {
   expect(article.reactions).toEqual({ smile: 5, meh: 2, frown: 1 });
 });
 
-test("mapArticle normaliseert tags naar namen (string of object)", () => {
-  expect(mapArticle({ ...SAMPLE_RAW, tags: ["Lokaal", "Kunst"] }).tags).toEqual(
-    ["Lokaal", "Kunst"]
-  );
-  expect(
-    mapArticle({ ...SAMPLE_RAW, tags: [{ name: "Lokaal" }, "Kunst"] }).tags
-  ).toEqual(["Lokaal", "Kunst"]);
+test("mapArticle maakt relatieve article images volledig", () => {
+  const article = mapArticle({
+    ...SAMPLE_RAW,
+    image_url: "articles/test.jpg",
+  });
+
+  expect(article.img).toBe("http://145.24.237.97/storage/articles/test.jpg");
 });
 
-test("mapArticle neemt goodNews over van de backend", () => {
+test("mapArticle gebruikt bestaande date en time als published_at ontbreekt", () => {
+  const article = mapArticle({
+    ...SAMPLE_RAW,
+    published_at: null,
+    date: "14 juni 2026",
+    time: "19:34",
+  });
+
+  expect(article.date).toBe("14 juni 2026");
+  expect(article.time).toBe("19:34");
+});
+
+test("mapArticle normaliseert tags naar objecten (string of object)", () => {
+  // Losse string-tags uit de live API worden objecten met category null.
+  expect(mapArticle({ ...SAMPLE_RAW, tags: ["Lokaal", "Kunst"] }).tags).toEqual(
+    [
+      { id: "Lokaal", name: "Lokaal", category: null },
+      { id: "Kunst", name: "Kunst", category: null },
+    ]
+  );
+  // Objecten behouden hun category voor de tag-styling.
+  expect(
+    mapArticle({
+      ...SAMPLE_RAW,
+      tags: [{ id: 3, name: "Lokaal", category: "regio" }, "Kunst"],
+    }).tags
+  ).toEqual([
+    { id: 3, name: "Lokaal", category: "regio" },
+    { id: "Kunst", name: "Kunst", category: null },
+  ]);
+});
+
+test("mapArticle bepaalt goodNews uit de backend-flag of een good-news-tag", () => {
   expect(mapArticle({ ...SAMPLE_RAW, goodNews: true }).goodNews).toBe(true);
   expect(mapArticle({ ...SAMPLE_RAW, goodNews: false }).goodNews).toBe(false);
-  // Zonder expliciet veld is het geen goed-nieuws-artikel.
+  // Zonder flag en zonder good-news-tag is het geen goed-nieuws-artikel.
   expect(mapArticle({ ...SAMPLE_RAW }).goodNews).toBe(false);
+  // Afgeleid uit een good-news-tag (naam "Goed nieuws"/"happy" of categorie "happy").
+  expect(
+    mapArticle({
+      ...SAMPLE_RAW,
+      tags: [{ id: 18, name: "Goed nieuws", category: "flag" }],
+    }).goodNews
+  ).toBe(true);
+  expect(
+    mapArticle({
+      ...SAMPLE_RAW,
+      tags: [{ id: 1, name: "happy", category: "happy" }],
+    }).goodNews
+  ).toBe(true);
 });
 
 test("mapArticle is veilig bij ontbrekende tags en content", () => {

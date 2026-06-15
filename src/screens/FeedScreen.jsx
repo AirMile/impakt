@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Dimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { MotiView } from "moti";
 
 import { AppHeader } from "../components/AppHeader";
@@ -21,7 +22,7 @@ import { colors, fonts, surfaces } from "../theme/tokens";
 import { fadeUp } from "../theme/animations";
 import { shareStory } from "../lib/share";
 import { pressFx } from "../lib/pressFeedback";
-import { fetchTags, isInterestTag } from "../lib/tags";
+import { fetchTags } from "../lib/tags";
 import { orderUserTags } from "../lib/orderUserTags";
 import { fetchArticles } from "../lib/articles";
 import { useSaveArticle } from "../hooks/useSaveArticle";
@@ -32,49 +33,113 @@ import { toast } from "../lib/toast";
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 36;
 
+const CATEGORY_ICONS = {
+  politiek: "topicPolitics",
+  buitenland: "topicWorld",
+  economie: "topicEconomy",
+  sport: "topicSport",
+  natuur: "topicNature",
+  innovatie: "topicInnovation",
+  kunst: "topicArt",
+  lokaal: "topicLocal",
+};
+
+function topicIcon(tagName) {
+  return CATEGORY_ICONS[String(tagName).trim().toLowerCase()] ?? "topicWorld";
+}
+
+function isSelectableTopic(tag) {
+  const name = String(tag?.name ?? "")
+    .trim()
+    .toLowerCase();
+  const category = String(tag?.category ?? "")
+    .trim()
+    .toLowerCase();
+  return Boolean(name) && name !== "goed nieuws" && category !== "flag";
+}
+
+function storyHasTopic(story, selectedTopics) {
+  return (story.tags ?? []).some((tag) => {
+    const name = typeof tag === "string" ? tag : tag?.name;
+    return selectedTopics.has(name);
+  });
+}
+
+function tagsForSelectedTopics(allTags, selectedTopics) {
+  return allTags
+    .filter(isSelectableTopic)
+    .filter((tag) => selectedTopics.has(tag.name));
+}
+
 const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
 const SELECTED_BG = "#10141C";
+const SELECTED_TOPIC_BG = "#ADE8F4";
+const EMPTY_TAGS = [];
 
 function TopicChips({ topics, selectedTopics, onToggle }) {
+  const showScrollHint = topics.length > 3;
+
   return (
     <View style={styles.topicSection}>
       <Text style={styles.topicSectionLabel}>Ontdek per thema</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.topicChipsRow}
-        style={styles.topicChipsScroll}
-      >
-        {topics.map((topic) => {
-          const isSelected = selectedTopics.has(topic.label);
+      <View style={styles.topicScrollFrame}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.topicChipsRow}
+          style={styles.topicChipsScroll}
+        >
+          {topics.map((topic) => {
+            const isSelected = selectedTopics.has(topic.label);
 
-          return (
-            <Pressable
-              key={topic.label}
-              onPress={() => onToggle(topic.label)}
-              style={({ pressed }) => [
-                styles.topicChip,
-                isSelected ? styles.topicChipSelected : styles.topicChipIdle,
-                { opacity: pressed ? 0.78 : 1 },
-              ]}
-            >
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.topicChipLabel,
-                  { color: isSelected ? "#FFFFFF" : TOPIC_INK },
+            return (
+              <Pressable
+                key={topic.label}
+                onPress={() => onToggle(topic.label)}
+                style={({ pressed }) => [
+                  styles.topicChip,
+                  isSelected ? styles.topicChipSelected : styles.topicChipIdle,
+                  { opacity: pressed ? 0.78 : 1 },
                 ]}
               >
-                {topic.label}
-              </Text>
-              {isSelected && (
-                <IIcon name="check" size={16} color="#FFFFFF" strokeWidth={3} />
-              )}
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+                <IIcon
+                  size={16}
+                  name={topic.icon}
+                  color={isSelected ? SELECTED_BG : TOPIC_INK}
+                  strokeWidth={2.3}
+                />
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.topicChipLabel,
+                    { color: isSelected ? SELECTED_BG : TOPIC_INK },
+                  ]}
+                >
+                  {topic.label}
+                </Text>
+                {isSelected && (
+                  <IIcon
+                    name="check"
+                    size={16}
+                    color={SELECTED_BG}
+                    strokeWidth={3}
+                  />
+                )}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+        {showScrollHint && (
+          <LinearGradient
+            pointerEvents="none"
+            colors={["rgba(239,235,230,0)", colors.cream]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.topicScrollHint}
+          />
+        )}
+      </View>
       <View style={styles.topicScrollSpacer} />
     </View>
   );
@@ -84,7 +149,6 @@ export const FeedCard = React.memo(function FeedCard({
   story,
   onOpen,
   variant = "full",
-  index = 0,
   onRequireAuth,
   token,
   savedIds,
@@ -141,14 +205,6 @@ export const FeedCard = React.memo(function FeedCard({
           >
             {story.title}
           </Text>
-          {isCompact && (
-            <View style={styles.dateRow}>
-              <IIcon name="calendar" size={12} color={colors.cream} />
-              <Text style={styles.dateMeta}>
-                {story.date} - {story.time}
-              </Text>
-            </View>
-          )}
         </View>
 
         <View style={styles.railArea} pointerEvents="box-none">
@@ -166,40 +222,38 @@ export const FeedCard = React.memo(function FeedCard({
           />
         </View>
 
-        {!isCompact && (
-          <View style={styles.bottomRow}>
-            <Pressable
-              onPress={() => onOpen(story)}
-              style={({ pressed }) => [styles.readMore, pressFx()({ pressed })]}
-            >
-              <Text style={styles.readMoreLabel}>Lees meer</Text>
-              <IIcon
-                name="arrow"
-                size={14}
-                color={colors.cream}
-                strokeWidth={2.2}
-              />
-            </Pressable>
-            <View style={styles.tagsRow}>
-              {story.trending && (
-                <View style={styles.trendingTag}>
-                  <Text style={styles.trendingLabel}>Trending</Text>
-                  <IIcon
-                    name="trend"
-                    size={11}
-                    color={colors.ink}
-                    strokeWidth={2.4}
-                  />
-                </View>
-              )}
-              {(story.tags ?? []).slice(0, 3).map((t) => (
-                <View key={t} style={styles.tag}>
-                  <Text style={styles.tagLabel}>{t}</Text>
-                </View>
-              ))}
-            </View>
+        <View style={styles.bottomRow}>
+          <Pressable
+            onPress={() => onOpen(story)}
+            style={({ pressed }) => [styles.readMore, pressFx()({ pressed })]}
+          >
+            <Text style={styles.readMoreLabel}>Lees meer</Text>
+            <IIcon
+              name="arrow"
+              size={14}
+              color={colors.cream}
+              strokeWidth={2.2}
+            />
+          </Pressable>
+          <View style={styles.tagsRow}>
+            {story.trending && (
+              <View style={styles.trendingTag}>
+                <Text style={styles.trendingLabel}>Trending</Text>
+                <IIcon
+                  name="trend"
+                  size={11}
+                  color={colors.ink}
+                  strokeWidth={2.4}
+                />
+              </View>
+            )}
+            {(story.tags ?? []).slice(0, 3).map((t) => (
+              <View key={t.id ?? t} style={styles.tag}>
+                <Text style={styles.tagLabel}>{t.name ?? t}</Text>
+              </View>
+            ))}
           </View>
-        )}
+        </View>
       </Pressable>
     </MotiView>
   );
@@ -211,7 +265,8 @@ export function FeedScreen({
   embedded = false,
   excludeId,
   goodNewsOnly = false,
-  myTags = [],
+  myTags = EMPTY_TAGS,
+  onMyTagsChange,
   onRequireAuth,
   token,
   savedIds,
@@ -219,8 +274,23 @@ export function FeedScreen({
 }) {
   const [selectedTopics, setSelectedTopics] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
+  const myTagNames = useMemo(
+    () => (myTags ?? []).map((tag) => tag.name),
+    [myTags]
+  );
+  const myTagNamesKey = myTagNames.join("");
 
-  // Thema-chips zijn secundair: bij een fout verbergen we ze stil.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) setSelectedTopics(new Set(myTagNames));
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myTagNamesKey]);
+
   useEffect(() => {
     let cancelled = false;
     fetchTags()
@@ -245,34 +315,37 @@ export function FeedScreen({
   const articles = useMemo(() => articlesData ?? [], [articlesData]);
 
   const topics = useMemo(() => {
-    const usable = allTags.filter(isInterestTag);
-    return orderUserTags(usable, myTags).map((tag) => ({ label: tag.name }));
+    const usable = allTags.filter(isSelectableTopic);
+    return orderUserTags(usable, myTags).map((tag) => ({
+      label: tag.name,
+      icon: topicIcon(tag.name),
+    }));
   }, [allTags, myTags]);
 
   const stories = useMemo(() => {
     const base = goodNewsOnly
       ? articles.filter((story) => story.goodNews === true)
-      : articles;
-    // story.tags zijn tag-namen; selectedTopics bevat de geselecteerde namen.
+      : articles.filter((story) => story.goodNews !== true);
     const byTopic =
       selectedTopics.size === 0
         ? base
-        : base.filter((story) =>
-            (story.tags ?? []).some((name) => selectedTopics.has(name))
-          );
+        : base.filter((story) => storyHasTopic(story, selectedTopics));
     return excludeId
       ? byTopic.filter((story) => story.id !== excludeId)
       : byTopic;
   }, [articles, selectedTopics, excludeId, goodNewsOnly]);
 
-  const toggleTopic = useCallback((label) => {
-    setSelectedTopics((current) => {
-      const next = new Set(current);
+  const toggleTopic = useCallback(
+    (label) => {
+      if (onRequireAuth?.() === false) return;
+      const next = new Set(selectedTopics);
       if (next.has(label)) next.delete(label);
       else next.add(label);
-      return next;
-    });
-  }, []);
+      setSelectedTopics(next);
+      onMyTagsChange?.(tagsForSelectedTopics(allTags, next));
+    },
+    [allTags, onMyTagsChange, onRequireAuth, selectedTopics]
+  );
 
   const renderEmpty = useCallback(
     () => (
@@ -302,7 +375,7 @@ export function FeedScreen({
     [onOpen, onRequireAuth, token, savedIds, onSavedChange]
   );
 
-  const topicBar = !goodNewsOnly && topics.length > 0 && (
+  const topicBar = topics.length > 0 && (
     <TopicChips
       topics={topics}
       selectedTopics={selectedTopics}
@@ -316,7 +389,7 @@ export function FeedScreen({
         {topicBar}
         {stories.map((s, i) => (
           <FeedCard
-            key={s.id}
+            key={`embedded-${s.id}-${i}`}
             story={s}
             onOpen={onOpen}
             index={i}
@@ -339,7 +412,7 @@ export function FeedScreen({
       <DataState loading={loading} error={error} onRetry={reload}>
         <FlatList
           data={stories}
-          keyExtractor={(s) => String(s.id)}
+          keyExtractor={(s, index) => `${s.id}-${index}`}
           renderItem={renderItem}
           ListEmptyComponent={renderEmpty}
           ListFooterComponent={renderFooter}
@@ -390,6 +463,16 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     overflow: "visible",
   },
+  topicScrollFrame: {
+    position: "relative",
+  },
+  topicScrollHint: {
+    position: "absolute",
+    top: 0,
+    right: -18,
+    bottom: 0,
+    width: 46,
+  },
   topicChipsRow: {
     flexDirection: "row",
     gap: 8,
@@ -402,6 +485,7 @@ const styles = StyleSheet.create({
     minWidth: 104,
     paddingHorizontal: 14,
     borderRadius: 9999,
+    borderWidth: 1.5,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -413,12 +497,14 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   topicChipSelected: {
-    backgroundColor: SELECTED_BG,
+    backgroundColor: SELECTED_TOPIC_BG,
+    borderColor: SELECTED_BG,
     shadowOpacity: 0.12,
     elevation: 3,
   },
   topicChipIdle: {
     backgroundColor: TOPIC_BG,
+    borderColor: "rgba(15,17,26,0.04)",
   },
   topicChipLabel: {
     flexShrink: 1,
@@ -457,25 +543,13 @@ const styles = StyleSheet.create({
     lineHeight: 36 * 0.95,
     letterSpacing: 0.36,
     color: colors.cream,
-    textShadowColor: "rgba(0,0,0,0.45)",
+    textShadowColor: "rgba(0,0,0,0.68)",
     textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 14,
+    textShadowRadius: 10,
   },
   cardTitleCompact: {
     fontSize: 30,
     lineHeight: 30 * 0.95,
-  },
-  dateRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 8,
-    opacity: 0.85,
-  },
-  dateMeta: {
-    fontFamily: fonts.body,
-    fontSize: 11.5,
-    color: colors.cream,
   },
   railArea: {
     position: "absolute",
@@ -500,6 +574,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: colors.cream,
+    textShadowColor: "rgba(0,0,0,0.72)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 5,
   },
   tagsRow: {
     flexDirection: "row",
@@ -526,15 +603,12 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   tag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(15,17,26,0.65)",
+    backgroundColor: "rgba(15,17,26,0.78)",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 9999,
     borderWidth: 1,
-    borderColor: "rgba(239,235,230,0.18)",
+    borderColor: "rgba(239,235,230,0.24)",
   },
   tagLabel: {
     fontFamily: fonts.display,

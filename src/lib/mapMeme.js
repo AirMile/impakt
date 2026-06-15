@@ -1,3 +1,17 @@
+import { API_BASE_URL } from "./auth/account";
+
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+
+function resolveMemeImageUrl(imageUrl) {
+  if (!imageUrl) return "";
+  const value = String(imageUrl);
+  if (/^(https?:)?\/\//i.test(value) || /^data:/i.test(value)) return value;
+
+  const path = value.replace(/^\/+/, "");
+  if (path.startsWith("storage/")) return `${API_ORIGIN}/${path}`;
+  return `${API_ORIGIN}/storage/${path}`;
+}
+
 export function mapMeme(raw) {
   if (!raw || typeof raw !== "object") return null;
 
@@ -8,7 +22,10 @@ export function mapMeme(raw) {
   return {
     id: raw.id,
     storyId,
-    img: raw.image_url ?? raw.img ?? "",
+    img:
+      raw.image_url != null
+        ? resolveMemeImageUrl(raw.image_url)
+        : (raw.img ?? ""),
     top: raw.title ?? raw.top ?? "",
     bot: raw.caption ?? raw.bot ?? "",
     likes: Number.isFinite(raw.likes) ? raw.likes : 0,

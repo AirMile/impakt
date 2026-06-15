@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Keyboard,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { MotiView } from "moti";
 
 import { IIcon } from "../components/Icons";
@@ -18,19 +19,59 @@ import { useAsyncData } from "../hooks/useAsyncData";
 import { colors, fonts } from "../theme/tokens";
 import { slideUpScreen } from "../theme/animations";
 import { searchStories } from "../lib/searchStories";
-import { topReadStories } from "../lib/topReadStories";
-import { fetchTags, isInterestTag } from "../lib/tags";
+import { fetchTags } from "../lib/tags";
 import { orderUserTags } from "../lib/orderUserTags";
 import { fetchArticles } from "../lib/articles";
+
+const CATEGORY_ICONS = {
+  politiek: "topicPolitics",
+  buitenland: "topicWorld",
+  economie: "topicEconomy",
+  sport: "topicSport",
+  natuur: "topicNature",
+  innovatie: "topicInnovation",
+  kunst: "topicArt",
+  lokaal: "topicLocal",
+};
+
+function topicIcon(tagName) {
+  return CATEGORY_ICONS[String(tagName).trim().toLowerCase()] ?? "topicWorld";
+}
+
+function isSelectableTopic(tag) {
+  const name = String(tag?.name ?? "")
+    .trim()
+    .toLowerCase();
+  const category = String(tag?.category ?? "")
+    .trim()
+    .toLowerCase();
+  return Boolean(name) && name !== "goed nieuws" && category !== "flag";
+}
+
+function storyHasTopic(story, selectedTopics) {
+  return (story.tags ?? []).some((tag) => {
+    const name = typeof tag === "string" ? tag : tag?.name;
+    return selectedTopics.has(name);
+  });
+}
+
+function tagsForSelectedTopics(allTags, selectedTopics) {
+  return allTags
+    .filter(isSelectableTopic)
+    .filter((tag) => selectedTopics.has(tag.name));
+}
 
 const TOPIC_BG = "#DDF5F8";
 const TOPIC_INK = "#10111A";
 const SELECTED_BG = "#10141C";
+const SELECTED_TOPIC_BG = "#ADE8F4";
+const EMPTY_TAGS = [];
 
 export function SearchScreen({
   onClose,
   onOpenStory,
-  myTags = [],
+  myTags = EMPTY_TAGS,
+  onMyTagsChange,
   onRequireAuth,
   token,
   savedIds,
@@ -40,8 +81,23 @@ export function SearchScreen({
   const [query, setQuery] = useState("");
   const [selectedTopics, setSelectedTopics] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
+  const myTagNames = useMemo(
+    () => (myTags ?? []).map((tag) => tag.name),
+    [myTags]
+  );
+  const myTagNamesKey = myTagNames.join("");
 
-  // Thema-chips zijn secundair: bij een fout verbergen we ze stil.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) setSelectedTopics(new Set(myTagNames));
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myTagNamesKey]);
+
   useEffect(() => {
     let cancelled = false;
     fetchTags()
@@ -66,25 +122,19 @@ export function SearchScreen({
   const allArticles = useMemo(() => articlesData ?? [], [articlesData]);
 
   const TOPICS = useMemo(() => {
-    const usable = allTags.filter(isInterestTag);
-    return orderUserTags(usable, myTags).map((tag) => ({ label: tag.name }));
+    const usable = allTags.filter(isSelectableTopic);
+    return orderUserTags(usable, myTags).map((tag) => ({
+      label: tag.name,
+      icon: topicIcon(tag.name),
+    }));
   }, [allTags, myTags]);
 
-  const mostReadStories = useMemo(
-    () => topReadStories(allArticles, 4),
-    [allArticles]
-  );
-
   const filteredStories = useMemo(() => {
-    if (selectedTopics.size === 0) return mostReadStories;
-    // story.tags zijn tag-namen; selectedTopics bevat de geselecteerde namen.
-    return mostReadStories.filter((story) =>
-      (story.tags ?? []).some((name) => selectedTopics.has(name))
-    );
-  }, [selectedTopics, mostReadStories]);
+    if (selectedTopics.size === 0) return allArticles;
+    return allArticles.filter((story) => storyHasTopic(story, selectedTopics));
+  }, [selectedTopics, allArticles]);
 
   const q = query.trim().toLowerCase();
-  // Volledige zoek doorzoekt alle articles (niet alleen top 4 most-read).
   const searchPool = q ? allArticles : filteredStories;
   const results = searchStories(query, searchPool);
   const hasTopicFilter = selectedTopics.size > 0;
@@ -95,52 +145,76 @@ export function SearchScreen({
   };
 
   const toggleTopic = (label) => {
-    setSelectedTopics((current) => {
-      const next = new Set(current);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
-    });
+    if (onRequireAuth?.() === false) return;
+    const next = new Set(selectedTopics);
+    if (next.has(label)) next.delete(label);
+    else next.add(label);
+    setSelectedTopics(next);
+    onMyTagsChange?.(tagsForSelectedTopics(allTags, next));
   };
+
+  const showScrollHint = TOPICS.length > 3;
 
   const topicBar = !q && (
     <View style={styles.topicSection}>
       <Text style={styles.topicSectionLabel}>Ontdek per thema</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.topicChipsRow}
-        style={styles.topicChipsScroll}
-      >
-        {TOPICS.map((topic) => {
-          const isSelected = selectedTopics.has(topic.label);
+      <View style={styles.topicScrollFrame}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.topicChipsRow}
+          style={styles.topicChipsScroll}
+        >
+          {TOPICS.map((topic) => {
+            const isSelected = selectedTopics.has(topic.label);
 
-          return (
-            <Pressable
-              key={topic.label}
-              onPress={() => toggleTopic(topic.label)}
-              style={({ pressed }) => [
-                styles.topicChip,
-                isSelected ? styles.topicChipSelected : styles.topicChipIdle,
-                { opacity: pressed ? 0.78 : 1 },
-              ]}
-            >
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.topicChipLabel,
-                  { color: isSelected ? "#FFFFFF" : TOPIC_INK },
+            return (
+              <Pressable
+                key={topic.label}
+                onPress={() => toggleTopic(topic.label)}
+                style={({ pressed }) => [
+                  styles.topicChip,
+                  isSelected ? styles.topicChipSelected : styles.topicChipIdle,
+                  { opacity: pressed ? 0.78 : 1 },
                 ]}
               >
-                {topic.label}
-              </Text>
-              {isSelected && (
-                <IIcon name="check" size={16} color="#FFFFFF" strokeWidth={3} />
-              )}
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+                <IIcon
+                  name={topic.icon}
+                  size={16}
+                  color={isSelected ? SELECTED_BG : TOPIC_INK}
+                  strokeWidth={2.3}
+                />
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.topicChipLabel,
+                    { color: isSelected ? SELECTED_BG : TOPIC_INK },
+                  ]}
+                >
+                  {topic.label}
+                </Text>
+                {isSelected && (
+                  <IIcon
+                    name="check"
+                    size={16}
+                    color={SELECTED_BG}
+                    strokeWidth={3}
+                  />
+                )}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+        {showScrollHint && (
+          <LinearGradient
+            pointerEvents="none"
+            colors={["rgba(239,235,230,0)", colors.cream]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.topicScrollHint}
+          />
+        )}
+      </View>
       <View style={styles.topicScrollSpacer} />
     </View>
   );
@@ -204,18 +278,18 @@ export function SearchScreen({
             <>
               <View style={styles.resultsSection}>
                 <Text style={[styles.sectionLabel, { paddingHorizontal: 18 }]}>
-                  {hasTopicFilter ? "Gefilterde verhalen" : "Meest gelezen"}
+                  {hasTopicFilter ? "Gefilterde verhalen" : "Alle artikelen"}
                 </Text>
                 {filteredStories.length === 0 ? (
                   <View style={styles.emptyState}>
                     <Text style={styles.emptyText}>
-                      Geen meest gelezen verhalen binnen deze thema's.
+                      Geen artikelen binnen deze thema's.
                     </Text>
                   </View>
                 ) : (
-                  filteredStories.map((story) => (
+                  filteredStories.map((story, i) => (
                     <FeedCard
-                      key={story.id}
+                      key={`filtered-${story.id}-${i}`}
                       story={story}
                       onOpen={openStory}
                       variant="compact"
@@ -242,9 +316,9 @@ export function SearchScreen({
                   </Text>
                 </View>
               ) : (
-                results.map((story) => (
+                results.map((story, i) => (
                   <FeedCard
-                    key={story.id}
+                    key={`result-${story.id}-${i}`}
                     story={story}
                     onOpen={openStory}
                     variant="full"
@@ -332,6 +406,16 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     overflow: "visible",
   },
+  topicScrollFrame: {
+    position: "relative",
+  },
+  topicScrollHint: {
+    position: "absolute",
+    top: 0,
+    right: -18,
+    bottom: 0,
+    width: 46,
+  },
   topicChipsRow: {
     flexDirection: "row",
     gap: 8,
@@ -344,6 +428,7 @@ const styles = StyleSheet.create({
     minWidth: 104,
     paddingHorizontal: 14,
     borderRadius: 9999,
+    borderWidth: 1.5,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -355,12 +440,14 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   topicChipSelected: {
-    backgroundColor: SELECTED_BG,
+    backgroundColor: SELECTED_TOPIC_BG,
+    borderColor: SELECTED_BG,
     shadowOpacity: 0.12,
     elevation: 3,
   },
   topicChipIdle: {
     backgroundColor: TOPIC_BG,
+    borderColor: "rgba(15,17,26,0.04)",
   },
   topicChipLabel: {
     flexShrink: 1,
