@@ -289,13 +289,10 @@ export function ProfileScreen({
       if (editingAccountField === "name") setNameValue(nextValue ?? "");
       if (editingAccountField === "email") setEmailValue(nextValue);
 
-      setAccountBaseline((current) => {
-        const next = {
-          ...current,
-          [editingAccountField]: nextValue ?? "",
-        };
-        return next;
-      });
+      setAccountBaseline((current) => ({
+        ...current,
+        [editingAccountField]: nextValue ?? "",
+      }));
       setAccountSuccess("Account bijgewerkt.");
       setEditingAccountField(null);
       setEditingAccountValue("");
