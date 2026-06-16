@@ -292,6 +292,7 @@ export function HumorScreen({
   initialStoryId,
   onInitialStoryConsumed,
   onOpenStory,
+  onProfile,
   memes = [],
   onRequireAuth,
   token,
@@ -299,6 +300,52 @@ export function HumorScreen({
   onSavedMemesChange,
 }) {
   const listRef = useRef(null);
+  // Huidige meme-index — bijgehouden voor de snap-berekening (zie onScrollEndDrag)
+  // en de momentum-correctie. Geen state: hoeft geen re-render te triggeren.
+  const indexRef = useRef(0);
+
+  // Snap naar één meme, geclampt binnen de lijstgrenzen.
+  const snapToIndex = useCallback(
+    (target) => {
+      const clamped = Math.max(0, Math.min(memes.length - 1, target));
+      indexRef.current = clamped;
+      listRef.current?.scrollToIndex({ index: clamped, animated: true });
+    },
+    [memes.length]
+  );
+
+  // Vervangt native `pagingEnabled`: dat snapt pas door bij ~50% van het scherm,
+  // waardoor een kleine swipe terugvalt. Hier bepaalt al een korte verschuiving
+  // (12% van het scherm) of een lichte flick (velocity) of we doorsnappen, zodat
+  // een kleine scrollbeweging meteen naar de volgende/vorige meme gaat. Max één
+  // meme per swipe, net als TikTok-feeds.
+  //
+  // De RICHTING komt alleen uit `delta` (afgeleid van contentOffset → altijd het
+  // juiste teken). `velocity.y` gebruiken we niet voor de richting: het teken
+  // daarvan is op iOS omgekeerd t.o.v. de scrollrichting, wat de snap eerder de
+  // verkeerde kant op stuurde. Velocity verlaagt enkel de afstand-drempel.
+  const onScrollEndDrag = useCallback(
+    (e) => {
+      const { contentOffset, velocity } = e.nativeEvent;
+      const current = indexRef.current;
+      const delta = contentOffset.y - current * SCREEN_H;
+      const DISTANCE_THRESHOLD = SCREEN_H * 0.12;
+      const VELOCITY_THRESHOLD = 0.15;
+      const fastFlick = Math.abs(velocity?.y ?? 0) > VELOCITY_THRESHOLD;
+      const passedDistance = Math.abs(delta) > DISTANCE_THRESHOLD;
+      let target = current;
+      if (Math.abs(delta) > 1 && (passedDistance || fastFlick)) {
+        target = delta > 0 ? current + 1 : current - 1;
+      }
+      snapToIndex(target);
+    },
+    [snapToIndex]
+  );
+
+  // Houd de index gelijk aan de werkelijke positie na een (programmatische) scroll.
+  const onMomentumScrollEnd = useCallback((e) => {
+    indexRef.current = Math.round(e.nativeEvent.contentOffset.y / SCREEN_H);
+  }, []);
 
   // Scroll naar de juiste meme wanneer App.jsx een initialMemeId/storyId doorgeeft
   // (deeplink uit `impakt://meme/<id>` of "bekijk memes"-tap in DetailScreen).
@@ -312,6 +359,7 @@ export function HumorScreen({
         : m.storyId === initialStoryId
     );
     if (idx > 0 && listRef.current) {
+      indexRef.current = idx;
       listRef.current.scrollToIndex({ index: idx, animated: false });
     }
     onInitialStoryConsumed?.();
@@ -354,14 +402,15 @@ export function HumorScreen({
           data={memes}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
-          pagingEnabled
           showsVerticalScrollIndicator={false}
           getItemLayout={(_, index) => ({
             length: SCREEN_H,
             offset: SCREEN_H * index,
             index,
           })}
-          decelerationRate="fast"
+          onScrollEndDrag={onScrollEndDrag}
+          onMomentumScrollEnd={onMomentumScrollEnd}
+          decelerationRate={0}
           initialNumToRender={2}
           maxToRenderPerBatch={2}
           windowSize={5}
@@ -369,7 +418,7 @@ export function HumorScreen({
       )}
 
       <View style={styles.headerOverlay}>
-        <AppHeader dark showProfile={false} />
+        <AppHeader dark onProfile={onProfile} />
       </View>
     </View>
   );
