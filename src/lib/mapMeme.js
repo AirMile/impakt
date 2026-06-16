@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "./auth/account";
+import { API_BASE_URL } from "./config";
 
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 
