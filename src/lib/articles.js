@@ -95,8 +95,8 @@ export async function fetchArticle(id, token) {
 
 export async function fetchHappyFeed(options = {}) {
   const { token } = options;
-  // Happy Feed gebruikt de artikelindex op views en filtert daarna op goodNews.
-  const mapped = (await fetchArticleIndex({ token, sort: "views" })).filter(
+  // Happy Feed toont alle good-news artikelen uit de normale artikelindex.
+  const mapped = (await fetchArticleIndex({ token })).filter(
     (article) => article.goodNews === true
   );
   return fetchPollsForArticles(token, mapped);

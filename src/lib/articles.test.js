@@ -250,7 +250,7 @@ test("fetchArticle vereist een id", async () => {
   expect(global.fetch).not.toHaveBeenCalled();
 });
 
-test("fetchHappyFeed haalt goodNews artikelen op uit /articles gesorteerd op views", async () => {
+test("fetchHappyFeed haalt alle goodNews artikelen op uit /articles zonder views-sortering", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: true,
     json: async () => [RAW_ARTICLE, RAW_HAPPY],
@@ -259,7 +259,7 @@ test("fetchHappyFeed haalt goodNews artikelen op uit /articles gesorteerd op vie
   const happy = await fetchHappyFeed();
 
   expect(global.fetch).toHaveBeenCalledWith(
-    "http://145.24.237.97/api/articles?sort=views",
+    "http://145.24.237.97/api/articles",
     { method: "GET", headers: { Accept: "application/json" } }
   );
   expect(happy).toHaveLength(1);
