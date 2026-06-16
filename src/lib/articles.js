@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "./auth/account";
+import { API_BASE_URL } from "./config";
 import { mapArticle } from "./mapArticle";
 import { fetchPollsForArticles } from "./polls";
 
