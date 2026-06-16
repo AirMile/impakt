@@ -88,14 +88,14 @@ export async function fetchArticle(id, token) {
 export async function fetchHappyFeed(options = {}) {
   const { token } = options;
   const articles = [];
-  let nextUrl = buildArticleListUrl({ sort: "views" });
+  let nextUrl = buildArticleListUrl();
 
   while (nextUrl) {
     const data = await fetchJSON(nextUrl, token);
     articles.push(...unwrapList(data));
     nextUrl = getNextPageUrl(data);
   }
-  // Happy Feed gebruikt de artikelindex op views en filtert daarna op goodNews.
+  // Happy Feed gebruikt de volledige artikelindex en filtert daarna op goodNews.
   const mapped = uniqueById(articles)
     .map(mapArticle)
     .filter(Boolean)

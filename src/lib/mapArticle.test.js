@@ -91,6 +91,29 @@ test("mapArticle bevat de hoofdvelden uit een live backend article", () => {
   expect(article.memes).toHaveLength(1);
 });
 
+test("mapArticle neemt call-to-action acties uit de article response over", () => {
+  const article = mapArticle({
+    ...SAMPLE_RAW,
+    actions: [
+      {
+        label: "Doneer aan Giro555",
+        sub: "1 min - veilig via iDEAL",
+        goal: null,
+        url: "https://example.test/doneer",
+      },
+    ],
+  });
+
+  expect(article.actions).toEqual([
+    {
+      label: "Doneer aan Giro555",
+      sub: "1 min - veilig via iDEAL",
+      goal: null,
+      url: "https://example.test/doneer",
+    },
+  ]);
+});
+
 test("resolveArticleImageUrl laat absolute en data-URLs ongemoeid", () => {
   expect(resolveArticleImageUrl("http://host/storage/a.jpg")).toBe(
     "http://host/storage/a.jpg"
