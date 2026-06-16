@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -130,6 +130,7 @@ export default function App() {
   const [tab, setTab] = useState("feed");
   const [user, setUser] = useState(null);
   const [myTags, setMyTags] = useState([]);
+  const myTagsRef = useRef([]);
   const [memes, setMemes] = useState([]);
   const [openStory, setOpenStory] = useState(null);
   const [openStorySource, setOpenStorySource] = useState("feed");
@@ -163,6 +164,10 @@ export default function App() {
     () => new Set(myTags.map((tag) => tag.name)),
     [myTags]
   );
+
+  useEffect(() => {
+    myTagsRef.current = myTags;
+  }, [myTags]);
 
   // Tag-catalogus om een aangetikt label (naam) naar het volledige tag-object
   // {id, name, category} te herleiden bij het toevoegen aan de interesses.
@@ -355,6 +360,7 @@ export default function App() {
   }, []);
 
   const inApp = phase === "app";
+  const userToken = user?.token;
   const isGuest = inApp && (!user?.token || user?.guest);
   const requireAuth = useCallback(() => {
     if (!isGuest) return true;
@@ -415,22 +421,28 @@ export default function App() {
 
   const handleMyTagsChange = useCallback(
     (nextTags) => {
-      const previous = myTags;
+      const previous = myTagsRef.current;
+      myTagsRef.current = nextTags;
       setMyTags(nextTags);
 
-      if (!user?.token) return;
+      if (!userToken) return;
 
       updateMyTags(
-        user.token,
+        userToken,
         nextTags.map((tag) => tag.id)
       )
-        .then((updated) => setMyTags(updated.filter(isInterestTag)))
+        .then((updated) => {
+          const syncedTags = updated.filter(isInterestTag);
+          myTagsRef.current = syncedTags;
+          setMyTags(syncedTags);
+        })
         .catch((err) => {
+          myTagsRef.current = previous;
           setMyTags(previous);
           toast.show(err.message || "Tags bijwerken mislukt.");
         });
     },
-    [myTags, user?.token]
+    [userToken]
   );
 
   // Feed/happy/zoek-chip (de)selecteren = interesse toevoegen/verwijderen, met

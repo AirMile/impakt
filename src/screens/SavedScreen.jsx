@@ -19,10 +19,11 @@ function MemeThumb({ meme, onOpenMeme }) {
     <Pressable
       onPress={() => onOpenMeme?.(meme.storyId)}
       style={styles.memeThumb}
+      accessibilityLabel={`Open meme: ${meme.top ?? ""}`}
     >
       <Image
         source={{ uri: meme.img }}
-        style={{ width: "100%", height: "100%" }}
+        style={StyleSheet.absoluteFillObject}
         resizeMode="cover"
       />
     </Pressable>
