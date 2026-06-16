@@ -86,3 +86,39 @@ test("fetchMemes returnt lege lijst als data geen array bevat", async () => {
 
   await expect(fetchMemes()).resolves.toEqual([]);
 });
+
+test("fetchMemes verrijkt de kaart met artikel-thumbnail en teaser via de index", async () => {
+  // De /memes-respons nest het artikel zonder afbeelding/summary; die komen
+  // uit een tweede call naar de artikelindex (/articles), gejoind op storyId.
+  global.fetch
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [RAW] }) })
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            id: 7,
+            title: "Headline",
+            summary: "Korte teaser",
+            image_url: "https://x.test/artikel.jpg",
+          },
+        ],
+      }),
+    });
+
+  const memes = await fetchMemes();
+
+  expect(memes[0].storyThumb).toBe("https://x.test/artikel.jpg");
+  expect(memes[0].storyTeaser).toBe("Korte teaser");
+});
+
+test("fetchMemes valt terug op de kale kaart als de artikelindex faalt", async () => {
+  global.fetch
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [RAW] }) })
+    .mockRejectedValueOnce(new Error("index down"));
+
+  const memes = await fetchMemes();
+
+  expect(memes).toHaveLength(1);
+  expect(memes[0].storyThumb).toBe("");
+});

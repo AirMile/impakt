@@ -19,6 +19,20 @@ test("mapMeme mapt backend-velden naar frontend-shape", () => {
   expect(m.bot).toBe("Ik op de fiets: character development.");
   expect(m.storyHeadline).toBe("Jongeren over klimaat");
   expect(m.storySource).toBe("Impakt");
+  // Geen artikel-afbeelding in RAW.article → lege thumbnail.
+  expect(m.storyThumb).toBe("");
+});
+
+test("mapMeme mapt de artikel-afbeelding naar storyThumb (absolute URL)", () => {
+  const m = mapMeme({
+    ...RAW,
+    article: {
+      id: 7,
+      title: "Jongeren over klimaat",
+      image_url: "https://x.test/a.jpg",
+    },
+  });
+  expect(m.storyThumb).toBe("https://x.test/a.jpg");
 });
 
 test("mapMeme maakt relatieve meme image_url absoluut via storage", () => {

@@ -62,7 +62,10 @@ function buildArticleListUrl(options = {}) {
   return `${API_BASE_URL}/articles${qs ? `?${qs}` : ""}`;
 }
 
-export async function fetchArticles(options = {}) {
+// Lichte artikelindex zonder poll-verrijking — voor plekken die alleen
+// artikel-metadata (titel/afbeelding/summary) nodig hebben, zoals de
+// "Lees meer"-kaart op de meme-feed. Scheelt de extra poll-calls.
+export async function fetchArticleIndex(options = {}) {
   const { token, ...query } = options;
   const articles = [];
   let nextUrl = buildArticleListUrl(query);
@@ -73,7 +76,12 @@ export async function fetchArticles(options = {}) {
     nextUrl = getNextPageUrl(data);
   }
 
-  const mapped = uniqueById(articles).map(mapArticle).filter(Boolean);
+  return uniqueById(articles).map(mapArticle).filter(Boolean);
+}
+
+export async function fetchArticles(options = {}) {
+  const { token } = options;
+  const mapped = await fetchArticleIndex(options);
   return fetchPollsForArticles(token, mapped);
 }
 
@@ -87,18 +95,9 @@ export async function fetchArticle(id, token) {
 
 export async function fetchHappyFeed(options = {}) {
   const { token } = options;
-  const articles = [];
-  let nextUrl = buildArticleListUrl({ sort: "views" });
-
-  while (nextUrl) {
-    const data = await fetchJSON(nextUrl, token);
-    articles.push(...unwrapList(data));
-    nextUrl = getNextPageUrl(data);
-  }
   // Happy Feed gebruikt de artikelindex op views en filtert daarna op goodNews.
-  const mapped = uniqueById(articles)
-    .map(mapArticle)
-    .filter(Boolean)
-    .filter((article) => article.goodNews === true);
+  const mapped = (await fetchArticleIndex({ token, sort: "views" })).filter(
+    (article) => article.goodNews === true
+  );
   return fetchPollsForArticles(token, mapped);
 }

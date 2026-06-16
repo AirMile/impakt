@@ -240,6 +240,13 @@ const MemeCard = React.memo(function MemeCard({
         ]}
       >
         <View style={styles.kickerInner}>
+          {meme.storyThumb ? (
+            <Image
+              source={{ uri: meme.storyThumb }}
+              style={styles.kickerThumb}
+              resizeMode="cover"
+            />
+          ) : null}
           <View style={styles.kickerBody}>
             <Text style={styles.kickerLabel}>
               Lees meer · {meme.storySource}
@@ -524,7 +531,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     flexDirection: "row",
-    alignItems: "center",
+    // Bovenaan uitlijnen i.p.v. centreren, zodat "Lees meer" altijd op dezelfde
+    // hoogte staat — ongeacht of de titel 1 of 2 regels beslaat.
+    alignItems: "flex-start",
     gap: 16,
     borderWidth: 1,
     borderColor: "rgba(15,17,26,0.08)",
@@ -542,13 +551,15 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   kickerLabel: {
+    // SemiBold via de font-familie, gelijk aan de andere eyebrow-labels in de
+    // app. Géén losse fontWeight: die werkt op native niet met een embedded-
+    // weight font (en zorgde voor het web/mobiel-verschil in weight).
     fontFamily: fonts.display,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.5,
+    fontSize: 12,
+    letterSpacing: 1.8,
     textTransform: "uppercase",
     color: colors.red,
-    marginBottom: 3,
+    marginBottom: 5,
   },
   kickerHeadline: {
     fontFamily: fonts.header,

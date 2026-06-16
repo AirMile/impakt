@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./config";
+import { resolveArticleImageUrl } from "./mapArticle";
 
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 
@@ -34,6 +35,7 @@ export function mapMeme(raw) {
     myReaction: raw.my_reaction ?? null,
     storyHeadline: article?.title ?? "",
     storyTeaser: article?.summary ?? "",
+    storyThumb: resolveArticleImageUrl(article?.image_url ?? article?.img),
     storySource: "Impakt",
   };
 }
