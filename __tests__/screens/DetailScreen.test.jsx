@@ -306,7 +306,7 @@ test("peiling in detailpagina post een stem en toont percentages", async () => {
     ],
   });
   const onRequireAuth = jest.fn();
-  const { getAllByText, getByText } = render(
+  const { getByText } = render(
     <DetailScreen
       story={{
         ...story,
