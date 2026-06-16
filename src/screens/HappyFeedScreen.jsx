@@ -10,7 +10,7 @@ import { FeedCard } from "./FeedScreen";
 import { colors, fonts, surfaces } from "../theme/tokens";
 import { groupHappyStories } from "../lib/storyDate";
 import { fetchTags } from "../lib/tags";
-import { orderUserTags } from "../lib/orderUserTags";
+import { orderTopics } from "../lib/orderTopics";
 import { fetchHappyFeed } from "../lib/articles";
 
 const CATEGORY_ICONS = {
@@ -56,6 +56,7 @@ export function HappyFeedScreen({
   onProfile,
   myTags = EMPTY_TAGS,
   selectedTopics: selectedTopicsProp,
+  topicOrder = EMPTY_TAGS,
   onToggleTopic,
   onRequireAuth,
   token,
@@ -111,11 +112,11 @@ export function HappyFeedScreen({
 
   const happyTopics = useMemo(() => {
     const usable = allTags.filter(isSelectableTopic);
-    return orderUserTags(usable, myTags).map((tag) => ({
+    return orderTopics(usable, selectedTopics, topicOrder).map((tag) => ({
       label: tag.name,
       icon: topicIcon(tag.name),
     }));
-  }, [allTags, myTags]);
+  }, [allTags, selectedTopics, topicOrder]);
 
   const sections = useMemo(() => {
     const filteredStories =

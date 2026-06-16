@@ -132,6 +132,15 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [myTags, setMyTags] = useState([]);
   const myTagsRef = useRef([]);
+  // Monotone teller: alleen de respons van de laatste tag-update mag de state
+  // schrijven. Voorkomt dat een out-of-order server-respons de nieuwere
+  // optimistic-state overschrijft (de "terugspring"-flikker bij snel (de)selecteren).
+  const tagReqRef = useRef(0);
+  // Volgorde van de thema-chips op recency: meest recent aangeraakte thema-naam
+  // vooraan. Wordt bij elke (de)selectie bijgewerkt, los van myTags — zo blijft een
+  // net-gedeselecteerd thema direct na de selectie staan i.p.v. naar de catalogus-
+  // plek achteraan te springen. orderTopics() ordent hierop.
+  const [topicRecency, setTopicRecency] = useState([]);
   const [memes, setMemes] = useState([]);
   const [openStory, setOpenStory] = useState(null);
   const [openStorySource, setOpenStorySource] = useState("feed");
@@ -423,6 +432,7 @@ export default function App() {
   const handleMyTagsChange = useCallback(
     (nextTags) => {
       const previous = myTagsRef.current;
+      const reqId = ++tagReqRef.current;
       myTagsRef.current = nextTags;
       setMyTags(nextTags);
 
@@ -433,11 +443,13 @@ export default function App() {
         nextTags.map((tag) => tag.id)
       )
         .then((updated) => {
+          if (reqId !== tagReqRef.current) return; // verouderde respons → negeren
           const syncedTags = updated.filter(isInterestTag);
           myTagsRef.current = syncedTags;
           setMyTags(syncedTags);
         })
         .catch((err) => {
+          if (reqId !== tagReqRef.current) return; // verouderde respons → niet reverten
           myTagsRef.current = previous;
           setMyTags(previous);
           toast.show(err.message || "Tags bijwerken mislukt.");
@@ -446,21 +458,33 @@ export default function App() {
     [userToken]
   );
 
+  // Elke aangeraakte thema-naam vooraan in de recency-lijst zetten (zowel bij
+  // selecteren als deselecteren), zodat orderTopics() 'm direct na de selectie houdt.
+  const bumpTopicRecency = useCallback((label) => {
+    setTopicRecency((current) => [
+      label,
+      ...current.filter((name) => name !== label),
+    ]);
+  }, []);
+
   // Feed/happy/zoek-chip (de)selecteren = interesse toevoegen/verwijderen, met
   // dezelfde backend-sync als het profiel. Verwijderen kan op naam (myTags bevat
-  // het id al); toevoegen herleidt het tag-object uit de catalogus.
+  // het id al); toevoegen herleidt het tag-object uit de catalogus. De chip-volgorde
+  // komt uit topicRecency, niet uit de myTags-volgorde.
   const toggleTopic = useCallback(
     (label) => {
       const selected = myTags.some((tag) => tag.name === label);
       if (selected) {
+        bumpTopicRecency(label);
         handleMyTagsChange(myTags.filter((tag) => tag.name !== label));
         return;
       }
       const tag = availableTags.find((t) => t.name === label);
       if (!tag) return;
+      bumpTopicRecency(label);
       handleMyTagsChange([...myTags, tag]);
     },
-    [myTags, availableTags, handleMyTagsChange]
+    [myTags, availableTags, handleMyTagsChange, bumpTopicRecency]
   );
 
   const commonProps = useMemo(
@@ -516,6 +540,7 @@ export default function App() {
                   myTags={myTags}
                   onMyTagsChange={handleMyTagsChange}
                   selectedTopics={selectedTopics}
+                  topicOrder={topicRecency}
                   onToggleTopic={toggleTopic}
                   onRequireAuth={requireAuth}
                   token={user?.token}
@@ -530,6 +555,7 @@ export default function App() {
                   myTags={myTags}
                   onMyTagsChange={handleMyTagsChange}
                   selectedTopics={selectedTopics}
+                  topicOrder={topicRecency}
                   onToggleTopic={toggleTopic}
                   onRequireAuth={requireAuth}
                   token={user?.token}
@@ -583,6 +609,7 @@ export default function App() {
               myTags={myTags}
               onMyTagsChange={handleMyTagsChange}
               selectedTopics={selectedTopics}
+              topicOrder={topicRecency}
               onToggleTopic={toggleTopic}
               onRequireAuth={requireAuth}
               token={user?.token}

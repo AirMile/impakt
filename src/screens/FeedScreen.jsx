@@ -23,7 +23,7 @@ import { fadeUp } from "../theme/animations";
 import { shareStory } from "../lib/share";
 import { pressFx } from "../lib/pressFeedback";
 import { fetchTags } from "../lib/tags";
-import { orderUserTags } from "../lib/orderUserTags";
+import { orderTopics } from "../lib/orderTopics";
 import { fetchArticles } from "../lib/articles";
 import { useSaveArticle } from "../hooks/useSaveArticle";
 import { useArticleReaction } from "../hooks/useArticleReactions";
@@ -245,6 +245,7 @@ export function FeedScreen({
   goodNewsOnly = false,
   myTags = EMPTY_TAGS,
   selectedTopics: selectedTopicsProp,
+  topicOrder = EMPTY_TAGS,
   onToggleTopic,
   onRequireAuth,
   token,
@@ -300,11 +301,11 @@ export function FeedScreen({
 
   const topics = useMemo(() => {
     const usable = allTags.filter(isSelectableTopic);
-    return orderUserTags(usable, myTags).map((tag) => ({
+    return orderTopics(usable, selectedTopics, topicOrder).map((tag) => ({
       label: tag.name,
       icon: topicIcon(tag.name),
     }));
-  }, [allTags, myTags]);
+  }, [allTags, selectedTopics, topicOrder]);
 
   const stories = useMemo(() => {
     const base = goodNewsOnly

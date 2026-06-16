@@ -20,7 +20,7 @@ import { colors, fonts } from "../theme/tokens";
 import { slideUpScreen } from "../theme/animations";
 import { searchStories } from "../lib/searchStories";
 import { fetchTags } from "../lib/tags";
-import { orderUserTags } from "../lib/orderUserTags";
+import { orderTopics } from "../lib/orderTopics";
 import { fetchArticles } from "../lib/articles";
 
 const CATEGORY_ICONS = {
@@ -66,6 +66,7 @@ export function SearchScreen({
   onOpenStory,
   myTags = EMPTY_TAGS,
   selectedTopics: selectedTopicsProp,
+  topicOrder = EMPTY_TAGS,
   onToggleTopic,
   onRequireAuth,
   token,
@@ -123,11 +124,11 @@ export function SearchScreen({
 
   const TOPICS = useMemo(() => {
     const usable = allTags.filter(isSelectableTopic);
-    return orderUserTags(usable, myTags).map((tag) => ({
+    return orderTopics(usable, selectedTopics, topicOrder).map((tag) => ({
       label: tag.name,
       icon: topicIcon(tag.name),
     }));
-  }, [allTags, myTags]);
+  }, [allTags, selectedTopics, topicOrder]);
 
   const filteredStories = useMemo(() => {
     if (selectedTopics.size === 0) return allArticles;
