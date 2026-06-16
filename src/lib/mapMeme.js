@@ -15,7 +15,7 @@ function resolveMemeImageUrl(imageUrl) {
 export function mapMeme(raw) {
   if (!raw || typeof raw !== "object") return null;
 
-  const storyId = raw.article_id ?? raw.storyId ?? null;
+  const storyId = raw.article_id ?? raw.story_id ?? raw.storyId ?? null;
   const article =
     raw.article && typeof raw.article === "object" ? raw.article : null;
 

@@ -17,13 +17,12 @@ import { slideUpScreen } from "../theme/animations";
 function MemeThumb({ meme, onOpenMeme }) {
   return (
     <Pressable
-      onPress={() => onOpenMeme?.(meme.id, meme.storyId)}
+      onPress={() => onOpenMeme?.(meme.storyId)}
       style={styles.memeThumb}
-      accessibilityLabel={`Open meme: ${meme.top ?? ""}`}
     >
       <Image
         source={{ uri: meme.img }}
-        style={StyleSheet.absoluteFillObject}
+        style={{ width: "100%", height: "100%" }}
         resizeMode="cover"
       />
     </Pressable>

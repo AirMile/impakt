@@ -585,9 +585,9 @@ export default function App() {
               setSavedMode(null);
               openStoryFromList(s, tab);
             }}
-            onOpenMeme={(memeId, storyId) => {
+            onOpenMeme={(storyId) => {
               setSavedMode(null);
-              openMemeForStory(memeId, storyId);
+              openMemeForStory(null, storyId);
             }}
             onRequireAuth={requireAuth}
             token={user?.token}
