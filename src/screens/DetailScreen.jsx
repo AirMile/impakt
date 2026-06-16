@@ -72,7 +72,6 @@ export function DetailScreen({
   const [poll, setPoll] = useState(story.poll ?? null);
   const [pollChoice, setPollChoice] = useState(null);
   const [pollSubmitting, setPollSubmitting] = useState(false);
-  const [activeAction, setActiveAction] = useState(null);
   const [inFeed, setInFeed] = useState(false);
   const [showRelated, setShowRelated] = useState(false);
   const [sources, setSources] = useState(story.sources ?? []);
@@ -279,6 +278,25 @@ export function DetailScreen({
       await Linking.openURL(url);
     } catch {
       toast.show("Bron openen mislukt.");
+    }
+  };
+
+  const openAction = async (action) => {
+    const url = action?.url;
+    if (!url || !/^https?:\/\//i.test(url)) {
+      toast.show("Geen geldige actielink gevonden.");
+      return;
+    }
+
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        toast.show("Deze actielink kan niet worden geopend.");
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      toast.show("Actielink openen mislukt.");
     }
   };
 
@@ -569,25 +587,39 @@ export function DetailScreen({
             <View style={styles.section}>
               <Text style={styles.sectionHeading}>Wat kan jij doen?</Text>
               {story.actions.map((action, i) => {
-                const active = activeAction === i;
+                const hasUrl = /^https?:\/\//i.test(action?.url ?? "");
                 return (
                   <Pressable
                     key={i}
-                    onPress={() => setActiveAction(active ? null : i)}
-                    style={[styles.actionRow, active && styles.actionRowActive]}
+                    onPress={hasUrl ? () => openAction(action) : undefined}
+                    disabled={!hasUrl}
+                    unstable_pressDelay={0}
+                    style={({ pressed }) => [
+                      styles.actionRow,
+                      !hasUrl && styles.actionRowStatic,
+                      hasUrl && pressFx({ scale: 0.98 })({ pressed }),
+                    ]}
+                    accessibilityRole={hasUrl ? "link" : undefined}
+                    accessibilityLabel={
+                      hasUrl ? `Open actie ${action.label}` : action.label
+                    }
                   >
-                    <View style={{ flex: 1 }}>
+                    <View style={styles.actionContent}>
                       <Text style={styles.actionTitle}>{action.label}</Text>
-                      <Text style={styles.actionSub}>{action.sub}</Text>
+                      {action.sub ? (
+                        <Text style={styles.actionSub}>{action.sub}</Text>
+                      ) : null}
                     </View>
-                    <View style={styles.actionArrow}>
-                      <IIcon
-                        name={active ? "check" : "arrow"}
-                        size={15}
-                        color={colors.cream}
-                        strokeWidth={2.2}
-                      />
-                    </View>
+                    {hasUrl && (
+                      <View style={styles.actionArrow}>
+                        <IIcon
+                          name="arrow"
+                          size={15}
+                          color={colors.cream}
+                          strokeWidth={2.2}
+                        />
+                      </View>
+                    )}
                   </Pressable>
                 );
               })}
@@ -962,30 +994,35 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    minHeight: 56,
     paddingLeft: 18,
     paddingRight: 10,
-    paddingVertical: 10,
-    borderRadius: 9999,
+    paddingVertical: 12,
+    borderRadius: 28,
     backgroundColor: colors.creamWarm,
     marginBottom: 8,
-    gap: 10,
+    gap: 12,
   },
-  actionRowActive: {
-    transform: [{ scale: 0.98 }],
+  actionRowStatic: {
+    paddingRight: 18,
+  },
+  actionContent: {
+    flex: 1,
+    minWidth: 0,
   },
   actionTitle: {
     fontFamily: fonts.display,
     fontSize: 14,
     fontWeight: "600",
     color: colors.ink,
-    lineHeight: 14 * 1.2,
+    lineHeight: 17,
   },
   actionSub: {
     fontFamily: fonts.body,
     fontSize: 11.5,
+    lineHeight: 16,
     color: surfaces.muted,
-    marginTop: 2,
+    marginTop: 3,
   },
   actionArrow: {
     width: 32,

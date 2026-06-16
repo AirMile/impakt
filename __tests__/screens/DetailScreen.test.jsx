@@ -223,6 +223,77 @@ test("bronrij opent de bron-url", async () => {
   );
 });
 
+test("call-to-action rij opent de actie-url onder bronnen", async () => {
+  Linking.canOpenURL.mockResolvedValueOnce(true);
+  const { getByText } = render(
+    <DetailScreen
+      story={{
+        ...story,
+        sources: [
+          {
+            label: "NOS",
+            sub: "https://nos.nl/artikel/aangepaste-bron-url",
+            url: "https://nos.nl/artikel/aangepaste-bron-url",
+          },
+        ],
+        actions: [
+          {
+            label: "Doneer aan Giro555",
+            sub: "1 min - veilig via iDEAL",
+            url: "https://example.test/doneer",
+          },
+        ],
+      }}
+      feedCat="Voor jou"
+      onCatChange={jest.fn()}
+      onNav={jest.fn()}
+      onSearch={jest.fn()}
+      onProfile={jest.fn()}
+      onClose={jest.fn()}
+      onSwapStory={jest.fn()}
+      onRequireAuth={jest.fn()}
+    />
+  );
+
+  expect(getByText("Bronnen")).toBeTruthy();
+  expect(getByText("Wat kan jij doen?")).toBeTruthy();
+
+  fireEvent.press(getByText("Doneer aan Giro555"));
+
+  await waitFor(() =>
+    expect(Linking.openURL).toHaveBeenCalledWith("https://example.test/doneer")
+  );
+});
+
+test("call-to-action zonder url opent geen externe link", () => {
+  const { getByText } = render(
+    <DetailScreen
+      story={{
+        ...story,
+        actions: [
+          {
+            label: "Verantwoordelijkheid in de entertainmentwereld.",
+            sub: "Ga het gesprek aan over verantwoordelijkheid in de entertainmentwereld.",
+            url: null,
+          },
+        ],
+      }}
+      feedCat="Voor jou"
+      onCatChange={jest.fn()}
+      onNav={jest.fn()}
+      onSearch={jest.fn()}
+      onProfile={jest.fn()}
+      onClose={jest.fn()}
+      onSwapStory={jest.fn()}
+      onRequireAuth={jest.fn()}
+    />
+  );
+
+  fireEvent.press(getByText("Verantwoordelijkheid in de entertainmentwereld."));
+
+  expect(Linking.openURL).not.toHaveBeenCalled();
+});
+
 test("peiling in detailpagina post een stem en toont percentages", async () => {
   const { fetchPollResults, submitPollVote } = require("../../src/lib/polls");
   const { setPollVote } = require("../../src/storage/prefs");
@@ -235,7 +306,7 @@ test("peiling in detailpagina post een stem en toont percentages", async () => {
     ],
   });
   const onRequireAuth = jest.fn();
-  const { getAllByText, getByText } = render(
+  const { getByText } = render(
     <DetailScreen
       story={{
         ...story,

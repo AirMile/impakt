@@ -112,6 +112,26 @@ function cleanPoll(rawPoll) {
   };
 }
 
+function cleanActions(actions) {
+  if (!Array.isArray(actions)) return null;
+  const cleaned = actions
+    .map((action) => {
+      if (!action || typeof action !== "object") return null;
+      const label = String(action.label ?? action.title ?? "").trim();
+      const sub = String(action.sub ?? action.description ?? "").trim();
+      const url = String(action.url ?? "").trim();
+      if (!label) return null;
+      return {
+        label,
+        sub,
+        goal: action.goal ?? null,
+        url: url || null,
+      };
+    })
+    .filter(Boolean);
+  return cleaned.length > 0 ? cleaned : null;
+}
+
 const FALLBACK_POLLS_BY_ARTICLE_ID = new Map(
   (storiesData.stories ?? [])
     .map((story) => [String(story.id), cleanPoll(story.poll)])
@@ -152,7 +172,7 @@ export function mapArticle(raw) {
       cleanPoll(raw.poll) ??
       FALLBACK_POLLS_BY_ARTICLE_ID.get(String(raw.id)) ??
       null,
-    actions: null,
+    actions: cleanActions(raw.actions),
     sources: null,
     callToAction: raw.call_to_action ?? null,
     memes: Array.isArray(raw.memes) ? raw.memes : [],
