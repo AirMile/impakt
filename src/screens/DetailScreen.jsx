@@ -23,15 +23,9 @@ import { pressFx } from "../lib/pressFeedback";
 import { slideUpScreen } from "../theme/animations";
 import { shareStory } from "../lib/share";
 import { useSaveArticle } from "../hooks/useSaveArticle";
-import {
-  submitArticleReaction,
-  removeArticleReaction,
-  fetchArticleMyReaction,
-} from "../lib/reactions";
+import { useArticleReaction } from "../hooks/useArticleReactions";
 import { reactionPct } from "../lib/reactionPct";
-import { castVote, revertVote } from "../lib/reactionVote";
 import { fetchSources } from "../lib/sources";
-import { toast } from "../lib/toast";
 import { sumVotes, votePct } from "../lib/pollPct";
 import { isInFeed } from "../lib/isInFeed";
 import { getRelatedMemes } from "../lib/getRelatedMemes";
@@ -56,24 +50,9 @@ export function DetailScreen({
   onRequireAuth,
 }) {
   const insets = useSafeAreaInsets();
-  const [reaction, setReaction] = useState(story.myReaction ?? null);
-  // Absolute counts uit GET /articles; na het stemmen optimistisch +1.
-  const [counts, setCounts] = useState(
-    story.reactions ?? { smile: 0, meh: 0, frown: 0 }
-  );
-
-  // Haal de eerdere stem op (aparte backend-route) zodat die na een reload weer
-  // zichtbaar is. Overschrijft een lokale stem nooit (cur ?? mine).
-  useEffect(() => {
-    if (!token) return;
-    let cancelled = false;
-    fetchArticleMyReaction(token, story.id).then((mine) => {
-      if (!cancelled && mine) setReaction((cur) => cur ?? mine);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [token, story.id]);
+  // Reactie-state komt uit de gedeelde store, zodat detail en feed dezelfde
+  // counts/eigen stem tonen. De stem-logica zelf leeft in de provider.
+  const { reaction, counts, react } = useArticleReaction(story);
   const { saved, toggleSaved } = useSaveArticle({
     story,
     token,
@@ -124,26 +103,6 @@ export function DetailScreen({
   const isHappyContext = sourceTab === "good";
   const embeddedFeedActiveTab = isHappyContext ? "good" : "feed";
   const publishedMeta = [story.date, story.time].filter(Boolean).join(" - ");
-
-  // Optimistisch (her)stemmen: zet reactie + count direct, draai terug bij
-  // serverfout. Switchen verlaagt de oude stem en verhoogt de nieuwe.
-  const react = async (key) => {
-    if (!canInteract()) return;
-    if (!token) return;
-    const prev = reaction;
-    if (prev === key) return;
-    setReaction(key);
-    setCounts((c) => castVote(c, prev, key));
-    try {
-      // Switchen: verwijder eerst de oude stem, anders telt de backend beide.
-      if (prev != null) await removeArticleReaction(token, story.id);
-      await submitArticleReaction(token, story.id, key);
-    } catch (err) {
-      setReaction(prev);
-      setCounts((c) => revertVote(c, prev, key));
-      toast.show(err.message || "Reactie opslaan mislukt.");
-    }
-  };
 
   const totalVotes = story.poll ? sumVotes(story.poll.options, pollChoice) : 0;
 

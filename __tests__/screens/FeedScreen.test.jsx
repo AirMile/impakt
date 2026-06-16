@@ -1,6 +1,26 @@
 import React from "react";
-import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import {
+  render as rtlRender,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react-native";
 import { FeedScreen } from "../../src/screens/FeedScreen";
+import { ReactionsProvider } from "../../src/hooks/useArticleReactions";
+
+// Schermen draaien in productie altijd binnen de ReactionsProvider. We spiegelen
+// token/onRequireAuth van het gerenderde scherm zodat de gedeelde reactie-store
+// dezelfde auth-context heeft als de schermen zelf.
+function render(ui, options) {
+  return rtlRender(
+    <ReactionsProvider
+      token={ui.props?.token}
+      onRequireAuth={ui.props?.onRequireAuth}
+    >
+      {ui}
+    </ReactionsProvider>,
+    options
+  );
+}
 
 jest.mock("../../src/lib/articles", () => ({
   fetchArticles: jest.fn().mockResolvedValue([

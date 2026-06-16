@@ -26,14 +26,8 @@ import { fetchTags } from "../lib/tags";
 import { orderUserTags } from "../lib/orderUserTags";
 import { fetchArticles } from "../lib/articles";
 import { useSaveArticle } from "../hooks/useSaveArticle";
-import {
-  submitArticleReaction,
-  removeArticleReaction,
-  fetchArticleMyReaction,
-} from "../lib/reactions";
+import { useArticleReaction } from "../hooks/useArticleReactions";
 import { reactionPct } from "../lib/reactionPct";
-import { castVote, revertVote } from "../lib/reactionVote";
-import { toast } from "../lib/toast";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 36;
@@ -153,7 +147,6 @@ export const FeedCard = React.memo(function FeedCard({
   savedIds,
   onSavedChange,
 }) {
-  const [reaction, setReaction] = useState(story.myReaction ?? null);
   const { saved, toggleSaved } = useSaveArticle({
     story,
     token,
@@ -161,47 +154,13 @@ export const FeedCard = React.memo(function FeedCard({
     onSavedChange,
     onRequireAuth,
   });
-  const [counts, setCounts] = useState(
-    story.reactions ?? { smile: 0, meh: 0, frown: 0 }
-  );
-
-  // Haal de eerdere stem op (aparte backend-route) zodat die na een reload weer
-  // zichtbaar is. Overschrijft een lokale (optimistische) stem nooit: setReaction
-  // valt terug op de huidige waarde als die al gezet is.
-  useEffect(() => {
-    if (!token) return;
-    let cancelled = false;
-    fetchArticleMyReaction(token, story.id).then((mine) => {
-      if (!cancelled && mine) setReaction((cur) => cur ?? mine);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [token, story.id]);
+  // Reactie-state komt uit de gedeelde store, zodat feed en detail dezelfde
+  // counts/eigen stem tonen. De stem-logica zelf leeft in de provider.
+  const { reaction, counts, react } = useArticleReaction(story);
 
   const isCompact = variant === "compact";
   const aspectH = isCompact ? CARD_W * (3.4 / 4) : CARD_W * (4.3 / 4);
   const canInteract = () => onRequireAuth?.() !== false;
-
-  // Optimistisch (her)stemmen: zet reactie + count direct, draai terug bij
-  // serverfout. Switchen verlaagt de oude stem en verhoogt de nieuwe.
-  const react = async (key) => {
-    if (!canInteract()) return;
-    if (!token) return;
-    const prev = reaction;
-    if (prev === key) return;
-    setReaction(key);
-    setCounts((c) => castVote(c, prev, key));
-    try {
-      // Switchen: verwijder eerst de oude stem, anders telt de backend beide.
-      if (prev != null) await removeArticleReaction(token, story.id);
-      await submitArticleReaction(token, story.id, key);
-    } catch (err) {
-      setReaction(prev);
-      setCounts((c) => revertVote(c, prev, key));
-      toast.show(err.message || "Reactie opslaan mislukt.");
-    }
-  };
 
   return (
     <MotiView {...fadeUp} style={[styles.cardWrapper, { height: aspectH }]}>
