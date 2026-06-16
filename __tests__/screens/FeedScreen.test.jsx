@@ -428,6 +428,32 @@ test("switchen na stemmen verplaatst de stem en POST't de nieuwe reactie", async
   expect(getAllByText("0%")).toHaveLength(2);
 });
 
+test("toont afsluitkaart onder een gevulde (niet-embedded) feed", async () => {
+  const { findByText } = render(
+    <FeedScreen {...defaultProps} embedded={false} />
+  );
+  await findByText("Slecht sportverhaal");
+  expect(await findByText("Je bent helemaal bij")).toBeTruthy();
+});
+
+test("toont geen afsluitkaart bij een lege feed", async () => {
+  const { fetchArticles } = require("../../src/lib/articles");
+  fetchArticles.mockResolvedValueOnce([]);
+  const { findByText, queryByText } = render(
+    <FeedScreen {...defaultProps} embedded={false} />
+  );
+  await findByText("Nog geen verhalen in deze categorie.");
+  expect(queryByText("Je bent helemaal bij")).toBeNull();
+});
+
+test("embedded feed toont geen afsluitkaart", async () => {
+  const { findByText, queryByText } = render(
+    <FeedScreen {...defaultProps} embedded />
+  );
+  await findByText("Slecht sportverhaal");
+  expect(queryByText("Je bent helemaal bij")).toBeNull();
+});
+
 test("toont de bewaarde stem na een refresh (via my-reaction route)", async () => {
   const { fetchArticles } = require("../../src/lib/articles");
   const { fetchArticleMyReaction } = require("../../src/lib/reactions");

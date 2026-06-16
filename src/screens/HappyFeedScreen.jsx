@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { AppHeader } from "../components/AppHeader";
 import { DataState } from "../components/DataState";
+import { FeedEndCard } from "../components/FeedEndCard";
 import { IIcon } from "../components/Icons";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { FeedCard } from "./FeedScreen";
@@ -12,6 +13,7 @@ import { groupHappyStories } from "../lib/storyDate";
 import { fetchTags } from "../lib/tags";
 import { orderTopics } from "../lib/orderTopics";
 import { fetchHappyFeed } from "../lib/articles";
+import { updatedAtLabel } from "../lib/updatedAtLabel";
 
 const CATEGORY_ICONS = {
   politiek: "topicPolitics",
@@ -65,6 +67,9 @@ export function HappyFeedScreen({
 }) {
   const [localSelected, setLocalSelected] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
+  const scrollRef = useRef(null);
+  // Tijdstip van bekijken — eenmalig bij mount, getoond op de afsluitkaart.
+  const updatedAt = useMemo(() => updatedAtLabel(), []);
 
   // Selectie is gedeeld (controlled) als App.jsx 'm doorgeeft — zo blijven de
   // chips consistent over feed/happy/zoek. Zonder prop valt het terug op lokale
@@ -219,6 +224,7 @@ export function HappyFeedScreen({
       {topicBar}
       <DataState loading={loading} error={error} onRetry={reload}>
         <ScrollView
+          ref={scrollRef}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
         >
@@ -277,6 +283,15 @@ export function HappyFeedScreen({
                 Geen goed nieuws op dit moment.{"\n"}Kom later terug.
               </Text>
             </View>
+          )}
+
+          {sections.length > 0 && (
+            <FeedEndCard
+              subtitle={updatedAt}
+              onBackToTop={() =>
+                scrollRef.current?.scrollTo({ y: 0, animated: true })
+              }
+            />
           )}
 
           <View style={{ height: 120 }} />

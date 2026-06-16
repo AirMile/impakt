@@ -1,7 +1,8 @@
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
-import { HumorScreen } from "../../src/screens/HumorScreen";
+import { HumorScreen, MemeEndCard } from "../../src/screens/HumorScreen";
 import { submitMemeReaction } from "../../src/lib/reactions";
 
+jest.mock("../../src/lib/toast", () => ({ toast: { show: jest.fn() } }));
 jest.mock("../../src/lib/share", () => ({ shareMeme: jest.fn() }));
 jest.mock("../../src/lib/reactions", () => ({
   submitMemeReaction: jest.fn(),
@@ -128,4 +129,32 @@ test("lege memes-prop toont 'Nog geen memes' lege-state", () => {
 test("rendert kicker met storyHeadline uit meme", () => {
   const { getAllByText } = render(<HumorScreen {...defaultProps} />);
   expect(getAllByText("Klimaat story").length).toBeGreaterThanOrEqual(1);
+});
+
+// De einde-kaart is de laatste pagina van de carousel. In de testomgeving rendert
+// de FlatList alleen index 0 (geen layout-hoogte → virtualisatie), dus we testen
+// de kaart als los component — net als FeedEndCard.
+test("einde-kaart toont titel, subtekst en 'Naar boven'-knop", () => {
+  const { getByText, getByLabelText } = render(<MemeEndCard />);
+  expect(getByText("Kom later terug voor verse memes")).toBeTruthy();
+  expect(getByLabelText("Naar boven")).toBeTruthy();
+});
+
+test("einde-kaart 'Naar boven' roept onBackToTop aan", () => {
+  const onBackToTop = jest.fn();
+  const { getByLabelText } = render(<MemeEndCard onBackToTop={onBackToTop} />);
+  fireEvent.press(getByLabelText("Naar boven"));
+  expect(onBackToTop).toHaveBeenCalledTimes(1);
+});
+
+test("einde-kaart 'Naar nieuws' roept onGoToFeed aan", () => {
+  const onGoToFeed = jest.fn();
+  const { getByLabelText } = render(<MemeEndCard onGoToFeed={onGoToFeed} />);
+  fireEvent.press(getByLabelText("Naar nieuws"));
+  expect(onGoToFeed).toHaveBeenCalledTimes(1);
+});
+
+test("einde-kaart verbergt 'Naar nieuws' zonder onGoToFeed", () => {
+  const { queryByLabelText } = render(<MemeEndCard />);
+  expect(queryByLabelText("Naar nieuws")).toBeNull();
 });

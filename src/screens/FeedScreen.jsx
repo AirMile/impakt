@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import {
   View,
   Text,
@@ -15,6 +21,7 @@ import { MotiView } from "moti";
 import { AppHeader } from "../components/AppHeader";
 import { HeroOverlay } from "../components/HeroOverlay";
 import { ReactionRail } from "../components/ReactionRail";
+import { FeedEndCard } from "../components/FeedEndCard";
 import { DataState } from "../components/DataState";
 import { IIcon } from "../components/Icons";
 import { useAsyncData } from "../hooks/useAsyncData";
@@ -25,6 +32,7 @@ import { pressFx } from "../lib/pressFeedback";
 import { fetchTags } from "../lib/tags";
 import { orderTopics } from "../lib/orderTopics";
 import { fetchArticles } from "../lib/articles";
+import { updatedAtLabel } from "../lib/updatedAtLabel";
 import { useSaveArticle } from "../hooks/useSaveArticle";
 import { useArticleReaction } from "../hooks/useArticleReactions";
 import { reactionPct } from "../lib/reactionPct";
@@ -254,6 +262,9 @@ export function FeedScreen({
 }) {
   const [localSelected, setLocalSelected] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
+  const listRef = useRef(null);
+  // Tijdstip van bekijken — eenmalig bij mount, getoond op de afsluitkaart.
+  const updatedAt = useMemo(() => updatedAtLabel(), []);
 
   // Selectie is gedeeld (controlled) als App.jsx 'm doorgeeft — zo blijven de
   // chips consistent over feed/happy/zoek. Zonder prop valt het terug op lokale
@@ -347,7 +358,22 @@ export function FeedScreen({
     []
   );
 
-  const renderFooter = useCallback(() => <View style={{ height: 120 }} />, []);
+  const scrollToTop = useCallback(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
+
+  // Afsluitkaart enkel bij een gevulde lijst; bij leeg dekt ListEmptyComponent.
+  const renderFooter = useCallback(
+    () => (
+      <>
+        {stories.length > 0 && (
+          <FeedEndCard subtitle={updatedAt} onBackToTop={scrollToTop} />
+        )}
+        <View style={{ height: 120 }} />
+      </>
+    ),
+    [stories.length, updatedAt, scrollToTop]
+  );
 
   const renderItem = useCallback(
     ({ item, index }) => (
@@ -389,7 +415,8 @@ export function FeedScreen({
           />
         ))}
         {!loading && !error && stories.length === 0 && renderEmpty()}
-        {renderFooter()}
+        {/* Embedded (vervolg-feed onder een artikel): geen afsluitkaart. */}
+        <View style={{ height: 120 }} />
       </View>
     );
   }
@@ -400,6 +427,7 @@ export function FeedScreen({
       {topicBar}
       <DataState loading={loading} error={error} onRetry={reload}>
         <FlatList
+          ref={listRef}
           data={stories}
           keyExtractor={(s, index) => `${s.id}-${index}`}
           renderItem={renderItem}

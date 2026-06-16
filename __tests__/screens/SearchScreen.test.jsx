@@ -184,3 +184,36 @@ test("myTags prop rendert eigen interesses als chip", async () => {
   );
   expect((await findAllByText("Natuur")).length).toBeGreaterThanOrEqual(1);
 });
+
+test("toont afsluitkaart onder de bladerlijst", async () => {
+  const { findByText } = render(<SearchScreen {...defaultProps} />);
+  await findByText("Alle artikelen");
+  expect(await findByText("Je bent helemaal bij")).toBeTruthy();
+});
+
+test("toont search-variant afsluitkaart onder zoekresultaten", async () => {
+  const { getByPlaceholderText, findByText } = render(
+    <SearchScreen {...defaultProps} />
+  );
+  await findByText("Alle artikelen");
+  fireEvent.changeText(
+    getByPlaceholderText("Zoek verhalen, tags, thema's..."),
+    "klimaat"
+  );
+  await findByText("Klimaatverhaal");
+  expect(await findByText("Dat waren alle resultaten")).toBeTruthy();
+});
+
+test("toont geen afsluitkaart bij lege zoekresultaten", async () => {
+  const { getByPlaceholderText, findByText, queryByText } = render(
+    <SearchScreen {...defaultProps} />
+  );
+  await findByText("Alle artikelen");
+  fireEvent.changeText(
+    getByPlaceholderText("Zoek verhalen, tags, thema's..."),
+    "xyzxyzxyz"
+  );
+  await findByText(/Geen resultaten/);
+  expect(queryByText("Dat waren alle resultaten")).toBeNull();
+  expect(queryByText("Je bent helemaal bij")).toBeNull();
+});

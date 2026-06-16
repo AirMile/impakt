@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { MotiView } from "moti";
 
 import { IIcon } from "../components/Icons";
 import { DataState } from "../components/DataState";
+import { FeedEndCard } from "../components/FeedEndCard";
 import { FeedCard } from "./FeedScreen";
 import { useAsyncData } from "../hooks/useAsyncData";
 import { colors, fonts } from "../theme/tokens";
@@ -76,6 +77,7 @@ export function SearchScreen({
   onSavedChange,
 }) {
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef(null);
   const [localQuery, setLocalQuery] = useState("");
   const [localSelected, setLocalSelected] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
@@ -283,6 +285,7 @@ export function SearchScreen({
       {topicBar}
       <DataState loading={loading} error={error} onRetry={reload}>
         <ScrollView
+          ref={scrollRef}
           style={{ flex: 1 }}
           contentContainerStyle={[
             styles.scrollContent,
@@ -318,6 +321,13 @@ export function SearchScreen({
                   ))
                 )}
               </View>
+              {filteredStories.length > 0 && (
+                <FeedEndCard
+                  onBackToTop={() =>
+                    scrollRef.current?.scrollTo({ y: 0, animated: true })
+                  }
+                />
+              )}
             </>
           ) : (
             <>
@@ -345,6 +355,14 @@ export function SearchScreen({
                     onSavedChange={onSavedChange}
                   />
                 ))
+              )}
+              {results.length > 0 && (
+                <FeedEndCard
+                  title="Dat waren alle resultaten"
+                  onBackToTop={() =>
+                    scrollRef.current?.scrollTo({ y: 0, animated: true })
+                  }
+                />
               )}
             </>
           )}

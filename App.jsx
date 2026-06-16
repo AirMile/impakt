@@ -593,6 +593,7 @@ export default function App() {
                   }}
                   onOpenStory={openStoryById}
                   onProfile={handleProfile}
+                  onGoToFeed={() => navTab("feed")}
                   memes={memes}
                   onRequireAuth={requireAuth}
                   token={user?.token}

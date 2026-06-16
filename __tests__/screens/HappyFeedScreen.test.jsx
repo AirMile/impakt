@@ -149,3 +149,20 @@ test("myTags prop rendert eigen interesses bovenaan", async () => {
 
   expect(await findByTestId("happy-topic-Natuur")).toBeTruthy();
 });
+
+test("toont afsluitkaart onder gevulde secties", async () => {
+  const { findByText } = render(<HappyFeedScreen {...defaultProps} />);
+  await findByText("Wolf story");
+  expect(await findByText("Je bent helemaal bij")).toBeTruthy();
+});
+
+test("toont geen afsluitkaart bij lege staat (filter zonder matches)", async () => {
+  const { findByTestId, getByText, queryByText } = render(
+    <HappyFeedScreen {...defaultProps} />
+  );
+  fireEvent.press(await findByTestId("happy-topic-Kunst"));
+  await waitFor(() =>
+    expect(getByText(/Geen leuk nieuws over Kunst/)).toBeTruthy()
+  );
+  expect(queryByText("Je bent helemaal bij")).toBeNull();
+});

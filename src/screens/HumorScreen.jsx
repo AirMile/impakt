@@ -1,4 +1,10 @@
-import React, { useRef, useState, useEffect, useCallback } from "react";
+import React, {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
@@ -8,7 +14,6 @@ import {
   StyleSheet,
   Dimensions,
 } from "react-native";
-
 import { AppHeader } from "../components/AppHeader";
 import { IIcon } from "../components/Icons";
 import { HeroOverlay } from "../components/HeroOverlay";
@@ -31,6 +36,9 @@ import { toast } from "../lib/toast";
 import { pressFx } from "../lib/pressFeedback";
 
 const { height: SCREEN_H } = Dimensions.get("window");
+
+// Sentinel-item dat als laatste "pagina" in de carousel de einde-kaart toont.
+const END_ITEM = { id: "__end__", isEnd: true };
 
 // Stabiele constanten buiten render — voorkomt herberekening bij elke render
 const REACTION_BTNS = Object.entries(REACTION_COLORS).map(([key, color]) => ({
@@ -294,12 +302,62 @@ const MemeCard = React.memo(function MemeCard({
   );
 });
 
+// Fullscreen einde-kaart: de laatste pagina van de meme-carousel. Content staat
+// gecentreerd, ruim boven de BottomNav, zodat de knoppen er niet achter vallen.
+export function MemeEndCard({ onBackToTop, onGoToFeed }) {
+  return (
+    <View style={styles.endCard}>
+      <IIcon name="smile" size={44} color={colors.cream} strokeWidth={1.8} />
+      <Text style={styles.endTitle}>Dat waren{"\n"}alle memes</Text>
+      <Text style={styles.endSub}>Kom later terug voor verse memes</Text>
+
+      <View style={styles.endActions}>
+        <Pressable
+          onPress={onBackToTop}
+          accessibilityLabel="Naar boven"
+          style={({ pressed }) => [styles.endBtnGhost, pressFx()({ pressed })]}
+        >
+          <View style={styles.endChevUp}>
+            <IIcon
+              name="chevDown"
+              size={16}
+              color={colors.cream}
+              strokeWidth={2.4}
+            />
+          </View>
+          <Text style={styles.endBtnGhostLabel}>Naar boven</Text>
+        </Pressable>
+
+        {onGoToFeed ? (
+          <Pressable
+            onPress={onGoToFeed}
+            accessibilityLabel="Naar nieuws"
+            style={({ pressed }) => [
+              styles.endBtnSolid,
+              pressFx()({ pressed }),
+            ]}
+          >
+            <Text style={styles.endBtnSolidLabel}>Naar nieuws</Text>
+            <IIcon
+              name="arrow"
+              size={15}
+              color={colors.ink}
+              strokeWidth={2.4}
+            />
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 export function HumorScreen({
   initialMemeId,
   initialStoryId,
   onInitialStoryConsumed,
   onOpenStory,
   onProfile,
+  onGoToFeed,
   memes = [],
   onRequireAuth,
   token,
@@ -307,18 +365,23 @@ export function HumorScreen({
   onSavedMemesChange,
 }) {
   const listRef = useRef(null);
-  // Huidige meme-index — bijgehouden voor de snap-berekening (zie onScrollEndDrag)
+  // Huidige index — bijgehouden voor de snap-berekening (zie onScrollEndDrag)
   // en de momentum-correctie. Geen state: hoeft geen re-render te triggeren.
   const indexRef = useRef(0);
 
-  // Snap naar één meme, geclampt binnen de lijstgrenzen.
+  // De memes plus een einde-kaart als laatste pagina. Door 'm als echt lijst-item
+  // mee te geven snapt de carousel er net zo naartoe als naar een meme — geen
+  // losse rubber-band of footer-zone die achter de BottomNav valt.
+  const data = useMemo(() => [...memes, END_ITEM], [memes]);
+
+  // Snap naar één pagina (meme of einde-kaart), geclampt binnen de lijstgrenzen.
   const snapToIndex = useCallback(
     (target) => {
-      const clamped = Math.max(0, Math.min(memes.length - 1, target));
+      const clamped = Math.max(0, Math.min(data.length - 1, target));
       indexRef.current = clamped;
       listRef.current?.scrollToIndex({ index: clamped, animated: true });
     },
-    [memes.length]
+    [data.length]
   );
 
   // Vervangt native `pagingEnabled`: dat snapt pas door bij ~50% van het scherm,
@@ -342,17 +405,23 @@ export function HumorScreen({
       const passedDistance = Math.abs(delta) > DISTANCE_THRESHOLD;
       let target = current;
       if (Math.abs(delta) > 1 && (passedDistance || fastFlick)) {
+        // current + 1 kan op de einde-kaart uitkomen; snapToIndex clampt erop.
         target = delta > 0 ? current + 1 : current - 1;
       }
+
       snapToIndex(target);
     },
     [snapToIndex]
   );
 
   // Houd de index gelijk aan de werkelijke positie na een (programmatische) scroll.
-  const onMomentumScrollEnd = useCallback((e) => {
-    indexRef.current = Math.round(e.nativeEvent.contentOffset.y / SCREEN_H);
-  }, []);
+  const onMomentumScrollEnd = useCallback(
+    (e) => {
+      const raw = Math.round(e.nativeEvent.contentOffset.y / SCREEN_H);
+      indexRef.current = Math.max(0, Math.min(data.length - 1, raw));
+    },
+    [data.length]
+  );
 
   // Scroll naar de juiste meme wanneer App.jsx een initialMemeId/storyId doorgeeft
   // (deeplink uit `impakt://meme/<id>` of "bekijk memes"-tap in DetailScreen).
@@ -374,22 +443,30 @@ export function HumorScreen({
   }, [memes.length, initialMemeId, initialStoryId]);
 
   const renderItem = useCallback(
-    ({ item, index }) => (
-      <MemeCard
-        meme={item}
-        idx={index}
-        total={memes.length}
-        isFirst={index === 0}
-        onOpenStory={onOpenStory}
-        token={token}
-        onRequireAuth={onRequireAuth}
-        savedMemeIds={savedMemeIds}
-        onSavedMemesChange={onSavedMemesChange}
-      />
-    ),
+    ({ item, index }) =>
+      item.isEnd ? (
+        <MemeEndCard
+          onBackToTop={() => snapToIndex(0)}
+          onGoToFeed={onGoToFeed}
+        />
+      ) : (
+        <MemeCard
+          meme={item}
+          idx={index}
+          total={memes.length}
+          isFirst={index === 0}
+          onOpenStory={onOpenStory}
+          token={token}
+          onRequireAuth={onRequireAuth}
+          savedMemeIds={savedMemeIds}
+          onSavedMemesChange={onSavedMemesChange}
+        />
+      ),
     [
       onOpenStory,
       onRequireAuth,
+      onGoToFeed,
+      snapToIndex,
       memes.length,
       token,
       savedMemeIds,
@@ -406,7 +483,8 @@ export function HumorScreen({
       ) : (
         <FlatList
           ref={listRef}
-          data={memes}
+          testID="meme-feed-list"
+          data={data}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
@@ -441,6 +519,74 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
+  },
+  endCard: {
+    height: SCREEN_H,
+    width: "100%",
+    backgroundColor: colors.ink,
+    alignItems: "center",
+    justifyContent: "center",
+    // Lager dan het midden zou achter de BottomNav vallen; center + de marge
+    // hieronder houden de knoppen ruim vrij van de nav onderaan.
+    paddingHorizontal: 32,
+    paddingBottom: 120,
+    gap: 16,
+  },
+  endTitle: {
+    fontFamily: fonts.header,
+    fontSize: 40,
+    lineHeight: 40,
+    letterSpacing: 0.6,
+    color: colors.cream,
+    textAlign: "center",
+    textTransform: "uppercase",
+  },
+  endSub: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: "rgba(239,235,230,0.7)",
+    textAlign: "center",
+    marginTop: -6,
+  },
+  endActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 8,
+  },
+  endBtnGhost: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: "rgba(239,235,230,0.35)",
+  },
+  endChevUp: {
+    transform: [{ rotate: "180deg" }],
+  },
+  endBtnGhostLabel: {
+    fontFamily: fonts.display,
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.cream,
+  },
+  endBtnSolid: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 9999,
+    backgroundColor: colors.blue,
+  },
+  endBtnSolidLabel: {
+    fontFamily: fonts.display,
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.ink,
   },
   emptyText: {
     fontFamily: fonts.body,
