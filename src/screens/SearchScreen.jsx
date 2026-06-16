@@ -64,6 +64,8 @@ const EMPTY_TAGS = [];
 export function SearchScreen({
   onClose,
   onOpenStory,
+  query: queryProp,
+  onQueryChange,
   myTags = EMPTY_TAGS,
   selectedTopics: selectedTopicsProp,
   topicOrder = EMPTY_TAGS,
@@ -74,9 +76,19 @@ export function SearchScreen({
   onSavedChange,
 }) {
   const insets = useSafeAreaInsets();
-  const [query, setQuery] = useState("");
+  const [localQuery, setLocalQuery] = useState("");
   const [localSelected, setLocalSelected] = useState(new Set());
   const [allTags, setAllTags] = useState([]);
+
+  // Zoekterm is controlled als App.jsx 'm doorgeeft, zodat hij behouden blijft
+  // wanneer je een artikel opent en via de back-knop terugkeert naar zoeken.
+  // Zonder prop valt het terug op lokale state.
+  const isQueryControlled = queryProp !== undefined;
+  const query = isQueryControlled ? queryProp : localQuery;
+  const setQuery = (next) => {
+    if (isQueryControlled) onQueryChange?.(next);
+    else setLocalQuery(next);
+  };
 
   // Selectie is gedeeld (controlled) als App.jsx 'm doorgeeft — zo blijven de
   // chips consistent over feed/happy/zoek. Zonder prop valt het terug op lokale

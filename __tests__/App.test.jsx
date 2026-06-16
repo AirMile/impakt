@@ -102,11 +102,44 @@ jest.mock("../src/screens/AuthScreen", () => ({
   },
 }));
 
-jest.mock("../src/screens/SearchScreen", () => ({ SearchScreen: () => null }));
+jest.mock("../src/screens/SearchScreen", () => ({
+  SearchScreen: ({ onOpenStory }) => {
+    const React = require("react");
+    const { Text, Pressable } = require("react-native");
+    return React.createElement(
+      React.Fragment,
+      null,
+      React.createElement(Text, { testID: "search-screen" }, "Search"),
+      React.createElement(
+        Pressable,
+        {
+          testID: "search-open-story",
+          onPress: () => onOpenStory?.({ id: 102, headline: "X" }),
+        },
+        React.createElement(Text, null, "open")
+      )
+    );
+  },
+}));
 jest.mock("../src/screens/ProfileScreen", () => ({
   ProfileScreen: () => null,
 }));
-jest.mock("../src/screens/DetailScreen", () => ({ DetailScreen: () => null }));
+jest.mock("../src/screens/DetailScreen", () => ({
+  DetailScreen: ({ onClose }) => {
+    const React = require("react");
+    const { Text, Pressable } = require("react-native");
+    return React.createElement(
+      React.Fragment,
+      null,
+      React.createElement(Text, { testID: "detail-screen" }, "Detail"),
+      React.createElement(
+        Pressable,
+        { testID: "detail-back", onPress: () => onClose?.() },
+        React.createElement(Text, null, "back")
+      )
+    );
+  },
+}));
 jest.mock("../src/components/Toast", () => ({ ToastHost: () => null }));
 
 beforeEach(() => {
@@ -142,6 +175,66 @@ test("persistent token herstelt de sessie: app i.p.v. auth-scherm", async () => 
   await waitFor(() => expect(getByTestId("feed-screen")).toBeTruthy());
   expect(fetchAccount).toHaveBeenCalledWith("tok123");
   expect(queryByTestId("auth-screen")).toBeNull();
+});
+
+test("back vanuit een via zoeken geopend artikel keert terug naar zoeken (niet de tab eronder)", async () => {
+  const { getToken } = require("../src/storage/prefs");
+  const { fetchAccount } = require("../src/lib/auth/account");
+  const { fetchArticle } = require("../src/lib/articles");
+  getToken.mockResolvedValueOnce("tok123");
+  fetchAccount.mockResolvedValueOnce({
+    id: 7,
+    username: "bb",
+    token: "tok123",
+  });
+  fetchArticle.mockResolvedValue({ id: 102, headline: "X" });
+
+  const { getByTestId, getByLabelText, queryByTestId } = render(<App />);
+  await waitFor(() => expect(getByTestId("feed-screen")).toBeTruthy());
+
+  // Naar de humor-tab — dit is de "pagina eronder" waar de bug ten onrechte op terugviel.
+  fireEvent.press(getByLabelText("Humor"));
+  await waitFor(() => expect(getByTestId("humor-screen")).toBeTruthy());
+
+  // Zoeken openen en een artikel openen vanuit de zoekresultaten.
+  fireEvent.press(getByLabelText("Zoeken"));
+  await waitFor(() => expect(getByTestId("search-screen")).toBeTruthy());
+  fireEvent.press(getByTestId("search-open-story"));
+  await waitFor(() => expect(getByTestId("detail-screen")).toBeTruthy());
+  expect(queryByTestId("search-screen")).toBeNull();
+
+  // Back → terug naar zoeken, niet de humor-tab eronder.
+  fireEvent.press(getByTestId("detail-back"));
+  await waitFor(() => expect(getByTestId("search-screen")).toBeTruthy());
+  expect(queryByTestId("detail-screen")).toBeNull();
+});
+
+test("tab wisselen terwijl een via-zoeken geopend artikel open is, heropent zoeken niet", async () => {
+  const { getToken } = require("../src/storage/prefs");
+  const { fetchAccount } = require("../src/lib/auth/account");
+  const { fetchArticle } = require("../src/lib/articles");
+  getToken.mockResolvedValueOnce("tok123");
+  fetchAccount.mockResolvedValueOnce({
+    id: 7,
+    username: "bb",
+    token: "tok123",
+  });
+  fetchArticle.mockResolvedValue({ id: 102, headline: "X" });
+
+  const { getByTestId, getByLabelText, queryByTestId } = render(<App />);
+  await waitFor(() => expect(getByTestId("feed-screen")).toBeTruthy());
+
+  // Open een artikel vanuit zoeken (zet de "kwam-van-zoeken"-vlag).
+  fireEvent.press(getByLabelText("Zoeken"));
+  await waitFor(() => expect(getByTestId("search-screen")).toBeTruthy());
+  fireEvent.press(getByTestId("search-open-story"));
+  await waitFor(() => expect(getByTestId("detail-screen")).toBeTruthy());
+
+  // Tab wisselen (navTab) i.p.v. back: sluit het artikel zónder zoeken te heropenen.
+  fireEvent.press(getByLabelText("Humor"));
+  await waitFor(() => expect(getByTestId("humor-screen")).toBeTruthy());
+  expect(queryByTestId("detail-screen")).toBeNull();
+  expect(queryByTestId("search-screen")).toBeNull();
 });
 
 test("thema selecteren in de feed synct naar de interesses (updateMyTags)", async () => {

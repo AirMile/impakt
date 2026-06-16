@@ -146,6 +146,11 @@ export default function App() {
   const [openStorySource, setOpenStorySource] = useState("feed");
   const [showProfile, setShowProfile] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  // Bewaarde zoekterm + vlag "deze story is vanuit zoeken geopend", zodat de
+  // back-knop in DetailScreen terugkeert naar het zoekscherm (met resultaten)
+  // i.p.v. de tab eronder.
+  const [searchQuery, setSearchQuery] = useState("");
+  const [storyFromSearch, setStoryFromSearch] = useState(false);
   // null = dicht; "articles" / "memes" = open op het bijbehorende bewaard-scherm.
   const [savedMode, setSavedMode] = useState(null);
   const [savedArticles, setSavedArticles] = useState([]);
@@ -323,12 +328,14 @@ export default function App() {
 
   // Callbacks voor navigatie — vóór early returns zodat hooks altijd worden aangeroepen
   const navTab = useCallback((t) => {
+    setStoryFromSearch(false);
     setOpenStory(null);
     setTab(t);
   }, []);
 
   const openStoryById = useCallback(
     (id) => {
+      setStoryFromSearch(false);
       fetchArticle(id, user?.token)
         .then((s) => {
           if (s) {
@@ -344,6 +351,7 @@ export default function App() {
   const openStoryFromList = useCallback(
     (story, source) => {
       if (!story) return;
+      setStoryFromSearch(false);
       setOpenStorySource(source);
       if (story.poll || !user?.token) setOpenStory(story);
 
@@ -363,11 +371,23 @@ export default function App() {
   );
 
   const openMemeForStory = useCallback((memeId, storyId) => {
+    setStoryFromSearch(false);
     setOpenStory(null);
     setTab("humor");
     setPendingMemeId(memeId ?? null);
     setPendingMemeStoryId(storyId);
   }, []);
+
+  // Sluiten van de detail: kwam de story vanuit zoeken, heropen dan het
+  // zoekscherm (de bewaarde zoekterm herstelt de resultaten); anders val terug
+  // op de onderliggende tab.
+  const handleCloseStory = useCallback(() => {
+    setOpenStory(null);
+    if (storyFromSearch) {
+      setStoryFromSearch(false);
+      setShowSearch(true);
+    }
+  }, [storyFromSearch]);
 
   const inApp = phase === "app";
   const userToken = user?.token;
@@ -602,9 +622,12 @@ export default function App() {
           {inApp && showSearch && (
             <SearchScreen
               onClose={() => setShowSearch(false)}
+              query={searchQuery}
+              onQueryChange={setSearchQuery}
               onOpenStory={(s) => {
                 setShowSearch(false);
                 openStoryFromList(s, tab);
+                setStoryFromSearch(true);
               }}
               myTags={myTags}
               onMyTagsChange={handleMyTagsChange}
@@ -643,7 +666,7 @@ export default function App() {
                 key={openStory.id}
                 story={openStory}
                 memes={memes}
-                onClose={() => setOpenStory(null)}
+                onClose={handleCloseStory}
                 onOpenMeme={openMemeForStory}
                 onSwapStory={(story) =>
                   openStoryFromList(story, openStorySource)
