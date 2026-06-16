@@ -123,9 +123,19 @@ test("mapArticle stubt ontbrekende velden", () => {
   const article = mapArticle(SAMPLE_RAW);
   expect(article.reactions).toEqual({ smile: 0, meh: 0, frown: 0 });
   expect(article.trending).toBe(false);
-  expect(article.poll).toBeNull();
+  expect(article.poll).toBeTruthy();
   expect(article.actions).toBeNull();
   expect(article.sources).toBeNull();
+});
+
+test("mapArticle gebruikt lokale poll-fallback voor guest weergave", () => {
+  const article = mapArticle({ ...SAMPLE_RAW, id: 1 });
+
+  expect(article.poll.q).toBe("Moet Nederland direct extra noodhulp sturen?");
+  expect(article.poll.options.map((opt) => opt.label)).toEqual([
+    "Ja, zo snel mogelijk",
+    "Eerst situatie afwachten",
+  ]);
 });
 
 test("mapArticle neemt reactie-counts over van de backend", () => {

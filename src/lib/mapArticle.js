@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./config";
+import storiesData from "../api/mock/stories.json";
 
 // Backend levert het beeld soms absoluut (/articles → `img`) en soms als
 // relatief storage-pad (/happy-feed → `image_url` = "articles/xxx.jpg"). We
@@ -91,6 +92,32 @@ function isGoodNewsTag(tag) {
   return name === "goed nieuws" || name === "happy" || category === "happy";
 }
 
+function cleanPoll(rawPoll) {
+  if (!rawPoll || typeof rawPoll !== "object") return null;
+  const options = Array.isArray(rawPoll.options)
+    ? rawPoll.options
+        .map((opt) => ({
+          id: opt.id ?? opt.option_id ?? opt.poll_option_id,
+          label: opt.label ?? opt.option ?? opt.option_text ?? opt.text ?? "",
+          votes: Number(opt.votes ?? 0) || 0,
+        }))
+        .filter((opt) => opt.id != null && opt.label)
+    : [];
+  if (options.length === 0) return null;
+  return {
+    id: rawPoll.id ?? rawPoll.poll_id ?? `article-${rawPoll.article_id ?? ""}`,
+    articleId: rawPoll.article_id ?? rawPoll.articleId ?? null,
+    q: rawPoll.q ?? rawPoll.question ?? rawPoll.title ?? "",
+    options,
+  };
+}
+
+const FALLBACK_POLLS_BY_ARTICLE_ID = new Map(
+  (storiesData.stories ?? [])
+    .map((story) => [String(story.id), cleanPoll(story.poll)])
+    .filter(([, poll]) => poll)
+);
+
 export function mapArticle(raw) {
   if (!raw || typeof raw !== "object") return null;
 
@@ -121,7 +148,10 @@ export function mapArticle(raw) {
     reactions: raw.reactions ?? { smile: 0, meh: 0, frown: 0 },
     // De eigen reactie van de ingelogde gebruiker (null als niet gestemd / anoniem).
     myReaction: raw.my_reaction ?? null,
-    poll: null,
+    poll:
+      cleanPoll(raw.poll) ??
+      FALLBACK_POLLS_BY_ARTICLE_ID.get(String(raw.id)) ??
+      null,
     actions: null,
     sources: null,
     callToAction: raw.call_to_action ?? null,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -131,6 +131,7 @@ export default function App() {
   const [tab, setTab] = useState("feed");
   const [user, setUser] = useState(null);
   const [myTags, setMyTags] = useState([]);
+  const myTagsRef = useRef([]);
   const [memes, setMemes] = useState([]);
   const [openStory, setOpenStory] = useState(null);
   const [openStorySource, setOpenStorySource] = useState("feed");
@@ -164,6 +165,10 @@ export default function App() {
     () => new Set(myTags.map((tag) => tag.name)),
     [myTags]
   );
+
+  useEffect(() => {
+    myTagsRef.current = myTags;
+  }, [myTags]);
 
   // Tag-catalogus om een aangetikt label (naam) naar het volledige tag-object
   // {id, name, category} te herleiden bij het toevoegen aan de interesses.
@@ -278,7 +283,7 @@ export default function App() {
       if (!parsed) return;
       setPhase("app");
       if (parsed.kind === "story") {
-        fetchArticle(Number(parsed.id))
+        fetchArticle(Number(parsed.id), user?.token)
           .then((s) => {
             if (s) {
               setOpenStorySource(s.goodNews ? "good" : "feed");
@@ -305,7 +310,7 @@ export default function App() {
 
     const sub = Linking.addEventListener("url", ({ url }) => handle(url));
     return () => sub.remove();
-  }, [fontsLoaded, authLoading, memes]);
+  }, [fontsLoaded, authLoading, memes, user?.token]);
 
   // Callbacks voor navigatie — vóór early returns zodat hooks altijd worden aangeroepen
   const navTab = useCallback((t) => {
@@ -313,32 +318,40 @@ export default function App() {
     setTab(t);
   }, []);
 
-  const openStoryById = useCallback((id) => {
-    fetchArticle(id)
-      .then((s) => {
-        if (s) {
-          setOpenStorySource(s.goodNews ? "good" : "feed");
-          setOpenStory(s);
-        }
-      })
-      .catch(() => {});
-  }, []);
+  const openStoryById = useCallback(
+    (id) => {
+      fetchArticle(id, user?.token)
+        .then((s) => {
+          if (s) {
+            setOpenStorySource(s.goodNews ? "good" : "feed");
+            setOpenStory(s);
+          }
+        })
+        .catch(() => {});
+    },
+    [user?.token]
+  );
 
-  const openStoryFromList = useCallback((story, source) => {
-    if (!story) return;
-    setOpenStorySource(source);
-    setOpenStory(story);
+  const openStoryFromList = useCallback(
+    (story, source) => {
+      if (!story) return;
+      setOpenStorySource(source);
+      if (story.poll || !user?.token) setOpenStory(story);
 
-    if (story.id == null) return;
-    fetchArticle(story.id)
-      .then((fresh) => {
-        if (!fresh) return;
-        setOpenStory((current) =>
-          String(current?.id) === String(story.id) ? fresh : current
-        );
-      })
-      .catch(() => {});
-  }, []);
+      if (story.id == null) return;
+      fetchArticle(story.id, user?.token)
+        .then((fresh) => {
+          if (!fresh) return;
+          setOpenStory((current) =>
+            current == null || String(current?.id) === String(story.id)
+              ? fresh
+              : current
+          );
+        })
+        .catch(() => {});
+    },
+    [user?.token]
+  );
 
   const openMemeForStory = useCallback((memeId, storyId) => {
     setOpenStory(null);
@@ -348,6 +361,7 @@ export default function App() {
   }, []);
 
   const inApp = phase === "app";
+  const userToken = user?.token;
   const isGuest = inApp && (!user?.token || user?.guest);
   const requireAuth = useCallback(() => {
     if (!isGuest) return true;
@@ -384,10 +398,10 @@ export default function App() {
     if (!requireAuth()) return;
     setShowProfile(true);
   }, [requireAuth]);
-  const handleOpenSaved = useCallback(
-    (mode) => setSavedMode(mode === "memes" ? "memes" : "articles"),
-    []
-  );
+  const handleOpenSaved = useCallback((mode) => {
+    setShowProfile(false);
+    setSavedMode(mode === "memes" ? "memes" : "articles");
+  }, []);
   // Artikelen: optimistic add/remove van één story. Robuust ongeacht wat het
   // save-endpoint teruggeeft ({ saved: true }, geen savedArticles-lijst) — zelfde
   // patroon als memes, zodat de bewaar-flows consistent zijn.
@@ -408,22 +422,28 @@ export default function App() {
 
   const handleMyTagsChange = useCallback(
     (nextTags) => {
-      const previous = myTags;
+      const previous = myTagsRef.current;
+      myTagsRef.current = nextTags;
       setMyTags(nextTags);
 
-      if (!user?.token) return;
+      if (!userToken) return;
 
       updateMyTags(
-        user.token,
+        userToken,
         nextTags.map((tag) => tag.id)
       )
-        .then((updated) => setMyTags(updated.filter(isInterestTag)))
+        .then((updated) => {
+          const syncedTags = updated.filter(isInterestTag);
+          myTagsRef.current = syncedTags;
+          setMyTags(syncedTags);
+        })
         .catch((err) => {
+          myTagsRef.current = previous;
           setMyTags(previous);
           toast.show(err.message || "Tags bijwerken mislukt.");
         });
     },
-    [myTags, user?.token]
+    [userToken]
   );
 
   // Feed/happy/zoek-chip (de)selecteren = interesse toevoegen/verwijderen, met
@@ -578,11 +598,11 @@ export default function App() {
               onClose={() => setSavedMode(null)}
               onOpen={(s) => {
                 setSavedMode(null);
-                setOpenStory(s);
+                openStoryFromList(s, tab);
               }}
               onOpenMeme={(storyId) => {
                 setSavedMode(null);
-                openMemeForStory(storyId);
+                openMemeForStory(null, storyId);
               }}
               onRequireAuth={requireAuth}
               token={user?.token}
@@ -613,6 +633,7 @@ export default function App() {
                 sourceTab={openStorySource}
                 onRequireAuth={requireAuth}
                 token={user?.token}
+                user={user}
                 savedIds={savedIds}
                 onSavedChange={handleSavedChange}
               />

@@ -34,7 +34,11 @@ test("fetchSources haalt mapped bronnen op uit /articles/{id}/sources", async ()
     { method: "GET", headers: { Accept: "application/json" } }
   );
   expect(sources).toEqual([
-    { label: "NOS", sub: "https://nos.nl/artikel/aangepaste-bron-url" },
+    {
+      label: "NOS",
+      sub: "https://nos.nl/artikel/aangepaste-bron-url",
+      url: "https://nos.nl/artikel/aangepaste-bron-url",
+    },
   ]);
 });
 
@@ -56,6 +60,7 @@ test("mapSource gebruikt name als label en pivot.source_url als sub", () => {
   expect(mapSource(RAW_SOURCE)).toEqual({
     label: "NOS",
     sub: "https://nos.nl/artikel/aangepaste-bron-url",
+    url: "https://nos.nl/artikel/aangepaste-bron-url",
   });
 });
 
@@ -63,6 +68,7 @@ test("mapSource valt terug op url als pivot.source_url ontbreekt", () => {
   expect(mapSource({ name: "Reuters", url: "https://reuters.com" })).toEqual({
     label: "Reuters",
     sub: "https://reuters.com",
+    url: "https://reuters.com",
   });
 });
 

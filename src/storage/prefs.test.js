@@ -9,6 +9,8 @@ import {
   getToken,
   setToken,
   clearToken,
+  getPollVote,
+  setPollVote,
 } from "./prefs";
 
 beforeEach(async () => {
@@ -90,5 +92,21 @@ describe("token", () => {
     await setToken("abc123");
     await clearToken();
     expect(await getToken()).toBeNull();
+  });
+});
+
+describe("pollVotes", () => {
+  test("retourneert null als er geen stem is opgeslagen", async () => {
+    expect(await getPollVote(15, 7)).toBeNull();
+  });
+
+  test("round-trip per gebruiker en poll", async () => {
+    await setPollVote(15, 7, 31);
+    await setPollVote(15, 8, 40);
+    await setPollVote(16, 7, 32);
+
+    expect(await getPollVote(15, 7)).toBe(31);
+    expect(await getPollVote(15, 8)).toBe(40);
+    expect(await getPollVote(16, 7)).toBe(32);
   });
 });

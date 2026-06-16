@@ -67,6 +67,16 @@ test("mapMeme accepteert al-gemapte shape (storyId/img/top/bot fallback)", () =>
   expect(m.reactions.smile).toBe(50);
 });
 
+test("mapMeme accepteert story_id als story-koppeling", () => {
+  const m = mapMeme({
+    ...RAW,
+    article_id: undefined,
+    story_id: 12,
+  });
+
+  expect(m.storyId).toBe(12);
+});
+
 test("mapMeme zonder embedded article geeft lege headline", () => {
   const m = mapMeme({
     id: 2,

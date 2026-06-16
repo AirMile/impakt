@@ -8,6 +8,7 @@ import {
   StyleSheet,
   BackHandler,
   InteractionManager,
+  Linking,
 } from "react-native";
 import { MotiView } from "moti";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,10 +26,17 @@ import { shareStory } from "../lib/share";
 import { useSaveArticle } from "../hooks/useSaveArticle";
 import { useArticleReaction } from "../hooks/useArticleReactions";
 import { reactionPct } from "../lib/reactionPct";
+import { toast } from "../lib/toast";
 import { fetchSources } from "../lib/sources";
 import { sumVotes, votePct } from "../lib/pollPct";
 import { isInFeed } from "../lib/isInFeed";
 import { getRelatedMemes } from "../lib/getRelatedMemes";
+import {
+  fetchPollForArticle,
+  fetchPollResults,
+  submitPollVote,
+} from "../lib/polls";
+import { getPollVote, setPollVote } from "../storage/prefs";
 
 export function DetailScreen({
   story,
@@ -48,6 +56,7 @@ export function DetailScreen({
   savedIds,
   onSavedChange,
   onRequireAuth,
+  user,
 }) {
   const insets = useSafeAreaInsets();
   // Reactie-state komt uit de gedeelde store, zodat detail en feed dezelfde
@@ -60,12 +69,15 @@ export function DetailScreen({
     onSavedChange,
     onRequireAuth,
   });
+  const [poll, setPoll] = useState(story.poll ?? null);
   const [pollChoice, setPollChoice] = useState(null);
+  const [pollSubmitting, setPollSubmitting] = useState(false);
   const [activeAction, setActiveAction] = useState(null);
   const [inFeed, setInFeed] = useState(false);
   const [showRelated, setShowRelated] = useState(false);
   const [sources, setSources] = useState(story.sources ?? []);
   const feedYRef = useRef(Infinity);
+  const previousStoryIdRef = useRef(story.id);
 
   useEffect(() => {
     const handle = InteractionManager.runAfterInteractions(() => {
@@ -73,6 +85,40 @@ export function DetailScreen({
     });
     return () => handle.cancel();
   }, []);
+
+  useEffect(() => {
+    const sameStory = String(previousStoryIdRef.current) === String(story.id);
+    previousStoryIdRef.current = story.id;
+    setPoll((current) =>
+      sameStory ? (story.poll ?? current) : (story.poll ?? null)
+    );
+    if (!sameStory) setPollChoice(null);
+  }, [story.id, story.poll]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPollForArticle(token, story)
+      .then((nextPoll) => {
+        if (!cancelled && nextPoll) setPoll(nextPoll);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [token, story]);
+
+  useEffect(() => {
+    if (user?.id == null || poll?.id == null) return;
+    let cancelled = false;
+    getPollVote(user.id, poll.id)
+      .then((optionId) => {
+        if (!cancelled && optionId != null) setPollChoice(optionId);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, poll?.id]);
 
   // Bronnen komen niet mee in de feed-lijst; apart ophalen bij open.
   useEffect(() => {
@@ -103,8 +149,102 @@ export function DetailScreen({
   const isHappyContext = sourceTab === "good";
   const embeddedFeedActiveTab = isHappyContext ? "good" : "feed";
   const publishedMeta = [story.date, story.time].filter(Boolean).join(" - ");
+  const isSamePollOption = (a, b) =>
+    a != null && b != null && String(a) === String(b);
+  const isAlreadyVotedError = (err) => {
+    const message = String(err?.message ?? "").toLowerCase();
+    return (
+      message.includes("already") ||
+      message.includes("al gestemd") ||
+      message.includes("heeft gestemd") ||
+      message.includes("has voted")
+    );
+  };
 
-  const totalVotes = story.poll ? sumVotes(story.poll.options, pollChoice) : 0;
+  const castPollVote = async (optionId) => {
+    if (!canInteract()) return;
+    if (
+      !token ||
+      !poll ||
+      pollSubmitting ||
+      isSamePollOption(pollChoice, optionId)
+    )
+      return;
+
+    const prevChoice = pollChoice;
+    const prevPoll = poll;
+    const optimisticPoll = {
+      ...poll,
+      options: poll.options.map((opt) => {
+        const wasMine = isSamePollOption(opt.id, prevChoice);
+        const isMine = isSamePollOption(opt.id, optionId);
+        return {
+          ...opt,
+          votes: Math.max(0, opt.votes + (isMine ? 1 : 0) - (wasMine ? 1 : 0)),
+        };
+      }),
+    };
+
+    setPollSubmitting(true);
+    setPollChoice(optionId);
+    setPoll(optimisticPoll);
+
+    try {
+      await submitPollVote(token, {
+        pollId: poll.id,
+        userId: user?.id,
+        optionId,
+      });
+      await setPollVote(user?.id, poll.id, optionId).catch(() => {});
+      const freshPoll = await fetchPollResults(token, poll.id, poll).catch(
+        () => null
+      );
+      const optimisticOption = optimisticPoll.options.find((opt) =>
+        isSamePollOption(opt.id, optionId)
+      );
+      const freshOption = freshPoll?.options?.find((opt) =>
+        isSamePollOption(opt.id, optionId)
+      );
+      const freshIncludesVote =
+        freshPoll &&
+        sumVotes(freshPoll.options) > 0 &&
+        (freshOption?.votes ?? 0) >= (optimisticOption?.votes ?? 0);
+
+      setPoll(freshIncludesVote ? freshPoll : optimisticPoll);
+    } catch (err) {
+      if (isAlreadyVotedError(err)) {
+        await setPollVote(user?.id, poll.id, optionId).catch(() => {});
+        const freshPoll = await fetchPollResults(token, poll.id, poll).catch(
+          () => null
+        );
+        setPoll(
+          freshPoll && sumVotes(freshPoll.options) > 0
+            ? freshPoll
+            : optimisticPoll
+        );
+        return;
+      }
+      setPollChoice(prevChoice);
+      setPoll(prevPoll);
+      toast.show(err.message || "Stem opslaan mislukt.");
+    } finally {
+      setPollSubmitting(false);
+    }
+  };
+
+  const showPollResults = pollChoice != null;
+  const displayedPollOptions = poll
+    ? poll.options.map((opt) => {
+        const isMine = isSamePollOption(opt.id, pollChoice);
+        const shouldIncludeStoredVote =
+          showPollResults && isMine && opt.votes === 0;
+        return {
+          ...opt,
+          votes: opt.votes + (shouldIncludeStoredVote ? 1 : 0),
+        };
+      })
+    : [];
+  const totalVotes = sumVotes(displayedPollOptions);
 
   const onScroll = (e) => {
     const scrollY = e.nativeEvent.contentOffset.y;
@@ -121,6 +261,25 @@ export function DetailScreen({
 
   const onFeedSectionLayout = (e) => {
     feedYRef.current = e.nativeEvent.layout.y;
+  };
+
+  const openSource = async (src) => {
+    const url = src?.url || src?.sub;
+    if (!url || !/^https?:\/\//i.test(url)) {
+      toast.show("Geen geldige bronlink gevonden.");
+      return;
+    }
+
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        toast.show("Deze bron kan niet worden geopend.");
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      toast.show("Bron openen mislukt.");
+    }
   };
 
   return (
@@ -243,6 +402,8 @@ export function DetailScreen({
             ) : null}
           </View>
 
+          <View style={styles.metaDivider} />
+
           <Text style={styles.sub}>{story.sub}</Text>
 
           {story.body.map((para, i) => (
@@ -259,11 +420,11 @@ export function DetailScreen({
           </View>
 
           {/* Peiling */}
-          {story.poll && (
+          {poll && (
             <View style={styles.pollCard}>
               <View style={styles.pollTop}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.pollQ}>{story.poll.q}</Text>
+                  <Text style={styles.pollQ}>{poll.q}</Text>
                   <Text style={styles.pollHint}>
                     Stem en zie wat anderen kiezen.
                   </Text>
@@ -272,21 +433,23 @@ export function DetailScreen({
               </View>
 
               <View style={styles.pollOptions}>
-                {story.poll.options.map((opt) => {
-                  const v = opt.votes + (pollChoice === opt.id ? 1 : 0);
-                  const pct = votePct(v, totalVotes);
-                  const isMine = pollChoice === opt.id;
-                  const showResults = pollChoice !== null;
+                {displayedPollOptions.map((opt) => {
+                  const pct =
+                    opt.percentage != null
+                      ? Math.round(Number(opt.percentage))
+                      : votePct(opt.votes, totalVotes);
+                  const isMine = isSamePollOption(pollChoice, opt.id);
                   return (
                     <Pressable
                       key={opt.id}
-                      onPress={() => {
-                        if (!canInteract()) return;
-                        setPollChoice(opt.id);
-                      }}
-                      style={styles.pollOpt}
+                      onPress={() => castPollVote(opt.id)}
+                      disabled={pollSubmitting || showPollResults}
+                      style={[
+                        styles.pollOpt,
+                        pollSubmitting && styles.pollOptDisabled,
+                      ]}
                     >
-                      {showResults && (
+                      {showPollResults && (
                         <View
                           style={[
                             styles.pollBar,
@@ -308,7 +471,7 @@ export function DetailScreen({
                       <Text style={[styles.pollOptLabel, { flex: 1 }]}>
                         {opt.label}
                       </Text>
-                      {showResults && (
+                      {showPollResults && (
                         <Text
                           style={[
                             styles.pollPct,
@@ -323,7 +486,7 @@ export function DetailScreen({
                 })}
               </View>
 
-              {pollChoice && (
+              {showPollResults && totalVotes > 0 && (
                 <Text style={styles.pollVoters}>
                   {totalVotes.toLocaleString("nl-NL")} mensen stemden mee
                 </Text>
@@ -375,7 +538,17 @@ export function DetailScreen({
             <View style={styles.section}>
               <Text style={styles.sectionHeading}>Bronnen</Text>
               {sources.map((src, i) => (
-                <View key={i} style={styles.sourceRow}>
+                <Pressable
+                  key={i}
+                  onPress={() => openSource(src)}
+                  unstable_pressDelay={0}
+                  style={({ pressed }) => [
+                    styles.sourceRow,
+                    pressFx({ scale: 0.98 })({ pressed }),
+                  ]}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Open bron ${src.label || src.sub}`}
+                >
                   <View style={{ flex: 1 }}>
                     <Text style={styles.sourceTitle}>{src.label}</Text>
                     <Text style={styles.sourceSub}>{src.sub}</Text>
@@ -386,7 +559,7 @@ export function DetailScreen({
                     color={colors.ink}
                     strokeWidth={2}
                   />
-                </View>
+                </Pressable>
               ))}
             </View>
           )}
@@ -548,7 +721,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    marginBottom: 18,
+    marginBottom: 20,
+  },
+  metaDivider: {
+    height: 1,
+    backgroundColor: "rgba(15,17,26,0.12)",
+    marginBottom: 20,
   },
   metaText: {
     fontFamily: fonts.body,
@@ -605,52 +783,58 @@ const styles = StyleSheet.create({
   // Poll
   pollCard: {
     padding: 14,
-    borderRadius: 14,
-    backgroundColor: colors.creamWarm,
+    paddingTop: 13,
+    borderRadius: 13,
+    backgroundColor: "#E9E2D7",
     marginBottom: 18,
-    gap: 10,
+    gap: 12,
   },
   pollTop: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 8,
+    gap: 10,
   },
   pollQ: {
     fontFamily: fonts.display,
-    fontWeight: "600",
+    fontWeight: "700",
     fontSize: 13,
     color: colors.ink,
-    lineHeight: 13 * 1.25,
+    lineHeight: 13 * 1.16,
   },
   pollHint: {
     fontFamily: fonts.body,
-    fontSize: 11,
-    color: surfaces.muted,
-    marginTop: 2,
+    fontSize: 10.5,
+    color: "rgba(15,17,26,0.48)",
+    marginTop: 3,
   },
   peilLabel: {
     fontFamily: fonts.display,
-    fontSize: 10,
-    letterSpacing: 2,
-    color: surfaces.muted,
-    fontWeight: "600",
+    fontSize: 9,
+    letterSpacing: 2.2,
+    color: "rgba(15,17,26,0.52)",
+    fontWeight: "700",
     flexShrink: 0,
+    marginTop: 1,
   },
   pollOptions: {
-    gap: 8,
+    gap: 9,
   },
   pollOpt: {
     position: "relative",
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    backgroundColor: colors.cream,
+    gap: 11,
+    minHeight: 44,
+    backgroundColor: "#F0ECE4",
     borderRadius: 9999,
-    borderWidth: 1.5,
-    borderColor: "rgba(15,17,26,0.12)",
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    borderWidth: 1,
+    borderColor: "rgba(15,17,26,0.10)",
+    paddingHorizontal: 15,
+    paddingVertical: 10,
     overflow: "hidden",
+  },
+  pollOptDisabled: {
+    opacity: 0.72,
   },
   pollBar: {
     position: "absolute",
@@ -667,21 +851,22 @@ const styles = StyleSheet.create({
   },
   pollOptLabel: {
     fontFamily: fonts.display,
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 12.5,
+    fontWeight: "700",
     color: colors.ink,
   },
   pollPct: {
     fontFamily: fonts.display,
     fontSize: 12,
-    fontWeight: "600",
-    color: surfaces.muted,
+    fontWeight: "700",
+    color: "rgba(15,17,26,0.58)",
   },
   pollVoters: {
     fontFamily: fonts.body,
-    fontSize: 11,
-    color: surfaces.muted,
+    fontSize: 10.5,
+    color: "rgba(15,17,26,0.50)",
     textAlign: "right",
+    marginTop: -2,
   },
 
   // Divider

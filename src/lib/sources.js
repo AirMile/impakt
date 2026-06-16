@@ -5,9 +5,10 @@ export function mapSource(raw) {
   const label = raw.name ?? "";
   // De artikel-specifieke deeplink (pivot.source_url) is informatiever dan de
   // generieke bron-url; val terug op de generieke url als de deeplink ontbreekt.
-  const sub = raw.pivot?.source_url ?? raw.url ?? "";
+  const url = raw.pivot?.source_url ?? raw.url ?? "";
+  const sub = url;
   if (!label && !sub) return null;
-  return { label, sub };
+  return { label, sub, url };
 }
 
 export async function fetchSources(articleId) {
