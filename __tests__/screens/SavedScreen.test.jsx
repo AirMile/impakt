@@ -1,4 +1,5 @@
 import { render, fireEvent } from "@testing-library/react-native";
+import { Image, StyleSheet } from "react-native";
 
 import { SavedScreen } from "../../src/screens/SavedScreen";
 
@@ -52,6 +53,20 @@ test("mode=memes rendert alleen memes, geen artikelen", () => {
   );
   expect(getByLabelText("Open meme: Grappige meme")).toBeTruthy();
   expect(queryByText("Bewaard artikel")).toBeNull();
+});
+
+test("meme-thumbnail rendert de afbeelding vullend (geen 0-hoogte)", () => {
+  const { UNSAFE_getByType } = render(
+    <SavedScreen mode="memes" savedMemes={[MEME]} />
+  );
+
+  const image = UNSAFE_getByType(Image);
+  expect(image.props.source).toEqual({ uri: "https://x.test/m.jpg" });
+  // De afbeelding moet als flow-kind de aspectRatio-container vullen. Met
+  // absolute positionering bleef de hoogte 0 en zag de gebruiker lege vakjes.
+  const style = StyleSheet.flatten(image.props.style);
+  expect(style.width).toBe("100%");
+  expect(style.height).toBe("100%");
 });
 
 test("tap op meme-thumbnail roept onOpenMeme met storyId aan", () => {

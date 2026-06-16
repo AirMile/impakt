@@ -23,7 +23,7 @@ function MemeThumb({ meme, onOpenMeme }) {
     >
       <Image
         source={{ uri: meme.img }}
-        style={StyleSheet.absoluteFillObject}
+        style={styles.memeThumbImg}
         resizeMode="cover"
       />
     </Pressable>
@@ -162,5 +162,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
     backgroundColor: "rgba(15,17,26,0.08)",
+  },
+  // Flow-kind dat de aspectRatio-container vult. Een absoluut gepositioneerde
+  // afbeelding (absoluteFillObject) krijgt hier geen hoogte omdat de ouder zijn
+  // hoogte alleen uit aspectRatio afleidt — dan blijft de thumbnail leeg.
+  memeThumbImg: {
+    width: "100%",
+    height: "100%",
   },
 });
