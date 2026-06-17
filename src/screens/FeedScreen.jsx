@@ -13,7 +13,6 @@ import {
   FlatList,
   ScrollView,
   StyleSheet,
-  Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { MotiView } from "moti";
@@ -36,9 +35,7 @@ import { updatedAtLabel } from "../lib/updatedAtLabel";
 import { useSaveArticle } from "../hooks/useSaveArticle";
 import { useArticleReaction } from "../hooks/useArticleReactions";
 import { reactionPct } from "../lib/reactionPct";
-
-const { width: SCREEN_W } = Dimensions.get("window");
-const CARD_W = SCREEN_W - 36;
+import { useAppFrame } from "../lib/appFrame";
 
 const CATEGORY_ICONS = {
   politiek: "topicPolitics",
@@ -165,6 +162,11 @@ export const FeedCard = React.memo(function FeedCard({
   // Reactie-state komt uit de gedeelde store, zodat feed en detail dezelfde
   // counts/eigen stem tonen. De stem-logica zelf leeft in de provider.
   const { reaction, counts, react } = useArticleReaction(story);
+
+  // Kaart-breedte volgt het app-frame (geclampt op web), zodat de aspect-ratio
+  // klopt binnen de mobiel-brede kolom i.p.v. de volle viewportbreedte.
+  const { width: frameW } = useAppFrame();
+  const CARD_W = frameW - 36;
 
   const isCompact = variant === "compact";
   const aspectH = isCompact ? CARD_W * (3.4 / 4) : CARD_W * (4.3 / 4);

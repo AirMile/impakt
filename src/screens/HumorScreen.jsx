@@ -12,7 +12,6 @@ import {
   Pressable,
   FlatList,
   StyleSheet,
-  Dimensions,
 } from "react-native";
 import { AppHeader } from "../components/AppHeader";
 import { IIcon } from "../components/Icons";
@@ -34,8 +33,7 @@ import { reactionPct } from "../lib/reactionPct";
 import { castVote, revertVote } from "../lib/reactionVote";
 import { toast } from "../lib/toast";
 import { pressFx } from "../lib/pressFeedback";
-
-const { height: SCREEN_H } = Dimensions.get("window");
+import { useAppFrame } from "../lib/appFrame";
 
 // Sentinel-item dat als laatste "pagina" in de carousel de einde-kaart toont.
 const END_ITEM = { id: "__end__", isEnd: true };
@@ -115,6 +113,7 @@ const MemeCard = React.memo(function MemeCard({
   token,
   savedMemeIds,
   onSavedMemesChange,
+  frameH,
 }) {
   const isSaved = savedMemeIds?.has(meme.id) ?? false;
   const [saved, setSaved] = useState(isSaved);
@@ -192,7 +191,7 @@ const MemeCard = React.memo(function MemeCard({
   );
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { height: frameH }]}>
       <Image
         source={{ uri: meme.img }}
         style={styles.memeImage}
@@ -304,9 +303,9 @@ const MemeCard = React.memo(function MemeCard({
 
 // Fullscreen einde-kaart: de laatste pagina van de meme-carousel. Content staat
 // gecentreerd, ruim boven de BottomNav, zodat de knoppen er niet achter vallen.
-export function MemeEndCard({ onBackToTop, onGoToFeed }) {
+export function MemeEndCard({ onBackToTop, onGoToFeed, frameH }) {
   return (
-    <View style={styles.endCard}>
+    <View style={[styles.endCard, { height: frameH }]}>
       <IIcon name="smile" size={44} color={colors.cream} strokeWidth={1.8} />
       <Text style={styles.endTitle}>Dat waren{"\n"}alle memes</Text>
       <Text style={styles.endSub}>Kom later terug voor verse memes</Text>
@@ -369,6 +368,11 @@ export function HumorScreen({
   // en de momentum-correctie. Geen state: hoeft geen re-render te triggeren.
   const indexRef = useRef(0);
 
+  // Paginahoogte = app-frame-hoogte (geclampt op web, volle viewport op native).
+  // Eén bron voor paging-berekening én kaart-hoogte, zodat ze gegarandeerd
+  // gelijk blijven binnen het mobiel-frame.
+  const { height: frameH } = useAppFrame();
+
   // De memes plus een einde-kaart als laatste pagina. Door 'm als echt lijst-item
   // mee te geven snapt de carousel er net zo naartoe als naar een meme — geen
   // losse rubber-band of footer-zone die achter de BottomNav valt.
@@ -398,8 +402,8 @@ export function HumorScreen({
     (e) => {
       const { contentOffset, velocity } = e.nativeEvent;
       const current = indexRef.current;
-      const delta = contentOffset.y - current * SCREEN_H;
-      const DISTANCE_THRESHOLD = SCREEN_H * 0.12;
+      const delta = contentOffset.y - current * frameH;
+      const DISTANCE_THRESHOLD = frameH * 0.12;
       const VELOCITY_THRESHOLD = 0.15;
       const fastFlick = Math.abs(velocity?.y ?? 0) > VELOCITY_THRESHOLD;
       const passedDistance = Math.abs(delta) > DISTANCE_THRESHOLD;
@@ -411,16 +415,16 @@ export function HumorScreen({
 
       snapToIndex(target);
     },
-    [snapToIndex]
+    [snapToIndex, frameH]
   );
 
   // Houd de index gelijk aan de werkelijke positie na een (programmatische) scroll.
   const onMomentumScrollEnd = useCallback(
     (e) => {
-      const raw = Math.round(e.nativeEvent.contentOffset.y / SCREEN_H);
+      const raw = Math.round(e.nativeEvent.contentOffset.y / frameH);
       indexRef.current = Math.max(0, Math.min(data.length - 1, raw));
     },
-    [data.length]
+    [data.length, frameH]
   );
 
   // Scroll naar de juiste meme wanneer App.jsx een initialMemeId/storyId doorgeeft
@@ -448,6 +452,7 @@ export function HumorScreen({
         <MemeEndCard
           onBackToTop={() => snapToIndex(0)}
           onGoToFeed={onGoToFeed}
+          frameH={frameH}
         />
       ) : (
         <MemeCard
@@ -460,6 +465,7 @@ export function HumorScreen({
           onRequireAuth={onRequireAuth}
           savedMemeIds={savedMemeIds}
           onSavedMemesChange={onSavedMemesChange}
+          frameH={frameH}
         />
       ),
     [
@@ -471,6 +477,7 @@ export function HumorScreen({
       token,
       savedMemeIds,
       onSavedMemesChange,
+      frameH,
     ]
   );
 
@@ -489,8 +496,8 @@ export function HumorScreen({
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           getItemLayout={(_, index) => ({
-            length: SCREEN_H,
-            offset: SCREEN_H * index,
+            length: frameH,
+            offset: frameH * index,
             index,
           })}
           onScrollEndDrag={onScrollEndDrag}
@@ -521,7 +528,6 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   endCard: {
-    height: SCREEN_H,
     width: "100%",
     backgroundColor: colors.ink,
     alignItems: "center",
@@ -596,7 +602,6 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    height: SCREEN_H,
     width: "100%",
     backgroundColor: colors.ink,
     overflow: "hidden",

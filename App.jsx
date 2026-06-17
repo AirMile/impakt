@@ -55,6 +55,7 @@ import { fetchArticle } from "./src/lib/articles";
 import { fetchMemes } from "./src/lib/memes";
 import { fetchSavedArticles, fetchSavedMemes } from "./src/lib/saves";
 import { toast } from "./src/lib/toast";
+import { useAppFrame } from "./src/lib/appFrame";
 
 const DEV_FORCE_AUTH = __DEV__;
 const DEV_SANDBOX = false; // false | "reactions"
@@ -517,6 +518,8 @@ export default function App() {
     [navTab, handleSearch, handleProfile, tab]
   );
 
+  const frame = useAppFrame();
+
   if (!fontsLoaded || authLoading) {
     return (
       <View style={styles.loader}>
@@ -530,185 +533,203 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ReactionsProvider token={user?.token} onRequireAuth={requireAuth}>
-        <View style={styles.root}>
-          <StatusBar style={inApp && tab === "humor" ? "light" : "dark"} />
+        <View style={styles.outer}>
+          <View
+            style={[
+              styles.root,
+              frame.framed && {
+                width: frame.width,
+                height: frame.height,
+                borderRadius: 28,
+                overflow: "hidden",
+                // Vaste box: flexBasis "auto" zodat de expliciete height telt
+                // (flex:0 → basis 0% zou de hoogte naar 0 laten klappen).
+                flexGrow: 0,
+                flexShrink: 0,
+                flexBasis: "auto",
+              },
+              frame.framed && styles.frameShadow,
+            ]}
+          >
+            <StatusBar style={inApp && tab === "humor" ? "light" : "dark"} />
 
-          {/* Auth — alleen zichtbaar vóór onboarding */}
-          {!inApp && (
-            <AuthScreen
-              initialView={authInitialView}
-              onComplete={(u, _topics, syncedTags = []) => {
-                setUser(u);
-                setMyTags(syncedTags);
-                if (u?.token) setToken(u.token);
-                setAuthInitialView("welcome");
-                setPhase("app");
-              }}
-            />
-          )}
+            {/* Auth — alleen zichtbaar vóór onboarding */}
+            {!inApp && (
+              <AuthScreen
+                initialView={authInitialView}
+                onComplete={(u, _topics, syncedTags = []) => {
+                  setUser(u);
+                  setMyTags(syncedTags);
+                  if (u?.token) setToken(u.token);
+                  setAuthInitialView("welcome");
+                  setPhase("app");
+                }}
+              />
+            )}
 
-          {/* Tab-host: altijd gemount, inactieve tabs verborgen via display:none.
+            {/* Tab-host: altijd gemount, inactieve tabs verborgen via display:none.
             Scroll-positie, FlatList-state en per-card reaction-state blijven bewaard. */}
-          {inApp && (
-            <>
-              <View style={[styles.tab, tab !== "feed" && styles.hidden]}>
-                <FeedScreen
-                  {...commonProps}
-                  onOpen={(story) => openStoryFromList(story, "feed")}
-                  cat={feedCat}
-                  onCatChange={setFeedCat}
-                  myTags={myTags}
-                  onMyTagsChange={handleMyTagsChange}
-                  selectedTopics={selectedTopics}
-                  topicOrder={topicRecency}
-                  onToggleTopic={toggleTopic}
-                  onRequireAuth={requireAuth}
-                  token={user?.token}
-                  savedIds={savedIds}
-                  onSavedChange={handleSavedChange}
-                />
-              </View>
-              <View style={[styles.tab, tab !== "good" && styles.hidden]}>
-                <HappyFeedScreen
-                  onOpen={(story) => openStoryFromList(story, "good")}
-                  onProfile={handleProfile}
-                  myTags={myTags}
-                  onMyTagsChange={handleMyTagsChange}
-                  selectedTopics={selectedTopics}
-                  topicOrder={topicRecency}
-                  onToggleTopic={toggleTopic}
-                  onRequireAuth={requireAuth}
-                  token={user?.token}
-                  savedIds={savedIds}
-                  onSavedChange={handleSavedChange}
-                />
-              </View>
-              <View style={[styles.tab, tab !== "humor" && styles.hidden]}>
-                <HumorScreen
-                  initialMemeId={pendingMemeId}
-                  initialStoryId={pendingMemeStoryId}
-                  onInitialStoryConsumed={() => {
-                    setPendingMemeId(null);
-                    setPendingMemeStoryId(null);
-                  }}
-                  onOpenStory={openStoryById}
-                  onProfile={handleProfile}
-                  onGoToFeed={() => navTab("feed")}
-                  memes={memes}
-                  onRequireAuth={requireAuth}
-                  token={user?.token}
-                  savedMemeIds={savedMemeIds}
-                  onSavedMemesChange={handleSavedMemesChange}
-                />
-              </View>
-            </>
-          )}
+            {inApp && (
+              <>
+                <View style={[styles.tab, tab !== "feed" && styles.hidden]}>
+                  <FeedScreen
+                    {...commonProps}
+                    onOpen={(story) => openStoryFromList(story, "feed")}
+                    cat={feedCat}
+                    onCatChange={setFeedCat}
+                    myTags={myTags}
+                    onMyTagsChange={handleMyTagsChange}
+                    selectedTopics={selectedTopics}
+                    topicOrder={topicRecency}
+                    onToggleTopic={toggleTopic}
+                    onRequireAuth={requireAuth}
+                    token={user?.token}
+                    savedIds={savedIds}
+                    onSavedChange={handleSavedChange}
+                  />
+                </View>
+                <View style={[styles.tab, tab !== "good" && styles.hidden]}>
+                  <HappyFeedScreen
+                    onOpen={(story) => openStoryFromList(story, "good")}
+                    onProfile={handleProfile}
+                    myTags={myTags}
+                    onMyTagsChange={handleMyTagsChange}
+                    selectedTopics={selectedTopics}
+                    topicOrder={topicRecency}
+                    onToggleTopic={toggleTopic}
+                    onRequireAuth={requireAuth}
+                    token={user?.token}
+                    savedIds={savedIds}
+                    onSavedChange={handleSavedChange}
+                  />
+                </View>
+                <View style={[styles.tab, tab !== "humor" && styles.hidden]}>
+                  <HumorScreen
+                    initialMemeId={pendingMemeId}
+                    initialStoryId={pendingMemeStoryId}
+                    onInitialStoryConsumed={() => {
+                      setPendingMemeId(null);
+                      setPendingMemeStoryId(null);
+                    }}
+                    onOpenStory={openStoryById}
+                    onProfile={handleProfile}
+                    onGoToFeed={() => navTab("feed")}
+                    memes={memes}
+                    onRequireAuth={requireAuth}
+                    token={user?.token}
+                    savedMemeIds={savedMemeIds}
+                    onSavedMemesChange={handleSavedMemesChange}
+                  />
+                </View>
+              </>
+            )}
 
-          {/* Overlays — conditional (bewuste keuze: eigen data per open) */}
-          {inApp && showProfile && (
-            <ProfileScreen
-              user={user}
-              onUserUpdate={setUser}
-              savedArticlesCount={savedArticles.length}
-              savedMemesCount={savedMemes.length}
-              onOpenSaved={handleOpenSaved}
-              onClose={() => setShowProfile(false)}
-              onLogout={() => {
-                clearSession();
-                setShowProfile(false);
-                setPhase("welcome");
-              }}
-            />
-          )}
-          {inApp && showSearch && (
-            <SearchScreen
-              onClose={() => setShowSearch(false)}
-              query={searchQuery}
-              onQueryChange={setSearchQuery}
-              onOpenStory={(s) => {
-                setShowSearch(false);
-                openStoryFromList(s, tab);
-                setStoryFromSearch(true);
-              }}
-              myTags={myTags}
-              onMyTagsChange={handleMyTagsChange}
-              selectedTopics={selectedTopics}
-              topicOrder={topicRecency}
-              onToggleTopic={toggleTopic}
-              onRequireAuth={requireAuth}
-              token={user?.token}
-              savedIds={savedIds}
-              onSavedChange={handleSavedChange}
-            />
-          )}
-          {inApp && savedMode && (
-            <SavedScreen
-              mode={savedMode}
-              savedArticles={savedArticles}
-              savedMemes={savedMemes}
-              onClose={() => setSavedMode(null)}
-              onOpen={(s) => {
-                setSavedMode(null);
-                openStoryFromList(s, tab);
-              }}
-              onOpenMeme={(storyId) => {
-                setSavedMode(null);
-                openMemeForStory(null, storyId);
-              }}
-              onRequireAuth={requireAuth}
-              token={user?.token}
-              savedIds={savedIds}
-              onSavedChange={handleSavedChange}
-            />
-          )}
-          <AnimatePresence>
-            {inApp && openStory && (
-              <DetailScreen
-                key={openStory.id}
-                story={openStory}
-                memes={memes}
-                onClose={handleCloseStory}
-                onOpenMeme={openMemeForStory}
-                onSwapStory={(story) =>
-                  openStoryFromList(story, openStorySource)
-                }
-                tab={tab}
-                feedCat={feedCat}
-                onCatChange={setFeedCat}
-                onNav={navTab}
-                onProfile={handleProfile}
-                onSearch={handleSearch}
-                activeTab={tab}
+            {/* Overlays — conditional (bewuste keuze: eigen data per open) */}
+            {inApp && showProfile && (
+              <ProfileScreen
+                user={user}
+                onUserUpdate={setUser}
+                savedArticlesCount={savedArticles.length}
+                savedMemesCount={savedMemes.length}
+                onOpenSaved={handleOpenSaved}
+                onClose={() => setShowProfile(false)}
+                onLogout={() => {
+                  clearSession();
+                  setShowProfile(false);
+                  setPhase("welcome");
+                }}
+              />
+            )}
+            {inApp && showSearch && (
+              <SearchScreen
+                onClose={() => setShowSearch(false)}
+                query={searchQuery}
+                onQueryChange={setSearchQuery}
+                onOpenStory={(s) => {
+                  setShowSearch(false);
+                  openStoryFromList(s, tab);
+                  setStoryFromSearch(true);
+                }}
                 myTags={myTags}
                 onMyTagsChange={handleMyTagsChange}
-                sourceTab={openStorySource}
+                selectedTopics={selectedTopics}
+                topicOrder={topicRecency}
+                onToggleTopic={toggleTopic}
                 onRequireAuth={requireAuth}
                 token={user?.token}
-                user={user}
                 savedIds={savedIds}
                 onSavedChange={handleSavedChange}
               />
             )}
-          </AnimatePresence>
+            {inApp && savedMode && (
+              <SavedScreen
+                mode={savedMode}
+                savedArticles={savedArticles}
+                savedMemes={savedMemes}
+                onClose={() => setSavedMode(null)}
+                onOpen={(s) => {
+                  setSavedMode(null);
+                  openStoryFromList(s, tab);
+                }}
+                onOpenMeme={(storyId) => {
+                  setSavedMode(null);
+                  openMemeForStory(null, storyId);
+                }}
+                onRequireAuth={requireAuth}
+                token={user?.token}
+                savedIds={savedIds}
+                onSavedChange={handleSavedChange}
+              />
+            )}
+            <AnimatePresence>
+              {inApp && openStory && (
+                <DetailScreen
+                  key={openStory.id}
+                  story={openStory}
+                  memes={memes}
+                  onClose={handleCloseStory}
+                  onOpenMeme={openMemeForStory}
+                  onSwapStory={(story) =>
+                    openStoryFromList(story, openStorySource)
+                  }
+                  tab={tab}
+                  feedCat={feedCat}
+                  onCatChange={setFeedCat}
+                  onNav={navTab}
+                  onProfile={handleProfile}
+                  onSearch={handleSearch}
+                  activeTab={tab}
+                  myTags={myTags}
+                  onMyTagsChange={handleMyTagsChange}
+                  sourceTab={openStorySource}
+                  onRequireAuth={requireAuth}
+                  token={user?.token}
+                  user={user}
+                  savedIds={savedIds}
+                  onSavedChange={handleSavedChange}
+                />
+              )}
+            </AnimatePresence>
 
-          {/* BottomNav — één instantie voor de hele app-levensduur.
+            {/* BottomNav — één instantie voor de hele app-levensduur.
             BlurView wordt niet meer gecreëerd bij elke tabwissel. */}
-          {inApp && (
-            <BottomNav
-              active={tab}
-              onChange={navTab}
-              onSearch={handleSearch}
-              theme={tab === "humor" ? "dark" : "light"}
-            />
-          )}
+            {inApp && (
+              <BottomNav
+                active={tab}
+                onChange={navTab}
+                onSearch={handleSearch}
+                theme={tab === "humor" ? "dark" : "light"}
+              />
+            )}
 
-          <ToastHost />
-          <GuestAuthPrompt
-            visible={authPromptVisible}
-            onClose={() => setAuthPromptVisible(false)}
-            onLogin={() => openAuth("login")}
-            onRegister={() => openAuth("register")}
-          />
+            <ToastHost />
+            <GuestAuthPrompt
+              visible={authPromptVisible}
+              onClose={() => setAuthPromptVisible(false)}
+              onLogin={() => openAuth("login")}
+              onRegister={() => openAuth("register")}
+            />
+          </View>
         </View>
       </ReactionsProvider>
     </SafeAreaProvider>
@@ -716,9 +737,26 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  // Vult de viewport. Op web (frame-modus) centreert dit de mobiel-brede kolom
+  // op een neutrale achtergrond; op native is het een transparante pass-through.
+  outer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.creamWarm,
+  },
   root: {
     flex: 1,
+    width: "100%",
     backgroundColor: colors.cream,
+  },
+  // Zachte drop-shadow rond het frame (web). react-native-web vertaalt de
+  // shadow*-props naar box-shadow.
+  frameShadow: {
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 32,
+    shadowOffset: { width: 0, height: 16 },
   },
   loader: {
     flex: 1,
