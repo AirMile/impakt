@@ -191,6 +191,7 @@ export function SearchScreen({
               <Pressable
                 key={topic.label}
                 onPress={() => toggleTopic(topic.label)}
+                accessibilityRole="button"
                 style={({ pressed }) => [
                   styles.topicChip,
                   isSelected ? styles.topicChipSelected : styles.topicChipIdle,
@@ -247,6 +248,7 @@ export function SearchScreen({
         <Pressable
           onPress={onClose}
           style={styles.backBtn}
+          accessibilityRole="button"
           accessibilityLabel="Terug"
         >
           <IIcon name="arrowL" size={24} strokeWidth={2} color={colors.ink} />
@@ -256,12 +258,13 @@ export function SearchScreen({
             name="search"
             size={17}
             strokeWidth={2}
-            color="rgba(15,17,26,0.55)"
+            color="rgba(15,17,26,0.62)"
           />
           <TextInput
             style={styles.input}
             value={query}
             onChangeText={setQuery}
+            accessibilityLabel="Zoek verhalen, tags, thema's"
             placeholder="Zoek verhalen, tags, thema's..."
             placeholderTextColor="rgba(15,17,26,0.4)"
             autoFocus
@@ -270,12 +273,17 @@ export function SearchScreen({
             autoCorrect={false}
           />
           {query.length > 0 && (
-            <Pressable onPress={() => setQuery("")} hitSlop={8}>
+            <Pressable
+              onPress={() => setQuery("")}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Wis zoekopdracht"
+            >
               <IIcon
                 name="close"
                 size={16}
                 strokeWidth={2.2}
-                color="rgba(15,17,26,0.55)"
+                color="rgba(15,17,26,0.62)"
               />
             </Pressable>
           )}
@@ -423,7 +431,7 @@ const styles = StyleSheet.create({
   topicSectionLabel: {
     fontFamily: fonts.display,
     fontSize: 12,
-    color: "rgba(15,17,26,0.55)",
+    color: "rgba(15,17,26,0.62)",
     textTransform: "uppercase",
     letterSpacing: 1.4,
     marginBottom: 10,
@@ -431,7 +439,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: fonts.display,
     fontSize: 12,
-    color: "rgba(15,17,26,0.55)",
+    color: "rgba(15,17,26,0.62)",
     textTransform: "uppercase",
     letterSpacing: 1.4,
     marginBottom: 10,
@@ -508,7 +516,7 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     fontFamily: fonts.body,
     fontSize: 13,
-    color: "rgba(15,17,26,0.55)",
+    color: "rgba(15,17,26,0.62)",
   },
   emptyState: {
     paddingVertical: 60,
@@ -518,7 +526,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontFamily: fonts.body,
     fontSize: 14,
-    color: "rgba(15,17,26,0.55)",
+    color: "rgba(15,17,26,0.62)",
     textAlign: "center",
   },
 });

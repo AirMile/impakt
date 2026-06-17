@@ -329,6 +329,7 @@ export function DetailScreen({
               styles.headerIconBtn,
               pressFx({ scale: 0.88, opacity: 0.55 })({ pressed }),
             ]}
+            accessibilityRole="button"
             accessibilityLabel="Terug"
           >
             <IIcon name="arrowL" size={26} color={colors.ink} strokeWidth={2} />
@@ -345,6 +346,7 @@ export function DetailScreen({
               styles.headerCircleBtn,
               pressFx({ scale: 0.88, opacity: 0.55 })({ pressed }),
             ]}
+            accessibilityRole="button"
             accessibilityLabel="Delen"
           >
             <IIcon
@@ -373,6 +375,7 @@ export function DetailScreen({
               styles.headerCircleBtn,
               pressFx({ scale: 0.88, opacity: 0.55 })({ pressed }),
             ]}
+            accessibilityRole="button"
             accessibilityLabel="Profiel"
           >
             <IIcon name="user" size={18} color={colors.ink} strokeWidth={1.8} />
@@ -613,7 +616,7 @@ export function DetailScreen({
                     ]}
                     accessibilityRole={hasUrl ? "link" : undefined}
                     accessibilityLabel={
-                      hasUrl ? `Open actie ${action.label}` : action.label
+                      hasUrl ? `Open actie ${action.label}` : undefined
                     }
                   >
                     <View style={styles.actionContent}>
@@ -780,7 +783,7 @@ const styles = StyleSheet.create({
   metaDot: {
     fontFamily: fonts.body,
     fontSize: 13,
-    color: surfaces.textFaint,
+    color: surfaces.muted,
   },
   viewsMeta: {
     flexDirection: "row",
@@ -848,14 +851,14 @@ const styles = StyleSheet.create({
   pollHint: {
     fontFamily: fonts.body,
     fontSize: 10.5,
-    color: "rgba(15,17,26,0.48)",
+    color: "rgba(15,17,26,0.62)",
     marginTop: 3,
   },
   peilLabel: {
     fontFamily: fonts.display,
     fontSize: 9,
     letterSpacing: 2.2,
-    color: "rgba(15,17,26,0.52)",
+    color: "rgba(15,17,26,0.62)",
     fontWeight: "700",
     flexShrink: 0,
     marginTop: 1,
@@ -903,12 +906,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: 12,
     fontWeight: "700",
-    color: "rgba(15,17,26,0.58)",
+    color: "rgba(15,17,26,0.62)",
   },
   pollVoters: {
     fontFamily: fonts.body,
     fontSize: 10.5,
-    color: "rgba(15,17,26,0.50)",
+    color: "rgba(15,17,26,0.62)",
     textAlign: "right",
     marginTop: -2,
   },

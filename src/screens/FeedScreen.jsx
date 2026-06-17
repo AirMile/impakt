@@ -80,7 +80,9 @@ function TopicChips({ topics, selectedTopics, onToggle }) {
 
   return (
     <View style={styles.topicSection}>
-      <Text style={styles.topicSectionLabel}>Jouw thema's</Text>
+      <Text accessibilityRole="header" style={styles.topicSectionLabel}>
+        Jouw thema's
+      </Text>
       <View style={styles.topicScrollFrame}>
         <ScrollView
           horizontal
@@ -95,6 +97,8 @@ function TopicChips({ topics, selectedTopics, onToggle }) {
               <Pressable
                 key={topic.label}
                 onPress={() => onToggle(topic.label)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
                 style={({ pressed }) => [
                   styles.topicChip,
                   isSelected ? styles.topicChipSelected : styles.topicChipIdle,
@@ -177,6 +181,11 @@ export const FeedCard = React.memo(function FeedCard({
       <Pressable
         onPress={() => onOpen(story)}
         unstable_pressDelay={0}
+        // Kaart is een container, geen losse knop: anders nest hij de reactie-rail
+        // en "Lees meer" als focusbare kinderen (WCAG 4.1.2 nested-interactive).
+        // De tap-to-open blijft voor muis/touch; AT-gebruikers openen via "Lees meer".
+        accessible={false}
+        focusable={false}
         style={StyleSheet.absoluteFill}
       >
         <Image
@@ -213,6 +222,8 @@ export const FeedCard = React.memo(function FeedCard({
         <View style={styles.bottomRow}>
           <Pressable
             onPress={() => onOpen(story)}
+            accessibilityRole="button"
+            accessibilityLabel={`Lees meer: ${story.title}`}
             style={({ pressed }) => [styles.readMore, pressFx()({ pressed })]}
           >
             <Text style={styles.readMoreLabel}>Lees meer</Text>
@@ -464,7 +475,7 @@ const styles = StyleSheet.create({
   topicSectionLabel: {
     fontFamily: fonts.display,
     fontSize: 12,
-    color: "rgba(15,17,26,0.55)",
+    color: "rgba(15,17,26,0.62)",
     textTransform: "uppercase",
     letterSpacing: 1.4,
     marginBottom: 10,
@@ -472,7 +483,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: fonts.display,
     fontSize: 12,
-    color: "rgba(15,17,26,0.55)",
+    color: "rgba(15,17,26,0.62)",
     textTransform: "uppercase",
     letterSpacing: 1.4,
     marginBottom: 10,

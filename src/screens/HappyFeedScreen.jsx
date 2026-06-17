@@ -155,7 +155,9 @@ export function HappyFeedScreen({
 
   const topicBar = (
     <View style={styles.topicSection}>
-      <Text style={styles.topicSectionLabel}>Jouw thema's</Text>
+      <Text accessibilityRole="header" style={styles.topicSectionLabel}>
+        Jouw thema's
+      </Text>
       <View style={styles.topicScrollFrame}>
         <ScrollView
           horizontal
@@ -171,6 +173,8 @@ export function HappyFeedScreen({
                 key={topic.label}
                 testID={`happy-topic-${topic.label}`}
                 onPress={() => toggleTopic(topic.label)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
                 style={({ pressed }) => [
                   styles.topicChip,
                   isSelected ? styles.topicChipSelected : styles.topicChipIdle,
@@ -230,7 +234,9 @@ export function HappyFeedScreen({
         >
           {topSections.map((sec) => (
             <View key={sec.key} style={styles.section}>
-              <Text style={styles.sectionLabel}>{sec.label}</Text>
+              <Text accessibilityRole="header" style={styles.sectionLabel}>
+                {sec.label}
+              </Text>
               {sec.stories.map((story, i) => (
                 <FeedCard
                   key={`${sec.key}-${story.id}-${i}`}
@@ -250,7 +256,9 @@ export function HappyFeedScreen({
           {earlierSection && (
             <View style={styles.section}>
               {topSections.length > 0 && (
-                <Text style={styles.sectionLabel}>{earlierSection.label}</Text>
+                <Text accessibilityRole="header" style={styles.sectionLabel}>
+                  {earlierSection.label}
+                </Text>
               )}
               {earlierSection.stories.map((story, i) => (
                 <FeedCard
@@ -330,7 +338,7 @@ const styles = StyleSheet.create({
   topicSectionLabel: {
     fontFamily: fonts.display,
     fontSize: 12,
-    color: "rgba(15,17,26,0.55)",
+    color: "rgba(15,17,26,0.62)",
     textTransform: "uppercase",
     letterSpacing: 1.4,
     marginBottom: 10,

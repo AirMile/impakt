@@ -51,6 +51,7 @@ export function Field({
         <TextInput
           ref={resolvedInputRef}
           style={styles.input}
+          accessibilityLabel={label ?? placeholder}
           value={value}
           onChangeText={onChange}
           placeholder={placeholder}
@@ -75,7 +76,7 @@ export function Field({
         <Text
           style={[
             styles.meta,
-            { color: error != null ? colors.red : "rgba(15,17,26,0.55)" },
+            { color: error != null ? colors.red : "rgba(15,17,26,0.62)" },
           ]}
         >
           {error ?? hint}

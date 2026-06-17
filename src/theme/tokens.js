@@ -14,9 +14,11 @@ export const surfaces = {
   line: "rgba(15,17,26,0.10)",
   lineStrong: "rgba(15,17,26,0.22)",
   border: "rgba(15,17,26,0.08)",
-  // text
-  muted: "rgba(15,17,26,0.55)",
-  textDim: "rgba(15,17,26,0.60)",
+  // text — muted/textDim opgehoogd zodat secundaire tekst WCAG AA (4.5:1) haalt
+  // op cream én op wit. textFaint blijft licht: alleen voor placeholders/decoratie,
+  // niet voor informatieve tekst.
+  muted: "rgba(15,17,26,0.62)",
+  textDim: "rgba(15,17,26,0.64)",
   textFaint: "rgba(15,17,26,0.35)",
   // backgrounds
   soft: "rgba(15,17,26,0.05)",

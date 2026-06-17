@@ -34,6 +34,7 @@ export function BottomNav({ active, onChange, onSearch, theme = "light" }) {
               <Pressable
                 key={t.id}
                 onPress={() => onChange(t.id)}
+                accessibilityRole="button"
                 accessibilityLabel={t.label}
                 unstable_pressDelay={0}
                 android_ripple={{
@@ -63,6 +64,7 @@ export function BottomNav({ active, onChange, onSearch, theme = "light" }) {
           <View style={styles.divider} />
           <Pressable
             onPress={onSearch}
+            accessibilityRole="button"
             accessibilityLabel="Zoeken"
             unstable_pressDelay={0}
             android_ripple={{

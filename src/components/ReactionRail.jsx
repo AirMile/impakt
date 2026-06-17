@@ -37,6 +37,7 @@ function ReactionBtn({
     <Animated.View style={animStyle}>
       <Pressable
         onPress={onPress}
+        accessibilityRole="button"
         accessibilityLabel={it.label}
         unstable_pressDelay={0}
         android_ripple={{ color: "rgba(15,17,26,0.12)", borderless: true }}

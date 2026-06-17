@@ -24,7 +24,7 @@ import { slideInRight, fadeUp } from "../theme/animations";
 
 function ProfileRow({ icon, label, count, onPress }) {
   return (
-    <Pressable onPress={onPress} style={styles.row}>
+    <Pressable onPress={onPress} style={styles.row} accessibilityRole="button">
       <View style={styles.rowLeft}>
         <IIcon name={icon} size={18} strokeWidth={1.8} color={colors.ink} />
         <Text style={styles.rowLabel}>{label}</Text>
@@ -73,6 +73,7 @@ function AccountField({ label, value, onPress }) {
     <Pressable
       onPress={onPress}
       style={styles.accountLine}
+      accessibilityRole="button"
       accessibilityLabel={`Bewerk ${label}`}
     >
       <Text style={styles.accountLabel}>{label}</Text>
@@ -307,12 +308,13 @@ export function ProfileScreen({
         >
           <Pressable
             onPress={closeAccountEditor}
+            accessibilityRole="button"
             accessibilityLabel="Terug naar accountgegevens"
             style={styles.editBackBtn}
           >
             <IIcon name="arrowL" size={28} strokeWidth={2} color={colors.ink} />
           </Pressable>
-          <Text style={styles.editScreenTitle}>
+          <Text style={styles.editScreenTitle} accessibilityRole="header">
             {editingAccountConfig.label}
           </Text>
           {hasEditingAccountChange ? (
@@ -320,6 +322,7 @@ export function ProfileScreen({
               onPress={handleSaveAccountField}
               disabled={accountLoading}
               style={styles.editSaveBtn}
+              accessibilityRole="button"
             >
               <Text
                 style={[
@@ -350,6 +353,7 @@ export function ProfileScreen({
             style={styles.editFieldInput}
             value={editingAccountValue}
             onChangeText={setEditingAccountValue}
+            accessibilityLabel={editingAccountConfig.label}
             placeholder={editingAccountConfig.placeholder}
             placeholderTextColor="rgba(15,17,26,0.35)"
             keyboardType={editingAccountConfig.keyboardType}
@@ -377,17 +381,21 @@ export function ProfileScreen({
         >
           <Pressable
             onPress={closePasswordEditor}
+            accessibilityRole="button"
             accessibilityLabel="Terug naar accountgegevens"
             style={styles.editBackBtn}
           >
             <IIcon name="arrowL" size={28} strokeWidth={2} color={colors.ink} />
           </Pressable>
-          <Text style={styles.editScreenTitle}>Wachtwoord</Text>
+          <Text style={styles.editScreenTitle} accessibilityRole="header">
+            Wachtwoord
+          </Text>
           {hasPasswordChanges ? (
             <Pressable
               onPress={handleSavePassword}
               disabled={passwordLoading}
               style={styles.editSaveBtn}
+              accessibilityRole="button"
             >
               <Text
                 style={[
@@ -411,7 +419,9 @@ export function ProfileScreen({
           ]}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.passwordEditTitle}>Wachtwoord wijzigen</Text>
+          <Text style={styles.passwordEditTitle} accessibilityRole="header">
+            Wachtwoord wijzigen
+          </Text>
           <Text style={styles.passwordEditCopy}>
             Vul je nieuwe wachtwoord in en bevestig het.
           </Text>
@@ -422,6 +432,7 @@ export function ProfileScreen({
                 style={styles.passwordEditInput}
                 value={passwordValue}
                 onChangeText={setPasswordValue}
+                accessibilityLabel="Nieuw wachtwoord"
                 placeholder="Nieuw wachtwoord"
                 placeholderTextColor="rgba(15,17,26,0.35)"
                 secureTextEntry={!showPassword}
@@ -433,6 +444,7 @@ export function ProfileScreen({
               <Pressable
                 onPress={() => setShowPassword((v) => !v)}
                 hitSlop={8}
+                accessibilityRole="button"
                 accessibilityLabel={
                   showPassword ? "Verberg wachtwoord" : "Toon wachtwoord"
                 }
@@ -452,6 +464,7 @@ export function ProfileScreen({
               style={styles.editFieldInput}
               value={passwordConfirmValue}
               onChangeText={setPasswordConfirmValue}
+              accessibilityLabel="Bevestig wachtwoord"
               placeholder="Nog een keer"
               placeholderTextColor="rgba(15,17,26,0.35)"
               secureTextEntry={!showPassword}
@@ -488,7 +501,9 @@ export function ProfileScreen({
           <View style={styles.avatarWrap}>
             <IIcon name="user" size={48} strokeWidth={1.8} color={colors.ink} />
           </View>
-          <Text style={styles.userName}>{displayName}</Text>
+          <Text style={styles.userName} accessibilityRole="header">
+            {displayName}
+          </Text>
           {hasAccountInfo ? (
             <>
               <View style={styles.accountCard}>
@@ -525,6 +540,7 @@ export function ProfileScreen({
                   onPress={openPasswordEditor}
                   disabled={passwordLoading}
                   style={styles.changePasswordToggle}
+                  accessibilityRole="button"
                   accessibilityLabel="Wijzig wachtwoord"
                 >
                   <View style={styles.changePasswordLeft}>
@@ -586,6 +602,7 @@ export function ProfileScreen({
             <Pressable
               onPress={handleLogout}
               disabled={logoutLoading || deleteLoading}
+              accessibilityRole="button"
               style={[
                 styles.accountActionBtn,
                 (logoutLoading || deleteLoading) && styles.logoutDisabled,
@@ -604,6 +621,7 @@ export function ProfileScreen({
             <Pressable
               onPress={handleDeleteAccount}
               disabled={logoutLoading || deleteLoading}
+              accessibilityRole="button"
               style={[
                 styles.accountActionBtn,
                 styles.deleteAccountBtn,

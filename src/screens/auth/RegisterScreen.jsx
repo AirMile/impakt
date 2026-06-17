@@ -105,6 +105,7 @@ export function RegisterScreen({ onBack, onSuccess, onSwitchToLogin }) {
           <Pressable
             onPress={onBack}
             style={styles.backBtn}
+            accessibilityRole="button"
             accessibilityLabel="Terug"
           >
             <IIcon name="arrowL" size={20} strokeWidth={2} color={colors.ink} />
@@ -116,7 +117,10 @@ export function RegisterScreen({ onBack, onSuccess, onSwitchToLogin }) {
         <MotiView {...fadeUp} style={styles.formBody}>
           <View style={styles.headingBlock}>
             <Text style={styles.eyebrow}>Stap 1 van 2</Text>
-            <Text style={styles.title}>{`Welkom bij\nImpakt.`}</Text>
+            <Text
+              style={styles.title}
+              accessibilityRole="header"
+            >{`Welkom bij\nImpakt.`}</Text>
           </View>
 
           <View style={styles.fieldsBlock}>
@@ -166,7 +170,14 @@ export function RegisterScreen({ onBack, onSuccess, onSwitchToLogin }) {
               onFocus={scrollToPasswordFields}
               onSubmitEditing={() => pw2Ref.current?.focus()}
               rightSlot={
-                <Pressable onPress={() => setShowPw((s) => !s)} hitSlop={8}>
+                <Pressable
+                  onPress={() => setShowPw((s) => !s)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    showPw ? "Wachtwoord verbergen" : "Wachtwoord tonen"
+                  }
+                >
                   <IIcon
                     name={showPw ? "eyeOff" : "eye"}
                     size={18}
@@ -207,7 +218,7 @@ export function RegisterScreen({ onBack, onSuccess, onSwitchToLogin }) {
 
             <View style={styles.switchRow}>
               <Text style={styles.switchText}>Al een account? </Text>
-              <Pressable onPress={onSwitchToLogin}>
+              <Pressable onPress={onSwitchToLogin} accessibilityRole="button">
                 <Text style={styles.switchLink}>Inloggen</Text>
               </Pressable>
             </View>
