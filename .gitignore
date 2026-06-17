@@ -9,6 +9,9 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Web-build artefact (verzonden naar de server, niet versiebeheerd)
+impakt-web-dist.zip
+
 # Native
 .kotlin/
 *.orig.*

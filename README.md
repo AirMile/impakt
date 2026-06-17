@@ -39,7 +39,7 @@ De app draait op een live **Laravel-backend** voor content, reacties en peilinge
 - **Backend**: Laravel-API (REST), basis-URL via `EXPO_PUBLIC_API_BASE_URL`
 - **Fonts**: Bebas Neue, Poppins, Geist (via expo-google-fonts)
 - **Tests**: Jest + jest-expo + Testing Library; Playwright (e2e web-target)
-- **Web-deploy**: `expo export` → Vercel (met `/api`-proxy-rewrite)
+- **Web-deploy**: `expo export` → statische `dist/` op de Laravel-server (same-origin `/api`)
 
 ---
 
@@ -99,22 +99,22 @@ EXPO_PUBLIC_API_BASE_URL=http://145.24.237.97/api
 > npx expo start -c
 > ```
 
-Voor de gehoste web-build wordt `.env.production` gebruikt (`/api` relatief → proxy in `vercel.json`), omdat een `https`-pagina geen `http`-backend mag aanroepen (mixed content). Zie `docs/backend.md` voor de volledige API-spec en hosting-stappen.
+Voor de gehoste web-build wordt `.env.production` gebruikt (`/api` relatief). De statische build wordt vanaf dezelfde server als de Laravel-backend geserveerd, zodat de app de API same-origin via `/api` aanroept — geen CORS, geen proxy. Zie `docs/backend.md` voor de volledige API-spec en hosting-stappen.
 
 ---
 
 ## Scripts
 
-| Commando             | Wat doet het                                            |
-| -------------------- | ------------------------------------------------------- |
-| `npm run start`      | Start de Expo dev-server (Expo Go / dev client)         |
-| `npm run ios`        | Start de app in de iOS simulator                        |
-| `npm run android`    | Start de app in de Android emulator                     |
-| `npm run web`        | Start de app als web-app via react-native-web           |
-| `npm run export:web` | Bouwt de statische web-build naar `dist/` (voor Vercel) |
-| `npm run lint`       | Linting via ESLint 10                                   |
-| `npm run format`     | Code formatteren via Prettier 3                         |
-| `npm run test`       | Unit-tests via Jest                                     |
+| Commando             | Wat doet het                                               |
+| -------------------- | ---------------------------------------------------------- |
+| `npm run start`      | Start de Expo dev-server (Expo Go / dev client)            |
+| `npm run ios`        | Start de app in de iOS simulator                           |
+| `npm run android`    | Start de app in de Android emulator                        |
+| `npm run web`        | Start de app als web-app via react-native-web              |
+| `npm run export:web` | Bouwt de statische web-build naar `dist/` (voor de server) |
+| `npm run lint`       | Linting via ESLint 10                                      |
+| `npm run format`     | Code formatteren via Prettier 3                            |
+| `npm run test`       | Unit-tests via Jest                                        |
 
 ---
 

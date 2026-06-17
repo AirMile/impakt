@@ -394,7 +394,7 @@ De app roept dit aan wanneer iemand een artikel opent. Geen body nodig. Wordt ge
 
 De share-knop is nu client-side gebouwd: de app genereert een `impakt://story/<id>` deep-link en opent het native share-sheet. De backend hoeft hier niets voor te doen.
 
-**Status (juni 2026)**: de share-URL gebruikt het custom scheme `impakt://`. Dit werkt alleen voor recipients die de app al hebben en de link handmatig openen — messengers zoals WhatsApp/iMessage maken er geen tappable link van. Universal Links (`https://...` die de app opent én een nette fallback-pagina toont voor mensen zonder app) volgen pas zodra we een echte EAS-build draaien. Dat vereist `.well-known/apple-app-site-association` + `assetlinks.json` op een gehost domein (waarschijnlijk `impakt-beta.vercel.app`), plus `ios.associatedDomains` + `android.intentFilters` in `app.json`. In Expo Go werkt dat niet, dus uitgesteld tot TestFlight/store-prep.
+**Status (juni 2026)**: de share-URL gebruikt het custom scheme `impakt://`. Dit werkt alleen voor recipients die de app al hebben en de link handmatig openen — messengers zoals WhatsApp/iMessage maken er geen tappable link van. Universal Links (`https://...` die de app opent én een nette fallback-pagina toont voor mensen zonder app) volgen pas zodra we een echte EAS-build draaien. Dat vereist `.well-known/apple-app-site-association` + `assetlinks.json` op het gehoste domein van de app, plus `ios.associatedDomains` + `android.intentFilters` in `app.json`. In Expo Go werkt dat niet, dus uitgesteld tot TestFlight/store-prep.
 
 Zodra jullie hier meer mee willen doen zijn er twee opties:
 
@@ -433,46 +433,40 @@ Endpoints die geen login vereisen: `/feed`, `/stories/:id`, `/memes`, `/categori
 
 ---
 
-## Web-hosting (Vercel)
+## Web-hosting (eigen server)
 
-De web-build (`react-native-web`) kan gratis als deelbare HTTPS-demo live via
-Vercel. Eén horde: de Vercel-URL is `https://…`, maar de backend draait op
-`http://145.24.237.97/api` (geen HTTPS). Een https-pagina mag geen http-API
-aanroepen ("mixed content"). Oplossing: een **same-origin proxy** via een
-`vercel.json`-rewrite — geen code, Vercel proxyt `/api/*` server-side naar de
-backend.
+De web-build (`react-native-web`) wordt vanaf **dezelfde server** als de
+Laravel-backend geserveerd. Reden: de server is alleen vanuit Nederland
+bereikbaar (geo-restrictie), dus een externe host (zoals Vercel) kan de API niet
+bereiken. Door de statische build naast de backend te zetten, roept de app de
+API **same-origin** via `/api` aan — geen CORS, geen mixed content, geen proxy.
 
 **Hoe het werkt**
 
-- `vercel.json` → `rewrites`: `/api/:path*` wordt server-side doorgestuurd naar
-  `http://145.24.237.97/api/:path*` (server→server http is toegestaan). De
-  browser ziet alleen same-origin `https://<app>/api/…`, dus geen mixed content.
-  Query-strings worden automatisch meegestuurd.
 - `.env.production` zet `EXPO_PUBLIC_API_BASE_URL=/api` (relatief). `expo export`
   draait in production-mode en geeft `.env.production` voorrang op `.env`, zodat
-  de app via de proxy praat i.p.v. het harde IP. Lokale dev (`npm run web` /
+  de app same-origin praat i.p.v. het harde IP. Lokale dev (`npm run web` /
   native) gebruikt `.env` en blijft het IP gebruiken.
-- `vercel.json` zet `buildCommand` (`npm run export:web`) en `outputDirectory`
-  (`dist`) vast, zodat Vercel de Expo-web-export bouwt zonder dashboardconfig.
+- De statische build staat in Laravel's `public/`-map. De webserver serveert
+  bestaande bestanden direct (`index.html`, `_expo/`, `assets/`) en stuurt de
+  rest naar Laravel, zodat `/api` en `/admin` blijven werken.
 - `npm run export:web` draait met `--clear`: Metro cachet de ingebakken
   `EXPO_PUBLIC_*`-waarde, dus zonder cache-clear zou een eerdere `npm run web`
   (IP) het verkeerde adres in de bundle bakken.
 
 **Deploy-stappen**
 
-1. Push de repo naar GitHub.
-2. Vercel dashboard → Add New → Project → importeer de repo. `vercel.json` vult
-   build-command en output-dir automatisch in — niets handmatig instellen.
-3. Deploy → resultaat: `https://impakt-rn.vercel.app`.
+1. Bouw de web-build: `npm run export:web` → map `dist/`.
+2. Upload de **inhoud** van `dist/` (niet de map zelf) naar Laravel's `public/`:
+   `index.html`, `_expo/`, `assets/`, `favicon.ico`, `metadata.json`.
+3. Zorg dat de webserver `index.html` op `/` serveert:
+   - **nginx**: zet `index.html` vóór `index.php` in de `index`-regel en herlaad
+     nginx (`sudo systemctl reload nginx`).
+   - of via Laravel: een `/`-route die `public/index.html` teruggeeft (werkt
+     zonder toegang tot de webserver-config).
 
-**Verificatie:** open de URL, check in DevTools → Network dat calls naar
-`https://<domein>/api/…` 200 geven, zonder mixed-content- of CORS-fout.
-
-> **Backend-adres wijzigen?** Het IP staat in `vercel.json`. Wil je het niet
-> hardcoden, vervang de rewrite dan door een Edge-function in `api/[...path].js`
-> die `process.env.API_ORIGIN` leest en met `fetch` proxyt — dezelfde aanpak,
-> maar dan instelbaar via een Vercel-env-var. Voor een vaste demo-backend is de
-> rewrite simpeler.
+**Verificatie:** open de server-URL, check dat `/` de app toont en dat calls
+naar `/api/…` 200 geven, zonder CORS- of mixed-content-fout.
 
 ---
 
