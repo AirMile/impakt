@@ -585,14 +585,6 @@ export function ProfileScreen({
           />
         </View>
 
-        {/* Hulp */}
-        <SectionLabel>Hulp</SectionLabel>
-        <View style={styles.rowGroup}>
-          <ProfileRow icon="info" label="Info" />
-          <View style={styles.rowDivider} />
-          <ProfileRow icon="mail" label="Contact" />
-        </View>
-
         {/* Uitloggen */}
         <View style={styles.logoutRow}>
           {logoutError ? (

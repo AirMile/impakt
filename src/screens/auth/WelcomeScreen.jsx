@@ -22,9 +22,9 @@ import { colors, fonts } from "../../theme/tokens";
 import { fadeUp } from "../../theme/animations";
 
 const slides = [
-  require("../../../assets/Impakt_Feed.jpg"),
-  require("../../../assets/Impakt_Happy_Feed.jpg"),
-  require("../../../assets/Impakt_Humor.jpg"),
+  require("../../../assets/Impakt_Feed2.png"),
+  require("../../../assets/Impakt_Happy_Feed2.png"),
+  require("../../../assets/Impakt_Humor2.png"),
 ];
 
 export function WelcomeScreen({ onLogin, onRegister, onSkip }) {

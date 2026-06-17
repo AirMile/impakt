@@ -38,6 +38,16 @@ import {
 } from "../lib/polls";
 import { getPollVote, setPollVote } from "../storage/prefs";
 
+function clampPollPct(value) {
+  const pct = Math.round(Number(value));
+  if (!Number.isFinite(pct)) return 0;
+  return Math.max(0, Math.min(100, pct));
+}
+
+function pollBarFillStyle(pct) {
+  return pct >= 100 ? { right: 0 } : { width: `${pct}%` };
+}
+
 export function DetailScreen({
   story,
   memes = [],
@@ -148,6 +158,7 @@ export function DetailScreen({
   const isHappyContext = sourceTab === "good";
   const embeddedFeedActiveTab = isHappyContext ? "good" : "feed";
   const publishedMeta = [story.date, story.time].filter(Boolean).join(" - ");
+  const storySub = String(story.sub ?? "").trim();
   const isSamePollOption = (a, b) =>
     a != null && b != null && String(a) === String(b);
   const isAlreadyVotedError = (err) => {
@@ -422,7 +433,7 @@ export function DetailScreen({
 
           <View style={styles.metaDivider} />
 
-          <Text style={styles.sub}>{story.sub}</Text>
+          {storySub ? <Text style={styles.sub}>{storySub}</Text> : null}
 
           {story.body.map((para, i) => (
             <Text key={i} style={styles.para}>
@@ -454,7 +465,7 @@ export function DetailScreen({
                 {displayedPollOptions.map((opt) => {
                   const pct =
                     opt.percentage != null
-                      ? Math.round(Number(opt.percentage))
+                      ? clampPollPct(opt.percentage)
                       : votePct(opt.votes, totalVotes);
                   const isMine = isSamePollOption(pollChoice, opt.id);
                   return (
@@ -469,10 +480,11 @@ export function DetailScreen({
                     >
                       {showPollResults && (
                         <View
+                          testID={`poll-bar-${opt.id}`}
                           style={[
                             styles.pollBar,
+                            pollBarFillStyle(pct),
                             {
-                              width: `${pct}%`,
                               backgroundColor: isMine
                                 ? "rgba(228,99,77,0.25)"
                                 : "rgba(15,17,26,0.08)",

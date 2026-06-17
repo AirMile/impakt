@@ -1,4 +1,4 @@
-import { InteractionManager, Linking } from "react-native";
+import { InteractionManager, Linking, StyleSheet } from "react-native";
 import {
   render as rtlRender,
   fireEvent,
@@ -454,6 +454,42 @@ test("peiling gebruikt percentages uit de backend results", async () => {
   expect(getAllByText("50%")).toHaveLength(2);
   expect(getByText("0%")).toBeTruthy();
   expect(getByText("2 mensen stemden mee")).toBeTruthy();
+});
+
+test("peiling vult de balk volledig bij 100 procent", async () => {
+  const { getPollVote } = require("../../src/storage/prefs");
+  getPollVote.mockResolvedValueOnce(31);
+
+  const { getByTestId, getByText } = render(
+    <DetailScreen
+      story={{
+        ...story,
+        poll: {
+          id: 7,
+          q: "Wat vind je?",
+          options: [
+            { id: 31, label: "Ja", votes: 2, percentage: 100 },
+            { id: 32, label: "Nee", votes: 0, percentage: 0 },
+          ],
+        },
+      }}
+      feedCat="Voor jou"
+      onCatChange={jest.fn()}
+      onNav={jest.fn()}
+      onSearch={jest.fn()}
+      onProfile={jest.fn()}
+      onClose={jest.fn()}
+      onSwapStory={jest.fn()}
+      onRequireAuth={jest.fn()}
+      token="tok123"
+      user={{ id: 15 }}
+    />
+  );
+
+  await waitFor(() => expect(getByText("100%")).toBeTruthy());
+  const barStyle = StyleSheet.flatten(getByTestId("poll-bar-31").props.style);
+  expect(barStyle.right).toBe(0);
+  expect(barStyle.width).toBeUndefined();
 });
 
 test("peiling herstelt opgeslagen keuze bij terugkomen op artikel", async () => {

@@ -71,6 +71,19 @@ test("toont gescheiden tellingen voor artikelen en memes, beide klikbaar", () =>
   expect(onOpenSaved).toHaveBeenCalledWith("memes");
 });
 
+test("toont geen hulpblok met info en contact", () => {
+  const { queryByText } = render(
+    <ProfileScreen
+      {...defaultProps}
+      user={{ username: "Happymilan", email: "milan@gmail.com" }}
+    />
+  );
+
+  expect(queryByText("Hulp")).toBeNull();
+  expect(queryByText("Info")).toBeNull();
+  expect(queryByText("Contact")).toBeNull();
+});
+
 test("opent detailweergave en werkt een accountgegeven bij", async () => {
   global.fetch.mockResolvedValueOnce({
     ok: true,
