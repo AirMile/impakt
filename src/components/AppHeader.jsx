@@ -11,6 +11,7 @@ export function AppHeader({
   showBack = false,
   showProfile = true,
   dark = false,
+  logoVariant = "default",
 }) {
   const insets = useSafeAreaInsets();
   const bg = dark ? colors.ink : colors.cream;
@@ -41,7 +42,12 @@ export function AppHeader({
           <View style={styles.iconBtn} />
         )}
 
-        <ImpaktLogo size={26} dark={!dark} inverted={dark} />
+        <ImpaktLogo
+          size={26}
+          dark={!dark}
+          inverted={dark}
+          variant={logoVariant}
+        />
 
         {showProfile ? (
           <Pressable

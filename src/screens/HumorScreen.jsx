@@ -510,7 +510,7 @@ export function HumorScreen({
       )}
 
       <View style={styles.headerOverlay}>
-        <AppHeader dark onProfile={onProfile} />
+        <AppHeader dark logoVariant="light" onProfile={onProfile} />
       </View>
     </View>
   );
