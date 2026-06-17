@@ -487,17 +487,6 @@ export function ProfileScreen({
         <MotiView {...fadeUp} style={styles.avatarSection}>
           <View style={styles.avatarWrap}>
             <IIcon name="user" size={48} strokeWidth={1.8} color={colors.ink} />
-            <Pressable
-              style={styles.editBadge}
-              accessibilityLabel="Foto wijzigen"
-            >
-              <IIcon
-                name="plus"
-                size={14}
-                strokeWidth={2.4}
-                color={colors.cream}
-              />
-            </Pressable>
           </View>
           <Text style={styles.userName}>{displayName}</Text>
           {hasAccountInfo ? (
@@ -720,19 +709,6 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 9999,
     backgroundColor: colors.blue,
-    borderWidth: 1,
-    borderColor: "rgba(15,17,26,0.10)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  editBadge: {
-    position: "absolute",
-    bottom: -4,
-    right: -4,
-    width: 30,
-    height: 30,
-    borderRadius: 9999,
-    backgroundColor: colors.red,
     borderWidth: 1,
     borderColor: "rgba(15,17,26,0.10)",
     alignItems: "center",

@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 test("toont accountgegevens op het profiel", () => {
-  const { getAllByText, getByLabelText, getByText } = render(
+  const { getAllByText, getByLabelText, getByText, queryByLabelText } = render(
     <ProfileScreen
       {...defaultProps}
       user={{
@@ -44,6 +44,7 @@ test("toont accountgegevens op het profiel", () => {
   expect(getByText("milan@gmail.com")).toBeTruthy();
   expect(getByLabelText("Bewerk Gebruikersnaam")).toBeTruthy();
   expect(getByText("Wachtwoord wijzigen")).toBeTruthy();
+  expect(queryByLabelText("Foto wijzigen")).toBeNull();
 });
 
 test("toont gescheiden tellingen voor artikelen en memes, beide klikbaar", () => {
