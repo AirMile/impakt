@@ -1,14 +1,11 @@
 # Screenshots
 
-Afbeeldingen voor de hoofd-`README.md`. Plaats hier de 4 schermafbeeldingen met
-deze exacte bestandsnamen (PNG):
+Afbeeldingen voor de hoofd-`README.md` (app-schermen, portret).
 
 | Bestand                | Scherm                                                            |
 | ---------------------- | ----------------------------------------------------------------- |
-| `01-feed.png`          | Home-feed met thema-filter en reactie-rail                        |
-| `02-humor.png`         | Humor-feed (meme met gekoppeld artikel)                           |
-| `03-detail.png`        | Artikel-detailpagina (boven: afbeelding + reacties/opslaan)       |
-| `04-detail-acties.png` | Detailpagina "Doe mee": peiling, "meme over dit verhaal", bronnen |
-
-Aanbevolen: portret-screenshots van een telefoon (bijv. ~880 px breed),
-zodat ze netjes in de tabel passen.
+| `01-feed.jpg`          | Home-feed met thema-filter en reactie-rail                        |
+| `02-humor.jpg`         | Humor-feed (meme met gekoppeld artikel)                           |
+| `03-happy.jpg`         | Happy feed (goed nieuws van deze week)                            |
+| `04-detail.jpg`        | Artikel-detailpagina (boven: afbeelding + reacties/opslaan)       |
+| `05-detail-acties.jpg` | Detailpagina "Doe mee": peiling, "meme over dit verhaal", bronnen |

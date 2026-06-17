@@ -8,10 +8,15 @@ De app draait op een live **Laravel-backend** voor content, reacties en peilinge
 
 ## Screenshots
 
-|                           Feed                           |                         Humor                          |                         Detail                          |                              Doe mee                               |
-| :------------------------------------------------------: | :----------------------------------------------------: | :-----------------------------------------------------: | :----------------------------------------------------------------: |
-| ![Persoonlijke nieuwsfeed](docs/screenshots/01-feed.png) | ![Humor-feed met memes](docs/screenshots/02-humor.png) | ![Artikel-detailpagina](docs/screenshots/03-detail.png) | ![Peiling, meme en bronnen](docs/screenshots/04-detail-acties.png) |
-|          Feed met thema-filter en reactie-rail           |            Meme-feed met gekoppeld artikel             |           Detailpagina met reacties + opslaan           |            Peiling, "meme over dit verhaal" en bronnen             |
+|                           Feed                           |                         Humor                          |                          Happy feed                          |
+| :------------------------------------------------------: | :----------------------------------------------------: | :----------------------------------------------------------: |
+| ![Persoonlijke nieuwsfeed](docs/screenshots/01-feed.jpg) | ![Humor-feed met memes](docs/screenshots/02-humor.jpg) | ![Happy feed met goed nieuws](docs/screenshots/03-happy.jpg) |
+|          Feed met thema-filter en reactie-rail           |            Meme-feed met gekoppeld artikel             |                Aparte stroom met goed nieuws                 |
+
+|                         Detail                          |                              Doe mee                               |
+| :-----------------------------------------------------: | :----------------------------------------------------------------: |
+| ![Artikel-detailpagina](docs/screenshots/04-detail.jpg) | ![Peiling, meme en bronnen](docs/screenshots/05-detail-acties.jpg) |
+|           Detailpagina met reacties + opslaan           |            Peiling, "meme over dit verhaal" en bronnen             |
 
 ---
 
