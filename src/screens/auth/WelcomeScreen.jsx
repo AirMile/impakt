@@ -209,7 +209,11 @@ export function WelcomeScreen({ onLogin, onRegister, onSkip }) {
             <View style={styles.dividerLine} />
           </View>
 
-          <Pressable onPress={onSkip} style={styles.skipBtn}>
+          <Pressable
+            onPress={onSkip}
+            style={styles.skipBtn}
+            accessibilityRole="button"
+          >
             <Text style={styles.skipLabel}>Verder zonder account </Text>
             <IIcon
               name="arrow"
@@ -336,7 +340,7 @@ const styles = StyleSheet.create({
   dividerLabel: {
     fontFamily: fonts.body,
     fontSize: 11,
-    color: "rgba(15,17,26,0.55)",
+    color: "rgba(15,17,26,0.62)",
     textTransform: "uppercase",
     letterSpacing: 1.5,
   },

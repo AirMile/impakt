@@ -83,6 +83,7 @@ export function LoginScreen({ onBack, onSuccess, onSwitchToRegister, onSkip }) {
           <Pressable
             onPress={onBack}
             style={styles.backBtn}
+            accessibilityRole="button"
             accessibilityLabel="Terug"
           >
             <IIcon name="arrowL" size={20} strokeWidth={2} color={colors.ink} />
@@ -93,7 +94,10 @@ export function LoginScreen({ onBack, onSuccess, onSwitchToRegister, onSkip }) {
 
         <MotiView {...fadeUp} style={styles.formBody}>
           <Text style={styles.eyebrow}>Welkom terug</Text>
-          <Text style={styles.title}>{`Goed je weer\nte zien.`}</Text>
+          <Text
+            style={styles.title}
+            accessibilityRole="header"
+          >{`Goed je weer\nte zien.`}</Text>
 
           <Field
             label="E-mailadres"
@@ -118,7 +122,14 @@ export function LoginScreen({ onBack, onSuccess, onSwitchToRegister, onSkip }) {
             returnKeyType="done"
             onSubmitEditing={submit}
             rightSlot={
-              <Pressable onPress={() => setShowPw((s) => !s)} hitSlop={8}>
+              <Pressable
+                onPress={() => setShowPw((s) => !s)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  showPw ? "Wachtwoord verbergen" : "Wachtwoord tonen"
+                }
+              >
                 <IIcon
                   name={showPw ? "eyeOff" : "eye"}
                   size={18}
@@ -146,12 +157,12 @@ export function LoginScreen({ onBack, onSuccess, onSwitchToRegister, onSkip }) {
 
           <View style={styles.switchRow}>
             <Text style={styles.switchText}>Nog geen account? </Text>
-            <Pressable onPress={onSwitchToRegister}>
+            <Pressable onPress={onSwitchToRegister} accessibilityRole="button">
               <Text style={styles.switchLink}>Registreer</Text>
             </Pressable>
           </View>
           <View style={{ alignItems: "center", marginBottom: 8 }}>
-            <Pressable onPress={onSkip} hitSlop={8}>
+            <Pressable onPress={onSkip} hitSlop={8} accessibilityRole="button">
               <Text style={styles.skipMuted}>
                 Sla over · verder zonder account →
               </Text>
@@ -220,7 +231,7 @@ const styles = StyleSheet.create({
   skipMuted: {
     fontFamily: fonts.body,
     fontSize: 13,
-    color: "rgba(15,17,26,0.55)",
+    color: "rgba(15,17,26,0.62)",
     paddingVertical: 6,
   },
   errorText: {

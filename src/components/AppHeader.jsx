@@ -33,6 +33,7 @@ export function AppHeader({
         {showBack ? (
           <Pressable
             onPress={onBack}
+            accessibilityRole="button"
             accessibilityLabel="Terug"
             style={[styles.iconBtn, { backgroundColor: "transparent" }]}
           >
@@ -52,6 +53,7 @@ export function AppHeader({
         {showProfile ? (
           <Pressable
             onPress={onProfile}
+            accessibilityRole="button"
             accessibilityLabel="Profiel"
             style={[
               styles.avatarBtn,

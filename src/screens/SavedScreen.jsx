@@ -19,6 +19,7 @@ function MemeThumb({ meme, onOpenMeme }) {
     <Pressable
       onPress={() => onOpenMeme?.(meme.storyId)}
       style={styles.memeThumb}
+      accessibilityRole="button"
       accessibilityLabel={`Open meme: ${meme.top ?? ""}`}
     >
       <Image
@@ -63,11 +64,14 @@ export function SavedScreen({
         <Pressable
           onPress={onClose}
           style={styles.backBtn}
+          accessibilityRole="button"
           accessibilityLabel="Terug"
         >
           <IIcon name="arrowL" size={24} strokeWidth={2} color={colors.ink} />
         </Pressable>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          {title}
+        </Text>
       </View>
 
       <ScrollView
@@ -144,7 +148,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontFamily: fonts.body,
     fontSize: 14,
-    color: "rgba(15,17,26,0.55)",
+    color: "rgba(15,17,26,0.62)",
     textAlign: "center",
   },
   memeSection: {

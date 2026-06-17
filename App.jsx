@@ -80,6 +80,7 @@ function GuestAuthPrompt({ visible, onClose, onLogin, onRegister }) {
                 styles.authCloseBtn,
                 pressed && styles.authBtnPressed,
               ]}
+              accessibilityRole="button"
               accessibilityLabel="Sluiten"
             >
               <Text style={styles.authCloseLabel}>×</Text>
@@ -95,6 +96,7 @@ function GuestAuthPrompt({ visible, onClose, onLogin, onRegister }) {
               styles.authPrimaryBtn,
               pressed && styles.authBtnPressed,
             ]}
+            accessibilityRole="button"
           >
             <Text style={styles.authPrimaryLabel}>Account aanmaken</Text>
           </Pressable>
@@ -104,6 +106,7 @@ function GuestAuthPrompt({ visible, onClose, onLogin, onRegister }) {
               styles.authSecondaryBtn,
               pressed && styles.authBtnPressed,
             ]}
+            accessibilityRole="button"
           >
             <Text style={styles.authSecondaryLabel}>Inloggen</Text>
           </Pressable>

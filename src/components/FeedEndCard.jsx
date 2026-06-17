@@ -29,12 +29,15 @@ export function FeedEndCard({
         <View style={styles.line} />
       </View>
 
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        {title}
+      </Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 
       {onBackToTop ? (
         <Pressable
           onPress={onBackToTop}
+          accessibilityRole="button"
           accessibilityLabel={actionLabel}
           style={({ pressed }) => [styles.button, pressFx()({ pressed })]}
         >

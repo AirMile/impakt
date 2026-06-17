@@ -96,6 +96,7 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
 
           <View style={styles.introBlock}>
             <Text
+              accessibilityRole="header"
               style={[
                 styles.subtitle,
                 compact && styles.subtitleCompact,
@@ -131,6 +132,8 @@ export function OnboardingScreen({ onBack, onConfirm, initial = [] }) {
                     <View key={topic.id} style={styles.topicSlot}>
                       <Pressable
                         onPress={() => toggle(topic.id)}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isSelected }}
                         style={({ pressed }) => [
                           styles.topicButton,
                           compact && styles.topicButtonCompact,

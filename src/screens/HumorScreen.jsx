@@ -64,6 +64,7 @@ function RailButton({
       <Pressable
         onPress={onPress}
         unstable_pressDelay={0}
+        accessibilityRole="button"
         accessibilityLabel={label}
         style={styles.railBtn}
         hitSlop={8}
@@ -241,6 +242,8 @@ const MemeCard = React.memo(function MemeCard({
       <Pressable
         onPress={() => onOpenStory(meme.storyId)}
         unstable_pressDelay={0}
+        accessibilityRole="button"
+        accessibilityLabel={meme.storyHeadline}
         style={({ pressed }) => [
           styles.kicker,
           pressFx({ scale: 0.98 })({ pressed }),
@@ -307,12 +310,15 @@ export function MemeEndCard({ onBackToTop, onGoToFeed, frameH }) {
   return (
     <View style={[styles.endCard, { height: frameH }]}>
       <IIcon name="smile" size={44} color={colors.cream} strokeWidth={1.8} />
-      <Text style={styles.endTitle}>Dat waren{"\n"}alle memes</Text>
+      <Text accessibilityRole="header" style={styles.endTitle}>
+        Dat waren{"\n"}alle memes
+      </Text>
       <Text style={styles.endSub}>Kom later terug voor verse memes</Text>
 
       <View style={styles.endActions}>
         <Pressable
           onPress={onBackToTop}
+          accessibilityRole="button"
           accessibilityLabel="Naar boven"
           style={({ pressed }) => [styles.endBtnGhost, pressFx()({ pressed })]}
         >
@@ -330,6 +336,7 @@ export function MemeEndCard({ onBackToTop, onGoToFeed, frameH }) {
         {onGoToFeed ? (
           <Pressable
             onPress={onGoToFeed}
+            accessibilityRole="button"
             accessibilityLabel="Naar nieuws"
             style={({ pressed }) => [
               styles.endBtnSolid,

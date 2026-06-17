@@ -11,7 +11,7 @@ export const BTN_PALETTE = {
   outline: { bg: "transparent", fg: colors.ink, border: colors.ink },
   ghost: { bg: "transparent", fg: colors.ink, border: "transparent" },
   cream: { bg: colors.cream, fg: colors.ink, border: colors.ink },
-  impaktRed: { bg: "#E4634D", fg: "#FFFFFF", border: "#E4634D" },
+  impaktRed: { bg: colors.red, fg: "#FFFFFF", border: colors.red },
 };
 
 export function Btn({
@@ -30,6 +30,8 @@ export function Btn({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
       unstable_pressDelay={0}
       android_ripple={{ color: "rgba(15,17,26,0.12)", borderless: false }}
       style={({ pressed }) => [

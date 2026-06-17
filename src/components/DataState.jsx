@@ -39,6 +39,7 @@ export function DataState({
         {onRetry ? (
           <Pressable
             onPress={onRetry}
+            accessibilityRole="button"
             style={({ pressed }) => [
               styles.retry,
               { opacity: pressed ? 0.7 : 1 },
