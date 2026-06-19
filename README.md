@@ -1,178 +1,197 @@
 # Impakt
 
-Visuele nieuws-app voor Nederlandse jongeren, gebouwd met **React Native + Expo** (JavaScript). Impakt brengt het nieuws op een manier die past bij hoe jongeren scrollen: een persoonlijke, beeldgedreven **feed**, een aparte **humor-feed** met memes, een **Happy feed** met goed nieuws, en artikelen waarop je kunt **reageren, stemmen, opslaan en delen**.
+A visual news app for young people in the Netherlands, built with **React Native + Expo** (JavaScript). Impakt presents the news in a way that fits how young people scroll: a personal, image-driven **feed**, a separate **humor feed** with memes, a **Happy feed** with good news, and articles you can **react to, vote on, save, and share**.
 
-De app draait op een live **Laravel-backend** voor content, reacties en peilingen. Delen gebeurt voorlopig client-side (native Share / Web Share).
+The app runs against a live **Laravel backend** for content, reactions, and polls. Sharing is currently handled client-side (native Share / Web Share).
+
+---
+
+## Table of Contents
+
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+  - [Requirements](#requirements)
+  - [Install and Run](#install-and-run)
+  - [Simulators and Web](#simulators-and-web)
+- [Configuration (`.env`)](#configuration-env)
+- [Scripts](#scripts)
+- [Project Structure](#project-structure)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
 
 ---
 
 ## Screenshots
 
-|                           Feed                           |                         Humor                          |                          Happy feed                          |
-| :------------------------------------------------------: | :----------------------------------------------------: | :----------------------------------------------------------: |
-| ![Persoonlijke nieuwsfeed](docs/screenshots/01-feed.jpg) | ![Humor-feed met memes](docs/screenshots/02-humor.jpg) | ![Happy feed met goed nieuws](docs/screenshots/03-happy.jpg) |
-|          Feed met thema-filter en reactie-rail           |            Meme-feed met gekoppeld artikel             |                Aparte stroom met goed nieuws                 |
+|                        Feed                         |                          Humor                          |                         Happy feed                          |
+| :-------------------------------------------------: | :-----------------------------------------------------: | :---------------------------------------------------------: |
+| ![Personal news feed](docs/screenshots/01-feed.jpg) | ![Humor feed with memes](docs/screenshots/02-humor.jpg) | ![Happy feed with good news](docs/screenshots/03-happy.jpg) |
+|      Feed with theme filter and reaction rail       |              Meme feed with linked article              |                Separate stream of good news                 |
 
-|                         Detail                          |                              Doe mee                               |
-| :-----------------------------------------------------: | :----------------------------------------------------------------: |
-| ![Artikel-detailpagina](docs/screenshots/04-detail.jpg) | ![Peiling, meme en bronnen](docs/screenshots/05-detail-acties.jpg) |
-|           Detailpagina met reacties + opslaan           |            Peiling, "meme over dit verhaal" en bronnen             |
+|                         Detail                         |                             Take part                             |
+| :----------------------------------------------------: | :---------------------------------------------------------------: |
+| ![Article detail page](docs/screenshots/04-detail.jpg) | ![Poll, meme, and sources](docs/screenshots/05-detail-acties.jpg) |
+|           Detail page with reactions + save            |            Poll, "meme about this story," and sources             |
 
 ---
 
 ## Features
 
-- **Persoonlijke feed** — verhalen gefilterd op je gekozen thema's (Kunst, Sport, Politiek, Buitenland, …).
-- **Humor-feed** — memes met een koppeling naar het bijbehorende nieuwsartikel.
-- **Happy feed** — een aparte stroom met goed nieuws.
-- **Reageren** — emoji-reactie per artikel (😊 / 😐 / 🙁) met live percentages.
-- **Opslaan** — bookmark artikelen en vind ze terug in je opgeslagen-overzicht.
-- **Delen** — via de native deel-sheet (mobiel) of Web Share / clipboard (web).
-- **Peilingen** — stem mee in een artikel en zie direct de uitslag.
-- **Bronnen & context** — elk artikel toont bronlinks en een "wat kan jij doen?"-blok.
-- **Zoeken** — zoek door alle verhalen.
-- **Account** — registreren, inloggen en profielbeheer.
+- **Personal feed** — stories filtered by your chosen themes (Arts, Sports, Politics, World, …).
+- **Humor feed** — memes linked to their related news article.
+- **Happy feed** — a separate stream of good news.
+- **Reactions** — emoji reaction per article (😊 / 😐 / 🙁) with live percentages.
+- **Save** — bookmark articles and find them back in your saved overview.
+- **Share** — via the native share sheet (mobile) or Web Share / clipboard (web).
+- **Polls** — vote inside an article and see the result instantly.
+- **Sources & context** — every article shows source links and a "what can you do?" block.
+- **Search** — search across all stories.
+- **Account** — register, log in, and manage your profile.
 
 ---
 
-## Stack
+## Tech Stack
 
 - **Expo** SDK 54 + **React Native** 0.81.5 + React 19
-- **Animaties**: moti + react-native-reanimated 4
-- **Navigatie**: eigen state-machine in `App.jsx` (`phase` + `tab` + flags — geen React Navigation)
-- **Opslag**: AsyncStorage (voorkeuren, opgeslagen artikelen)
-- **Backend**: Laravel-API (REST), basis-URL via `EXPO_PUBLIC_API_BASE_URL`
+- **Animations**: moti + react-native-reanimated 4
+- **Navigation**: custom state machine in `App.jsx` (`phase` + `tab` + flags — no React Navigation)
+- **Storage**: AsyncStorage (preferences, saved articles)
+- **Backend**: Laravel API (REST), base URL via `EXPO_PUBLIC_API_BASE_URL`
 - **Fonts**: Bebas Neue, Poppins, Geist (via expo-google-fonts)
-- **Tests**: Jest + jest-expo + Testing Library; Playwright (e2e web-target)
-- **Web-deploy**: `expo export` → statische `dist/` op de Laravel-server (same-origin `/api`)
+- **Tests**: Jest + jest-expo + Testing Library; Playwright (e2e web target)
+- **Web deploy**: `expo export` → static `dist/` on the Laravel server (same-origin `/api`)
 
 ---
 
-## Aan de slag
+## Getting Started
 
-### Vereisten
+### Requirements
 
-- **Node 20+** en npm
-- **Expo Go** op je telefoon ([iOS](https://apps.apple.com/app/expo-go/id982107779) / [Android](https://play.google.com/store/apps/details?id=host.exp.exponent)) — voor draaien op je eigen toestel
-- Xcode (iOS simulator) of Android Studio (Android emulator) — optioneel, alleen voor de simulator
+- **Node 20+** and npm
+- **Expo Go** on your phone ([iOS](https://apps.apple.com/app/expo-go/id982107779) / [Android](https://play.google.com/store/apps/details?id=host.exp.exponent)) — to run on your own device
+- Xcode (iOS simulator) or Android Studio (Android emulator) — optional, only for the simulator
 
-### Installeren en opstarten
+### Install and Run
 
 ```bash
 git clone https://github.com/AirMile/impakt.git
 cd impakt-rn
 npm install
-cp .env.example .env   # API-basis-URL instellen (zie hieronder)
+cp .env.example .env   # set the API base URL (see below)
 npm run start
 ```
 
-In de terminal verschijnt een QR-code:
+A QR code appears in the terminal:
 
-- **Android**: scan met de camera in de Expo Go app
-- **iOS**: scan met de standaard Camera app
+- **Android**: scan it with the camera inside the Expo Go app
+- **iOS**: scan it with the default Camera app
 
-De app opent dan direct op je telefoon.
+The app then opens directly on your phone.
 
-### Simulatoren en web
+### Simulators and Web
 
 ```bash
-npm run ios        # iOS simulator (vereist Xcode op macOS)
-npm run android    # Android emulator (vereist Android Studio)
-npm run web        # web-versie op http://localhost:3000
+npm run ios        # iOS simulator (requires Xcode on macOS)
+npm run android    # Android emulator (requires Android Studio)
+npm run web        # web version at http://localhost:3000
 ```
 
-De web-versie draait op `http://localhost:3000`, omdat de backend-CORS deze origin toestaat.
+The web version runs at `http://localhost:3000`, because the backend CORS policy allows this origin.
 
 ---
 
-## Configuratie (`.env`)
+## Configuration (`.env`)
 
-De app praat met de Laravel-backend via `EXPO_PUBLIC_API_BASE_URL`. Deze staat in `src/lib/config.js` en valt zonder `.env` terug op het dev-backend-IP, zodat tests en CI blijven werken.
+The app talks to the Laravel backend via `EXPO_PUBLIC_API_BASE_URL`. It lives in `src/lib/config.js` and falls back to the dev backend IP without a `.env`, so tests and CI keep working.
 
 ```bash
 cp .env.example .env
 ```
 
 ```dotenv
-# Lokale dev (native + web) praat rechtstreeks met de backend:
+# Local dev (native + web) talks directly to the backend:
 EXPO_PUBLIC_API_BASE_URL=http://145.24.237.97/api
 ```
 
-> **Let op:** na het wijzigen van `.env` de dev-server herstarten met cache-clear:
+> **Note:** after changing `.env`, restart the dev server with a cache clear:
 >
 > ```bash
 > npx expo start -c
 > ```
 
-Voor de gehoste web-build wordt `.env.production` gebruikt (`/api` relatief). De statische build wordt vanaf dezelfde server als de Laravel-backend geserveerd, zodat de app de API same-origin via `/api` aanroept — geen CORS, geen proxy. Zie `docs/backend.md` voor de volledige API-spec en hosting-stappen.
+For the hosted web build, `.env.production` is used (`/api` relative). The static build is served from the same server as the Laravel backend, so the app calls the API same-origin via `/api` — no CORS, no proxy. See `docs/backend.md` for the full API spec and hosting steps.
 
 ---
 
 ## Scripts
 
-| Commando             | Wat doet het                                               |
-| -------------------- | ---------------------------------------------------------- |
-| `npm run start`      | Start de Expo dev-server (Expo Go / dev client)            |
-| `npm run ios`        | Start de app in de iOS simulator                           |
-| `npm run android`    | Start de app in de Android emulator                        |
-| `npm run web`        | Start de app als web-app via react-native-web              |
-| `npm run export:web` | Bouwt de statische web-build naar `dist/` (voor de server) |
-| `npm run lint`       | Linting via ESLint 10                                      |
-| `npm run format`     | Code formatteren via Prettier 3                            |
-| `npm run test`       | Unit-tests via Jest                                        |
+| Command              | What it does                                           |
+| -------------------- | ------------------------------------------------------ |
+| `npm run start`      | Start the Expo dev server (Expo Go / dev client)       |
+| `npm run ios`        | Start the app in the iOS simulator                     |
+| `npm run android`    | Start the app in the Android emulator                  |
+| `npm run web`        | Start the app as a web app via react-native-web        |
+| `npm run export:web` | Build the static web build to `dist/` (for the server) |
+| `npm run lint`       | Lint via ESLint 10                                     |
+| `npm run format`     | Format code via Prettier 3                             |
+| `npm run test`       | Run unit tests via Jest                                |
 
 ---
 
-## Projectstructuur
+## Project Structure
 
 ```
-App.jsx                # entry-point — navigatie via state (phase, tab, flags)
+App.jsx                # entry point — navigation via state (phase, tab, flags)
 src/
   screens/             # FeedScreen, HumorScreen, HappyFeedScreen, DetailScreen,
                        #   SearchScreen, SavedScreen, ProfileScreen, AuthScreen
   components/          # BottomNav, ReactionRail, AppHeader, Icons, ImpaktLogo, ...
   hooks/               # useArticleReactions, useAsyncData, useSaveArticle
   lib/                 # pure helpers: articles, filterStories, config, auth/, ...
-  api/mock/            # fixtures voor tests (stories/memes/categories)
-  storage/             # AsyncStorage helpers voor voorkeuren
-  theme/               # kleur- en font-tokens, animatie-helpers
+  api/mock/            # fixtures for tests (stories/memes/categories)
+  storage/             # AsyncStorage helpers for preferences
+  theme/               # color and font tokens, animation helpers
 docs/
-  backend.md           # API-spec voor het backend-team
-  screenshots/         # afbeeldingen voor deze README
+  backend.md           # API spec for the backend team
+  screenshots/         # images for this README
 e2e/
-  feed-smoke.js        # Playwright smoke-test (web target)
+  feed-smoke.js        # Playwright smoke test (web target)
 ```
 
 ---
 
-## Tests
+## Testing
 
 ```bash
-npm run test          # alle unit-tests (Jest + jest-expo)
+npm run test          # all unit tests (Jest + jest-expo)
 ```
 
-Pure helpers in `src/lib/` hebben unit-tests; componenten en hooks render+interactie-tests via Testing Library. Bij elke nieuwe of gewijzigde functionaliteit hoort een test — een feature is pas af als de test groen draait.
+Pure helpers in `src/lib/` have unit tests; components and hooks have render + interaction tests via Testing Library. Every new or changed feature comes with a test — a feature is only done when the test passes.
 
 ---
 
-## Bijdragen
+## Contributing
 
-- Werk in een feature-branch (`feat/...`, `fix/...`) en open een PR naar `dev`.
-- Draai vóór een PR: `npm run lint && npm run format && npm run test`.
-- Commit-berichten volgen de [Conventional Commits](https://www.conventionalcommits.org/)-stijl (`feat(...)`, `fix(...)`, …).
+- Work in a feature branch (`feat/...`, `fix/...`) and open a PR against `dev`.
+- Before opening a PR, run: `npm run lint && npm run format && npm run test`.
+- Commit messages follow the [Conventional Commits](https://www.conventionalcommits.org/) style (`feat(...)`, `fix(...)`, …).
 
 ---
 
-## Problemen oplossen
+## Troubleshooting
 
-**Telefoon kan de app niet laden ("Network response timed out")**
-Zorg dat je telefoon en laptop op hetzelfde wifi-netwerk zitten. Gebruik eventueel de tunnel-optie: druk op `t` in de terminal na `npm run start`.
+**Phone cannot load the app ("Network response timed out")**
+Make sure your phone and laptop are on the same Wi-Fi network. Alternatively, use the tunnel option: press `t` in the terminal after `npm run start`.
 
-**Geen data / lege feed**
-Controleer dat `EXPO_PUBLIC_API_BASE_URL` in je `.env` naar een bereikbare backend wijst, en herstart met `npx expo start -c`.
+**No data / empty feed**
+Check that `EXPO_PUBLIC_API_BASE_URL` in your `.env` points to a reachable backend, and restart with `npx expo start -c`.
 
-**Reanimated- of worklets-fout bij opstarten**
-Wis de Metro-cache:
+**Reanimated or worklets error on startup**
+Clear the Metro cache:
 
 ```bash
 npx expo start --clear
@@ -180,6 +199,6 @@ npx expo start --clear
 
 ---
 
-## Licentie
+## License
 
-MIT — zie [`LICENSE`](LICENSE).
+MIT — see [`LICENSE`](LICENSE).
